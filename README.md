@@ -1,6 +1,6 @@
 # Rush-Royale-Bot
 Python-based bot for Rush Royale  
-Originally by @AxelBjork 
+Originally by @AxelBjork  
 [Original Repo](https://github.com/AxelBjork/Rush-Royale-Bot)
 
 🔹 **Use with Bluestacks on PC**  
@@ -38,3 +38,36 @@ Originally by @AxelBjork
 ```sh
 python --version
 ```
+
+### 2️⃣ Install Bluestacks  
+📥 Download and install the latest **Bluestacks 5**.  
+🔹 Adjust settings:
+   - **Display**: Resolution - `1600 x 900`
+   - **Graphics**: Graphics engine mode - `Compatibility` (helps if you experience issues with Scrcpy)
+   - **Advanced**: Enable **Android Debug Bridge (ADB)** and note the port number.  
+🔹 Set up a Google account, download **Rush Royale**, and complete the initial setup.
+
+### 3️⃣ Install Dependencies  
+🔹 Download and extract this repository.  
+🔹 Open a command prompt in the extracted folder and run:  
+
+```sh
+pip install -r requirements.txt
+```
+
+### 4️⃣ Running the Bot  
+🔹 Run the installation script to set up dependencies:  
+
+```sh
+install.bat
+```
+
+🔹 Launch the bot GUI:  
+
+```sh
+launch_gui.bat
+```
+
+🔹 *(Temporary step)* Configure units and settings in `bot_handler.py`. This will later be moved to `config.ini`.
+
+🎉 **You're all set!** The bot should now be ready to use.
