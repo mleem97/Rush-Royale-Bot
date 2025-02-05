@@ -30,8 +30,8 @@ class RR_bot:
         self.grid_dump, self.unit_dump, self.merge_dump = create_combat_info(self.frames[1])
         ## rest need to be cleaned up
         # Log frame
-        bg = '#575559'
-        fg = '#ffffff'
+        bg = '#111827'
+        fg = '#f3f4f6'
         logger_feed = Text(self.frames[3], height=30, width=38, bg=bg, fg=fg, wrap=WORD, font=('Consolas', 9))
         logger_feed.grid(row=0, sticky=S)
         # Setup & Connect logger to text widget
@@ -197,9 +197,9 @@ def create_options(frame1, config):
 
 def create_combat_info(frame2):
     # Create text widgets
-    grid_dump = Text(frame2, height=18, width=60, bg='#575559', fg='#ffffff')
-    unit_dump = Text(frame2, height=10, width=30, bg='#575559', fg='#ffffff')
-    merge_dump = Text(frame2, height=10, width=30, bg='#575559', fg='#ffffff')
+    grid_dump = Text(frame2, height=18, width=60, bg='#111827', fg='#f3f4f6')
+    unit_dump = Text(frame2, height=10, width=30, bg='#111827', fg='#f3f4f6')
+    merge_dump = Text(frame2, height=10, width=30, bg='#111827', fg='#f3f4f6')
     grid_dump.grid(row=0, sticky=S)
     unit_dump.grid(row=1, column=0, sticky=W)
     merge_dump.grid(row=1, column=0, sticky=E)
@@ -208,10 +208,10 @@ def create_combat_info(frame2):
 
 def create_base():
     root = Tk()
-    root.title("RR bot")
+    root.title("Rush Royale Bot v1.2")
     root.geometry("800x600")
     # Set dark background
-    root.configure(background='#575559')
+    root.configure(background='#111827')
     # Set window icon to png
     root.iconbitmap('calculon.ico')
     root.resizable(False, False)  # ai
@@ -220,7 +220,7 @@ def create_base():
     frame2 = Frame(root)
     frame2.grid_rowconfigure(0, weight=1)
     frame2.grid_columnconfigure(0, weight=1)
-    frame3 = Frame(root, bg='#575559')
+    frame3 = Frame(root, bg='#111827')
     frame3.grid_columnconfigure(0, weight=1)
     frame4 = Frame(root)
     return root
