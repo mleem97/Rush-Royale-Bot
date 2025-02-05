@@ -47,15 +47,7 @@ python --version
    - **Advanced**: Enable **Android Debug Bridge (ADB)** and note the port number.  
 🔹 Set up a Google account, download **Rush Royale**, and complete the initial setup.
 
-### 3️⃣ Install Dependencies  
-🔹 Download and extract this repository.  
-🔹 Open a command prompt in the extracted folder and run:  
-
-```sh
-pip install -r requirements.txt
-```
-
-### 4️⃣ Running the Bot  
+### 3️⃣ Running the Bot  
 🔹 Run the installation script to set up dependencies:  
 
 ```sh
