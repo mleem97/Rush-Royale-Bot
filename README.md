@@ -3,7 +3,8 @@ Python-based bot for Rush Royale
 Originally by @AxelBjork  
 [Original Repo](https://github.com/AxelBjork/Rush-Royale-Bot)
 
-🔹 **Use with Bluestacks on PC**  
+🔹 **Tested Working - Use with Bluestacks on PC**  
+🔹 **May work with USB Debugging, but needs furtzer Testing**  
 
 ---
 
