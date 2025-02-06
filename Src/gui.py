@@ -109,10 +109,12 @@ class RRBotGUI:
         Label(self.frame_options, text="Bot Optionen", bg='#575559', fg='white', font=('Arial', 12, 'bold')).pack(anchor=W)
         
         self.pve_var = IntVar(value=int(self.config.getboolean('bot', 'pve')))
+        self.ads_var = IntVar()
         self.floor = StringVar(value=self.config['bot']['floor'])
         self.mana_vars = [IntVar(value=int(i in np.fromstring(self.config['bot']['mana_level'], dtype=int, sep=','))) for i in range(1, 6)]
         
         Checkbutton(self.frame_options, text='PvE Modus', variable=self.pve_var, bg='#575559', fg='white').pack(anchor=W)
+        Checkbutton(self.frame_options, text='Watch ads', variable=self.ads_var, bg='#575559', fg='white').pack(anchor=W)
         Label(self.frame_options, text="Dungeon Floor", bg='#575559', fg='white').pack(anchor=W)
         Entry(self.frame_options, textvariable=self.floor, width=5).pack(anchor=W)
         
@@ -133,8 +135,12 @@ class RRBotGUI:
     
     def create_combat_view(self):
         Label(self.frame_combat, text="Kampfstatus", bg='#222', fg='white', font=('Arial', 12, 'bold')).pack(anchor=W)
-        self.combat_text = Text(self.frame_combat, height=15, width=80, bg='#111', fg='#ddd', wrap=WORD, font=('Consolas', 9))
-        self.combat_text.pack(fill=BOTH, expand=True)
+        self.grid_dump = Text(self.frame_combat, height=18, width=60, bg='#111', fg='#ddd', wrap=WORD, font=('Consolas', 9))
+        self.unit_dump = Text(self.frame_combat, height=10, width=30, bg='#111', fg='#ddd', wrap=WORD, font=('Consolas', 9))
+        self.merge_dump = Text(self.frame_combat, height=10, width=30, bg='#111', fg='#ddd', wrap=WORD, font=('Consolas', 9))
+        self.grid_dump.pack(fill=BOTH, expand=True)
+        self.unit_dump.pack(fill=BOTH, expand=True)
+        self.merge_dump.pack(fill=BOTH, expand=True)
 
     def update_config(self):
         floor_var = int(self.floor.get())
