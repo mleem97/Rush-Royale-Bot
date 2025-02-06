@@ -9,7 +9,6 @@ import configparser
 import bot_handler
 import bot_logger
 
-
 class RRBotGUI:
     def __init__(self):
         self.stop_flag = False
@@ -125,6 +124,54 @@ class RRBotGUI:
         Label(self.frame_combat, text="Kampfstatus", bg='#222', fg='white', font=('Arial', 12, 'bold')).pack(anchor=W)
         self.combat_text = Text(self.frame_combat, height=15, width=80, bg='#111', fg='#ddd', wrap=WORD, font=('Consolas', 9))
         self.combat_text.pack(fill=BOTH, expand=True)
+
+    def update_config(self):
+        floor_var = int(self.floor.get())
+        card_level = [var.get() for var in self.mana_vars] * np.arange(1, 6)
+        card_level = card_level[card_level != 0]
+        self.config.read('config.ini')
+        self.config['bot']['floor'] = str(floor_var)
+        self.config['bot']['mana_level'] = np.array2string(card_level, separator=',')[1:-1]
+        self.config['bot']['pve'] = str(bool(self.pve_var.get()))
+        with open('config.ini', 'w') as configfile:
+            self.config.write(configfile)
+        self.logger.info("Stored settings to config!")
+
+    def update_units(self):
+        self.selected_units = self.config['bot']['units'].replace(' ', '').split(',')
+        self.logger.info(f'Selected units: {", ".join(self.selected_units)}')
+        if not bot_handler.select_units([unit + '.png' for unit in self.selected_units]):
+            valid_units = ' '.join(os.listdir("all_units")).replace('.png', '').split(' ')
+            self.logger.info(f'Invalid units in config file! Valid units: {valid_units}')
+
+    def update_text(self, i, combat, output, grid_df, unit_series, merge_series, info):
+        if grid_df is not None:
+            grid_df['unit'] = grid_df['unit'].apply(lambda x: x.replace('.png', '').replace('empty', '-'))
+            num_demons = str(grid_df[grid_df['unit'] == 'demon_hunter']['rank'].sum())
+            avg_age = str(grid_df['Age'].mean().round(2))
+            write_to_widget(self.root, self.grid_dump, f"{combat}, {i+1}/8 {output}, {info}\n{grid_df.to_string()}\nAverage age: {avg_age}\tNumber of demon ranks: {num_demons}")
+        if unit_series is not None:
+            write_to_widget(self.root, self.unit_dump, unit_series.to_string())
+        if merge_series is not None:
+            write_to_widget(self.root, self.merge_dump, merge_series.to_string())
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.logger.info('Exiting GUI')
+        self.logger.handlers.clear()
+        self.thread_run.join()
+        self.thread_init.join()
+        self.root.destroy()
+        try:
+            self.bot_instance.client.stop()
+        except:
+            pass
+
+def write_to_widget(root, tbox, text):
+    tbox.config(state=NORMAL)
+    tbox.delete(1.0, END)
+    tbox.insert(END, text)
+    tbox.config(state=DISABLED)
+    root.update_idletasks()
 
 if __name__ == "__main__":
     RRBotGUI()
