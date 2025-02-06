@@ -4,6 +4,7 @@ import numpy as np
 import threading
 import logging
 import configparser
+import time
 
 # internal
 import bot_handler
@@ -71,7 +72,11 @@ class RRBotGUI:
         self.bot_instance.logger = self.logger
         self.bot_instance.config = self.config
         self.status_text.config(text="Läuft", fg="yellow")
-        bot_handler.bot_loop(self.bot_instance, self.info_ready)
+        while not self.stop_flag:
+            if self.paused:
+                time.sleep(1)
+                continue
+            bot_handler.bot_loop(self.bot_instance, self.info_ready)
 
     def pause_bot(self):
         self.paused = not self.paused

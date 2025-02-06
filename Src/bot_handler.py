@@ -102,6 +102,9 @@ def bot_loop(bot, info_event):
     # Wait for game to load
     while (not bot.bot_stop):
         # Fetch screen and check state
+        if bot.paused:
+            time.sleep(1)
+            continue
         output = bot.battle_screen(start=False)
         if output[1] == 'fighting':
             watch_ad = True
