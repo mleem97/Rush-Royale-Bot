@@ -69,13 +69,16 @@ class RRBotGUI:
             self.logger.error('Bot konnte nicht gestartet werden.')
             return
         self.bot_instance.bot_stop = False
+        self.bot_instance.paused = False  # Stellen Sie sicher, dass paused auf False gesetzt ist
         self.bot_instance.logger = self.logger
         self.bot_instance.config = self.config
         self.status_text.config(text="Läuft", fg="yellow")
         while not self.stop_flag:
             if self.paused:
+                self.bot_instance.paused = True  # Setzen Sie das paused-Attribut des Bot-Objekts
                 time.sleep(1)
                 continue
+            self.bot_instance.paused = False  # Setzen Sie das paused-Attribut des Bot-Objekts
             bot_handler.bot_loop(self.bot_instance, self.info_ready)
             if self.stop_flag:
                 self.bot_instance.bot_stop = True

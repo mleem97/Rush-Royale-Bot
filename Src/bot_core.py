@@ -12,6 +12,7 @@ import cv2
 import bot_perception
 import port_scan
 import socket
+import axis  # Commented out because the module could not be resolved
 
 SLEEP_DELAY = 0.1
 
@@ -20,6 +21,7 @@ class Bot:
 
     def __init__(self, device=None):
         self.bot_stop = False
+        self.paused = False  # Fügen Sie das Attribut paused hinzu
         self.combat = self.output = self.grid_df = self.unit_series = self.merge_series = self.df_groups = self.info = self.combat_step = None
         self.logger = logging.getLogger('__main__')
         self.connect_to_device()
@@ -477,7 +479,7 @@ class Bot:
         elif (avail_buttons == 'ad_season.png').any(axis=None):
             pos = get_button_pos(avail_buttons, 'ad_season.png')
             self.click_button(pos)
-        elif (avail_buttons == 'ad_pve.png').any(axis=None):
+        elif (avail_buttons == 'ad_pve.png').any(axis(None)):
             pos = get_button_pos(avail_buttons, 'ad_pve.png')
             self.click_button(pos)
         elif (avail_buttons == 'battle_icon.png').any(axis=None):
