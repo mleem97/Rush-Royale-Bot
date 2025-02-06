@@ -43,7 +43,7 @@ class RRBotGUI:
         self.create_status_view()
         self.create_combat_view()
         
-        self.frame_combat.pack_forget()
+        self.frame_combat.pack(side=LEFT, fill=BOTH, expand=True, padx=10, pady=10)
 
         self.logger.debug('GUI started!')
         self.root.mainloop()
@@ -77,6 +77,10 @@ class RRBotGUI:
                 time.sleep(1)
                 continue
             bot_handler.bot_loop(self.bot_instance, self.info_ready)
+            if self.stop_flag:
+                self.bot_instance.bot_stop = True
+                break
+            self.update_combat_view()
 
     def pause_bot(self):
         self.paused = not self.paused
@@ -92,6 +96,8 @@ class RRBotGUI:
         self.stop_flag = True
         self.logger.info('Bot wird gestoppt!')
         self.status_text.config(text="Gestoppt", fg="red")
+        if hasattr(self, 'bot_instance'):
+            self.bot_instance.bot_stop = True
     
     def quit_level(self):
         if hasattr(self, 'bot_instance'):
@@ -159,6 +165,21 @@ class RRBotGUI:
             write_to_widget(self.root, self.unit_dump, unit_series.to_string())
         if merge_series is not None:
             write_to_widget(self.root, self.merge_dump, merge_series.to_string())
+
+    def update_combat_view(self):
+        # Update combat view with the latest information
+        if hasattr(self, 'bot_instance'):
+            combat_info = f"Combat Step: {self.bot_instance.combat_step}\n"
+            combat_info += f"Combat: {self.bot_instance.combat}\n"
+            combat_info += f"Output: {self.bot_instance.output}\n"
+            combat_info += f"Grid DataFrame:\n{self.bot_instance.grid_df}\n"
+            combat_info += f"Unit Series:\n{self.bot_instance.unit_series}\n"
+            combat_info += f"Merge Series:\n{self.bot_instance.merge_series}\n"
+            combat_info += f"Info: {self.bot_instance.info}\n"
+            self.combat_text.config(state=NORMAL)
+            self.combat_text.delete(1.0, END)
+            self.combat_text.insert(END, combat_info)
+            self.combat_text.config(state=DISABLED)
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.logger.info('Exiting GUI')

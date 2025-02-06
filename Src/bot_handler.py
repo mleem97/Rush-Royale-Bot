@@ -100,11 +100,13 @@ def bot_loop(bot, info_event):
     # Main loop
     bot.logger.debug(f'Bot mainloop started')
     # Wait for game to load
-    while (not bot.bot_stop):
-        # Fetch screen and check state
+    while not bot.bot_stop:
         if bot.paused:
             time.sleep(1)
             continue
+        if bot.bot_stop:
+            break
+        # Fetch screen and check state
         output = bot.battle_screen(start=False)
         if output[1] == 'fighting':
             watch_ad = True
@@ -143,8 +145,10 @@ def bot_loop(bot, info_event):
             wait += 1
             if wait > 40:
                 bot.logger.info('RESTARTING')
-                bot.restart_RR(),
+                bot.restart_RR()
                 wait = 0
+        if bot.bot_stop:
+            break
 
 
 def check_scrcpy(logger):
