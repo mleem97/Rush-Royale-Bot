@@ -61,6 +61,6 @@ install.bat
 launch_gui.bat
 ```
 
-🔹 *(Temporary step)* Configure units and settings in `bot_handler.py`. This will later be moved to `config.ini`.
+🔹 *(Temporary step)* Configure units and settings in `config.ini`.
 
 🎉 **You're all set!** The bot should now be ready to use.
