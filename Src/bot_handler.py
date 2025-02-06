@@ -18,46 +18,40 @@ import requests
 from tqdm.auto import tqdm
 
 
+# from here https://stackoverflow.com/a/63831344
 def download(url, filename):
-    try:
-        r = requests.get(url, stream=True, allow_redirects=True)
-        r.raise_for_status()
-        file_size = int(r.headers.get('Content-Length', 0))
+    r = requests.get(url, stream=True, allow_redirects=True)
+    if r.status_code != 200:
+        r.raise_for_status()  # Will only raise for 4xx codes, so...
+        raise RuntimeError(f"Request to {url} returned status code {r.status_code}")
+    file_size = int(r.headers.get('Content-Length', 0))
 
-        path = pathlib.Path(filename).expanduser().resolve()
-        path.parent.mkdir(parents=True, exist_ok=True)
+    path = pathlib.Path(filename).expanduser().resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
 
-        desc = "(Unknown total file size)" if file_size == 0 else ""
-        r.raw.read = functools.partial(r.raw.read, decode_content=True)
-        with tqdm.wrapattr(r.raw, "read", total=file_size, desc=desc) as r_raw:
-            with path.open("wb") as f:
-                shutil.copyfileobj(r_raw, f)
+    desc = "(Unknown total file size)" if file_size == 0 else ""
+    r.raw.read = functools.partial(r.raw.read, decode_content=True)  # Decompress if needed
+    with tqdm.wrapattr(r.raw, "read", total=file_size, desc=desc) as r_raw:
+        with path.open("wb") as f:
+            shutil.copyfileobj(r_raw, f)
 
-        return path
-    except requests.RequestException as e:
-        logging.error(f"Failed to download {url}: {e}")
-        raise
+    return path
 
 
 # Moves selected units from collection folder to deck folder for unit recognition options
 def select_units(units):
-    units_dir = 'units'
-    all_units_dir = 'all_units'
-    
-    if os.path.isdir(units_dir):
-        for unit in os.listdir(units_dir):
-            os.remove(os.path.join(units_dir, unit))
+    if os.path.isdir('units'):
+        [os.remove('units/' + unit) for unit in os.listdir("units")]
     else:
-        os.mkdir(units_dir)
-    
+        os.mkdir('units')
+    # Read and write all images
     for new_unit in units:
         try:
-            src_path = os.path.join(all_units_dir, new_unit)
-            dest_path = os.path.join(units_dir, new_unit)
-            cv2.imwrite(dest_path, cv2.imread(src_path))
+            cv2.imwrite('units/' + new_unit, cv2.imread('all_units/' + new_unit))
         except Exception as e:
-            logging.error(f"Failed to process unit {new_unit}: {e}")
-
+            print(e)
+            print(f'{new_unit} not found')
+            continue
     # Verify enough units were selected
     return len(os.listdir("units")) > 4
 

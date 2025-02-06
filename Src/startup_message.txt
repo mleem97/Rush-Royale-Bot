@@ -1,4 +1,4 @@
-Rush Royale Bot v1.1                 |
+Rush Royale Bot v1.2 - Fix by MLeeM97|
 |                                    |
 |             ,.___          ___....--._
 |           ,'     `""""""""'           `-._
