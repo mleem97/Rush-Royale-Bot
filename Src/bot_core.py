@@ -11,6 +11,7 @@ import cv2
 # internal
 import bot_perception
 import port_scan
+import socket
 
 SLEEP_DELAY = 0.1
 
@@ -21,26 +22,27 @@ class Bot:
         self.bot_stop = False
         self.combat = self.output = self.grid_df = self.unit_series = self.merge_series = self.df_groups = self.info = self.combat_step = None
         self.logger = logging.getLogger('__main__')
-        if device is None:
-            device = port_scan.get_device()
-        if not device:
-            raise Exception("No device found!")
-        self.device = device
-        self.bot_id = self.device.split(':')[-1]
-        self.shell(f'.scrcpy\\adb connect {self.device}')
-        # Try to launch application through ADB shell
-        self.shell('monkey -p com.my.defense 1')
-        # Check if 'bot_feed.png' exists
-        if not os.path.isfile(f'bot_feed_{self.bot_id}.png'):
-            self.getScreen()
-        self.screenRGB = cv2.imread(f'bot_feed_{self.bot_id}.png')
-        self.client = Client(device=self.device)
-        # Start scrcpy client
-        self.client.start(threaded=True)
-        self.logger.info('Connecting to Bluestacks')
-        time.sleep(0.5)
-        # Turn off video stream (spammy)
-        self.client.alive = False
+        self.connect_to_device()
+
+    def connect_to_device(self):
+        try:
+            self.device = port_scan.get_device()
+            if not self.device:
+                raise Exception("No device found!")
+            self.bot_id = self.device.split(':')[-1]
+            self.shell(f'.scrcpy\\adb connect {self.device}')
+            self.shell('monkey -p com.my.defense 1')
+            if not os.path.isfile(f'bot_feed_{self.bot_id}.png'):
+                self.getScreen()
+            self.screenRGB = cv2.imread(f'bot_feed_{self.bot_id}.png')
+            self.client = Client(device=self.device)
+            self.client.start(threaded=True)
+            self.logger.info('Connecting to Bluestacks')
+            time.sleep(0.5)
+            self.client.alive = False
+        except Exception as e:
+            self.logger.error(f"Failed to connect to device: {e}")
+            raise
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.bot_stop = True
@@ -54,10 +56,14 @@ class Bot:
 
     # Send ADB to click screen
     def click(self, x, y, delay_mult=1):
-        self.client.control.touch(x, y, const.ACTION_DOWN)
-        time.sleep(SLEEP_DELAY / 2 * delay_mult)
-        self.client.control.touch(x, y, const.ACTION_UP)
-        time.sleep(SLEEP_DELAY * delay_mult)
+        try:
+            self.client.control.touch(x, y, const.ACTION_DOWN)
+            time.sleep(SLEEP_DELAY / 2 * delay_mult)
+            self.client.control.touch(x, y, const.ACTION_UP)
+            time.sleep(SLEEP_DELAY * delay_mult)
+        except (ConnectionResetError, socket.error) as e:
+            self.logger.error(f"Connection error during click: {e}")
+            self.connect_to_device()
 
     # Click button coords offset and extra delay
     def click_button(self, pos):
@@ -67,10 +73,14 @@ class Bot:
 
     # Swipe on combat grid to merge units
     def swipe(self, start, end):
-        boxes, box_size = get_grid()
-        # Offset from box edge
-        offset = 60
-        self.client.control.swipe(*boxes[start[0], start[1]] + offset, *boxes[end[0], end[1]] + offset, 20, 1 / 60)
+        try:
+            boxes, box_size = get_grid()
+            # Offset from box edge
+            offset = 60
+            self.client.control.swipe(*boxes[start[0], start[1]] + offset, *boxes[end[0], end[1]] + offset, 20, 1 / 60)
+        except (ConnectionResetError, socket.error) as e:
+            self.logger.error(f"Connection error during swipe: {e}")
+            self.connect_to_device()
 
     # Send key command, see py-scrcpy consts
     def key_input(self, key):
