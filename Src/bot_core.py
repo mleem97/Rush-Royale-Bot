@@ -445,10 +445,10 @@ class Bot:
             if (df == 'home_screen.png').any(axis=None) and (df == 'battle_icon.png').any(axis=None):
                 if pve and start:
                     # Add a 500 pixel offset for PvE button
-                    self.click_button(np.array([640, 1259]))
+                    self.click_button(np.array([640, 1269]))
                     self.play_dungeon(floor=floor)
                 elif start:
-                    self.click_button(np.array([140, 1259]))
+                    self.click_button(np.array([140, 1269]))
                 time.sleep(1)
                 return df, 'home'
             # Check first button is clickable
