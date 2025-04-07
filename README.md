@@ -1,5 +1,5 @@
 # Rush-Royale-Bot
-Python based bot for Rush Royale - **CURRENTLY NOT WORKING!**
+Python based bot for Rush Royale - **CURRENTLY NOT WORKING!** (07.04.2025)
 
 Use with Bluestacks on PC
 
