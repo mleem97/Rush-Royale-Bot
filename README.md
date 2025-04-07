@@ -1,55 +1,69 @@
 # Rush-Royale-Bot
-Python based bot for Rush Royale
 
-Use with Bluestacks on PC
+Ein Python-basierter Bot für Rush Royale.
 
-## Farm unlimited gold!
-* Can run 24/7 and allow you to easily upgrade all availble units with gold to spare.
-* Optimized to farm dungeon floor 5 
+**Wichtiger Hinweis:** Dieser Bot ist für die Verwendung mit Bluestacks auf einem PC optimiert.
 
-## Functionality 
-* Can send low latency commands to game via Scrpy ADB
-* Jupyter notebook for interacting, adding new units
-* Automatically refreshes store, watches ads, completes quests, collects ad chest
-* Unit type detection with openCV: ORB detector
-* Rank detection with sklearn LogisticRegression (Very accurate)
+## Unbegrenzt Gold farmen!
+
+* Kann 24/7 laufen und ermöglicht es dir, alle verfügbaren Einheiten mühelos mit reichlich Gold aufzurüsten.
+* Optimiert für das Farmen von Dungeon-Etage 5.
+
+## Funktionalitäten
+
+* Kann Befehle mit geringer Latenz über Scrpy ADB an das Spiel senden.
+* Jupyter Notebook zur Interaktion und zum Hinzufügen neuer Einheiten.
+* Automatische Ladenaktualisierung, Anzeigenwiedergabe, Questabschlüsse und das Einsammeln der Werbe-Truhe.
+* Erkennung von Einheitentypen mit OpenCV: ORB-Detektor.
+* Rang-Erkennung mit sklearn LogisticRegression (sehr genau).
 
 ![output](https://user-images.githubusercontent.com/71280183/171181226-d680e7ca-729f-4c3d-8fc6-573736371dfb.png)
 
 ![new_gui](https://user-images.githubusercontent.com/71280183/183141310-841b100a-2ddb-4f59-a6d9-4c7789ba72db.png)
 
+## Geplante Funktionen
 
+* **Verbesserte Dungeon-Auswahl:** Auswahl verschiedener Dungeon-Etagen und Anpassung der Farming-Strategie.
+* **Talentauswahl:** Automatisches Auswählen und Upgraden von Einheitentalenten basierend auf Konfigurationen.
+* **Clan-Funktionen:** Automatisches Annehmen von Clan-Mitgliedern (optional), Teilnahme an Clan-Geschenken.
+* **Event-Unterstützung:** Automatisches Spielen von Events und Sammeln von Belohnungen.
+* **Intelligente Deck-Anpassung:** Vorschläge für Deck-Verbesserungen basierend auf gesammelten Einheiten und Runen.
+* **Visuelle Debugging-Tools:** Integration von Visualisierungen zur besseren Überwachung des Bot-Verhaltens.
+* **Erweiterte Konfigurationsmöglichkeiten:** Detailliertere Einstellungen für Farming-Strategien, Einheitenerkennung und andere Funktionen über eine Konfigurationsdatei oder GUI.
+* **Unterstützung für weitere Emulatoren:** Erweiterung der Kompatibilität auf andere Android-Emulatoren neben Bluestacks.
+* **Fehlerbehandlung und Reporting:** Verbesserte Fehlererkennung und detailliertere Protokollierung des Bot-Betriebs.
+* **GUI-Verbesserungen:** Benutzerfreundlichere Oberfläche für die Konfiguration und Steuerung des Bots.
 
-## Setup Guide
+## Setup-Anleitung
 
 **Python**
 
-Install Latest Python 3.9 (Windows installer 64-bit)
+Installiere die neueste Python 3.9 Version (Windows Installer 64-bit).
 
-https://www.python.org/downloads/ (windows 64-bit installer)[https://www.python.org/ftp/python/3.9.13/python-3.9.13-amd64.exe]
+[https://www.python.org/downloads/](https://www.python.org/downloads/) (Windows 64-Bit Installer) [[https://www.python.org/ftp/python/3.9.13/python-3.9.13-amd64.exe](https://www.python.org/ftp/python/3.9.13/python-3.9.13-amd64.exe)]
 
-Select add Python to path, check `python --version`  works and gives Python 3.9.13
+Wähle "Add Python to PATH" aus. Überprüfe, ob `python --version` funktioniert und Python 3.9.13 ausgibt.
 
-Download and extract this repo
+Lade dieses Repository herunter und entpacke es.
 
 **Bluestacks**
 
-Install Latest Bluestacks 5
+Installiere die neueste Bluestacks 5 Version.
 
-Settings:
+Einstellungen:
 
-(Display) Resolution: 1600 x 900
+(Anzeige) Auflösung: 1600 x 900
 
-(Graphics) Graphics engine mode: Compatibility (this can help if you have issues with scrcpy)
+(Grafik) Grafik-Engine-Modus: Kompatibilität (kann bei Problemen mit scrcpy helfen)
 
-(Advanced) Android Debug Bridge: Enabled - Note the port number here
+(Erweitert) Android Debug Bridge: Aktiviert - Notiere dir hier die Portnummer.
 
-Setup google account, download rush royale, ect.
+Richte ein Google-Konto ein, lade Rush Royale herunter usw.
 
 **Bot**
 
-run install.bat to create repo and install dependencies
+Führe `install.bat` aus, um das Repository einzurichten und Abhängigkeiten zu installieren.
 
-run lanch_gui.bat
+Führe `launch_gui.bat` aus.
 
-(temp) units and other settings have to be configured in bot_handler.py, this will be moved to the config.ini file.
+(Temporär) Einheiten und andere Einstellungen müssen in `bot_handler.py` konfiguriert werden. Dies wird in die `config.ini`-Datei verschoben.
