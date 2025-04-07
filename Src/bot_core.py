@@ -92,14 +92,34 @@ class Bot:
     # Take screenshot of device screen and load pixel values
     def getScreen(self):
         bot_id = self.device.split(':')[-1]
-        p = Popen(['.scrcpy\\adb', 'exec-out', 'screencap', '-p', '>', f'bot_feed_{bot_id}.png'], shell=True)
-        p.wait()
-        # Store screenshot in class variable if valid
-        new_img = cv2.imread(f'bot_feed_{bot_id}.png')
-        if new_img is not None:
-            self.screenRGB = new_img
-        else:
-            self.logger.warning('Failed to get screen')
+        try:
+            # Method 1: Direct screencap to file
+            p = Popen(['.scrcpy\\adb', '-s', self.device, 'exec-out', 'screencap', '-p', '>', f'bot_feed_{bot_id}.png'], shell=True)
+            p.wait(timeout=3)
+            
+            # Check if file exists and has content
+            if not os.path.exists(f'bot_feed_{bot_id}.png') or os.path.getsize(f'bot_feed_{bot_id}.png') < 1000:
+                # Method 2: Two-step approach if direct method fails
+                p = Popen([".scrcpy\\adb", '-s', self.device, 'shell', '/system/bin/screencap', '-p', '/sdcard/bot_feed.png'])
+                p.wait(timeout=3)
+                p = Popen([".scrcpy\\adb", '-s', self.device, 'pull', '/sdcard/bot_feed.png', f'bot_feed_{bot_id}.png'])
+                p.wait(timeout=3)
+                
+            # Store screenshot in class variable if valid
+            new_img = cv2.imread(f'bot_feed_{bot_id}.png')
+            if new_img is not None:
+                self.screenRGB = new_img
+            else:
+                self.logger.warning('Failed to get screen')
+        except Exception as e:
+            self.logger.error(f'Screenshot error: {str(e)}')
+            # Last resort fallback - use scrcpy client to get screen
+            try:
+                if hasattr(self.client, 'last_frame') and self.client.last_frame is not None:
+                    self.screenRGB = self.client.last_frame
+                    cv2.imwrite(f'bot_feed_{bot_id}.png', self.screenRGB)
+            except:
+                self.logger.error('All screenshot methods failed')
 
     # Crop latest screenshot taken
     def crop_img(self, x, y, dx, dy, name='icon.png'):
@@ -271,9 +291,14 @@ class Bot:
         return merge_df
 
     # Try to find a merge target and merge it
-    def try_merge(self, rank=1, prev_grid=None, merge_target='zealot.png'):
+    def try_merge(self, rank=1, prev_grid=None, merge_target=None):
         info = ''
         merge_df = None
+        
+        # Get merge target from config if not provided
+        if merge_target is None and hasattr(self, 'config_mgr'):
+            merge_target = self.config_mgr.get('bot', 'dps_unit', 'demon_hunter.png')
+        
         names = self.scan_grid(new=False)
         grid_df = bot_perception.grid_status(names, prev_grid=prev_grid)
         df_split, unit_series, df_groups, group_keys = grid_meta_info(grid_df)
@@ -293,8 +318,16 @@ class Bot:
                 # If board is mostly demons, chill out
                 self.logger.info(f'Board is full of demons, waiting...')
                 time.sleep(10)
-            if self.config.getboolean('bot', 'require_shaman'):
+            # Check if we need to require shaman for co-op mode
+            require_shaman = False
+            if hasattr(self, 'config_mgr'):
+                require_shaman = self.config_mgr.getboolean('bot', 'require_shaman', False)
+            elif hasattr(self, 'config') and self.config.has_option('bot', 'require_shaman'):
+                require_shaman = self.config.getboolean('bot', 'require_shaman')
+                
+            if require_shaman:
                 merge_series = adv_filter_keys(merge_series, units='demon_hunter.png', remove=True)
+                
         merge_series = preserve_unit(merge_series, target='chemist.png')
         # Remove 4x cauldrons
         for _ in range(4):
@@ -311,7 +344,7 @@ class Bot:
         merge_series = adv_filter_keys(merge_series, ranks=7, remove=True)  # Remove max ranks
         # Try to merge high priority units
         merge_prio = adv_filter_keys(merge_series,
-                                     units=['chemist.png', 'bombardier.png', 'summoner.png', 'knight_statue.png'])
+                                    units=['chemist.png', 'bombardier.png', 'summoner.png', 'knight_statue.png'])
         if not merge_prio.empty:
             info = 'Merging High Priority!'
             merge_df = self.merge_unit(df_split, merge_prio)
@@ -326,9 +359,9 @@ class Bot:
                 # If grid seems full, merge more units
                 info = 'Merging high level!'
                 merge_series = adv_filter_keys(merge_series,
-                                               ranks=[3, 4, 5, 6, 7],
-                                               units=['zealot.png', 'crystal.png', 'bruser.png', merge_target],
-                                               remove=True)
+                                            ranks=[3, 4, 5, 6, 7],
+                                            units=['zealot.png', 'crystal.png', 'bruser.png', merge_target],
+                                            remove=True)
                 if not merge_series.empty:
                     merge_df = self.merge_unit(df_split, merge_series)
         else:

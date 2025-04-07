@@ -34,8 +34,67 @@ def get_color(filename, crop=False):
     return colors
 
 
-# Match unit based on color
+# New implementation with ORB detector
+def match_unit_orb(filename, ref_units):
+    img = cv2.imread(filename, 0)
+    if img is None:
+        return ['empty.png', 2001]
+    
+    # Crop the image to focus on unit
+    if img.shape[0] > 90:
+        img = img[15:15 + 90, 17:17 + 90]
+    
+    # Create ORB detector
+    orb = cv2.ORB_create(nfeatures=500)
+    
+    # Find keypoints and descriptors for the target image
+    kp1, des1 = orb.detectAndCompute(img, None)
+    
+    if des1 is None or len(kp1) < 5:
+        return ['empty.png', 2001]
+    
+    best_match = None
+    best_score = 0
+    
+    # Compare with reference units
+    for unit in ref_units:
+        ref_img = cv2.imread('units/' + unit, 0)
+        kp2, des2 = orb.detectAndCompute(ref_img, None)
+        
+        if des2 is None or len(kp2) < 5:
+            continue
+        
+        # Create BFMatcher object
+        bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+        
+        # Match descriptors
+        matches = bf.match(des1, des2)
+        
+        # Sort them by distance
+        matches = sorted(matches, key=lambda x: x.distance)
+        
+        # Calculate match score based on number of good matches
+        score = len([m for m in matches if m.distance < 50])
+        
+        if score > best_score:
+            best_score = score
+            best_match = unit
+    
+    if best_score > 10:
+        return [best_match, int(2001 - best_score)]
+    else:
+        return ['empty.png', 2001]
+
+# Match unit based on color (keeping as fallback)
 def match_unit(filename, ref_colors, ref_units):
+    # Try ORB matching first
+    orb_result = match_unit_orb(filename, ref_units)
+    
+    # If ORB gives confident match, use it
+    if orb_result[1] < 1900:
+        return orb_result
+    
+    # Fallback to color-based matching
     unit_colors = get_color(filename, crop=True)
     # Find closest match (mean squared error)
     for color in unit_colors:
