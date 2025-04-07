@@ -9,6 +9,7 @@ import cv2
 import port_scan
 import bot_core
 import bot_perception
+import config_manager
 
 import zipfile
 import functools
@@ -60,7 +61,12 @@ def start_bot_class(logger):
     # auto-install scrcpy if needed
     if not check_scrcpy(logger):
         return None
+    
+    # Create config manager
+    bot_config = config_manager.ConfigManager()
+    
     bot = bot_core.Bot()
+    bot.config_mgr = bot_config  # Add config manager to bot
     return bot
 
 
@@ -79,15 +85,17 @@ def combat_loop(bot, grid_df, mana_targets, user_target='demon_hunter.png'):
 # Run the bot
 def bot_loop(bot, info_event):
     # Load user config
-    config = bot.config['bot']
-    user_pve = config.getboolean('pve', True)
+    config = bot.config_mgr
+    user_pve = config.getboolean('bot', 'pve', True)
     bot.logger.warning(f'PVE is set to {user_pve}')
-    user_floor = int(config.get('floor', 5))
-    user_level = np.fromstring(config['mana_level'], dtype=int, sep=',')
-    user_target = config['dps_unit'].split('.')[0] + '.png'
+    user_floor = config.getint('bot', 'floor', 5)
+    user_level = config.getlist('bot', 'mana_level', [1, 2, 3, 4, 5], dtype=int)
+    user_target = config.get('bot', 'dps_unit', 'demon_hunter.png')
+    
     # Load optional settings
-    require_shaman = config.getboolean('require_shaman', False)
-    max_loops = int(config.get('max_loops', 800))  # this will increase time waiting when logging in from mobile
+    require_shaman = config.getboolean('bot', 'require_shaman', False)
+    max_loops = config.getint('bot', 'max_loops', 800)
+    
     # Dev options (only adds images to dataset, rank ai can be trained with bot_perception.quick_train_model)
     train_ai = False
     # State variables
