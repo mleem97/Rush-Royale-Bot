@@ -9,5 +9,9 @@ pip install -r requirements.txt
 pip install --no-deps scrcpy-client
 pip install av>=15.0.0
 echo.
+echo All dependencies installed successfully!
+echo This includes: NumPy, Pandas, OpenCV, Matplotlib, scikit-learn, 
+echo scrcpy-client, adbutils, pure-python-adb, and more.
+echo.
 echo Installation complete! Run launch_gui.bat to start the bot.
 pause
