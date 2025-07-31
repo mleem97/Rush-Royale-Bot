@@ -189,23 +189,79 @@ require_shaman = False       # Shaman requirement
 ## 🛠️ Technical Details
 
 ### Dependencies (Auto-installed)
-- **Python 3.13.5** - Latest Python interpreter with performance improvements
-- **NumPy 2.2.6** - Numerical computing with enhanced performance
-- **Pandas 2.3.1** - Data manipulation and analysis
-- **OpenCV 4.12.0** - Computer vision and image processing
-- **scikit-learn 1.7.1** - Machine learning algorithms
-- **Matplotlib 3.10.3** - Plotting and data visualization
-- **Pillow 11.3.0** - Image processing library
-- **scrcpy-client 0.4.1** - Android screen control
-- **ipywidgets 8.1.7** - Interactive Jupyter widgets
-- **adbutils 0.14.1** - Android Debug Bridge utilities
-- **pure-python-adb 0.3.0** - Enhanced ADB functionality
+- **Python 3.13**: Latest Python with 15-20% performance improvements
+- **NumPy 2.2.6**: High-performance numerical computing
+- **Pandas 2.3.1**: Data manipulation and analysis
+- **OpenCV 4.12.0**: Computer vision and image processing
+- **scikit-learn 1.7.1**: Machine learning for rank detection
+- **Pillow 11.3.0**: Image processing utilities
+- **scrcpy-client**: Android screen mirroring and control
+- **adbutils**: Android Debug Bridge utilities
+- **Matplotlib 3.10.3**: Data visualization and plotting
+- **Jupyter**: Interactive development environment
+
+### New Quality Assurance Features ✨
+- **🧪 Unit Testing**: Comprehensive test suite with pytest
+- **📊 Performance Monitoring**: Real-time metrics and bottleneck detection
+- **🛡️ Error Recovery**: Advanced error handling and auto-recovery
+- **🔧 Configuration Validation**: Automatic config validation and fixes
+- **🚀 CI/CD Pipeline**: Automated testing and quality checks
+- **📈 Code Quality**: Black formatting, linting, security scans
 
 ### System Requirements
-- Windows 10/11 (64-bit)
-- 4GB+ RAM recommended
-- Bluestacks 5 installed and configured
-- Stable internet connection for ad watching
+- **OS**: Windows 10/11 (64-bit)
+- **Python**: 3.13.x (automatically installed)
+- **RAM**: 4GB minimum, 8GB recommended
+- **Storage**: 2GB free space
+- **Emulator**: Bluestacks 5 (1600x900 resolution required)
+- **Network**: Stable internet connection for ad collection
+
+## 🧪 Development & Testing
+
+### Quality Assurance
+```batch
+# Run comprehensive test suite
+run_tests.bat
+
+# Setup development environment
+setup_dev.bat
+
+# Run specific test categories
+python tests/run_tests.py unit
+python tests/run_tests.py integration
+python tests/run_tests.py bot_perception
+```
+
+### Code Quality Tools
+```batch
+# Format code
+python -m black .
+
+# Sort imports
+python -m isort .
+
+# Type checking
+python -m mypy Src/
+
+# Security scan
+python -m bandit -r Src/
+
+# Linting
+python -m pylint Src/
+```
+
+### Performance Monitoring
+```python
+# Enable performance monitoring in bot
+from Src.performance_monitor import get_performance_monitor
+monitor = get_performance_monitor()
+
+# View performance report
+print(monitor.get_performance_report())
+
+# Export metrics
+monitor.export_metrics("performance_data.json")
+```
 
 ## 🆘 Need Help?
 
@@ -214,6 +270,7 @@ require_shaman = False       # Shaman requirement
 - **Device connection issues**: Run `python tools\fix_multiple_devices.py`
 - **Unit detection problems**: Verify Bluestacks resolution is 1600x900
 - **Dependency issues**: Run `python test_dependencies.py`
+- **Test failures**: Run `run_tests.bat` to identify issues
 
 ### Comprehensive Support
 - **📖 [Full Troubleshooting Guide](wiki/Troubleshooting.md)** - Detailed solutions for all common issues

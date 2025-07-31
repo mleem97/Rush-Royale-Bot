@@ -14,6 +14,8 @@ import cv2
 # internal
 import bot_perception
 import port_scan
+from performance_monitor import get_performance_monitor, time_function
+from error_recovery import get_error_recovery_system, with_error_recovery
 
 SLEEP_DELAY = 0.1
 
