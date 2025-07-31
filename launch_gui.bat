@@ -1,2 +1,2 @@
-call .bot_env\Scripts\activate.bat
+call .venv313\Scripts\activate.bat
 python Src\gui.py
