@@ -1,19 +1,28 @@
 # Core dependencies for Rush Royale Bot - Python 3.13 compatible
+# Updated for optimal performance and compatibility
+
+# Scientific computing libraries
 numpy>=2.0.0
 pandas>=2.2.0
-Pillow>=10.4.0
 scikit-learn>=1.5.0
+
+# Image processing and computer vision  
+Pillow>=10.4.0
 opencv-python>=4.10.0
+
+# Jupyter notebook support
 ipykernel>=6.29.0
-tqdm>=4.66.0
 ipywidgets>=8.1.0
 
-# Android/Device communication (install scrcpy-client without dependencies to avoid conflicts)
-# Note: Install with --no-deps flag and then install compatible dependencies
+# Progress bars and utilities
+tqdm>=4.66.0
+
+# Android/Device communication  
 adbutils>=0.14.1,<0.15.0
 requests>=2.32.0
 
 # Required dependencies for compatibility
+# Note: setuptools <81 to avoid pkg_resources deprecation warnings
 setuptools>=80.0.0,<81.0.0
 deprecation>=2.1.0
 retry2>=0.9.0
@@ -22,6 +31,6 @@ retry2>=0.9.0
 psutil>=7.0.0
 
 # Note: scrcpy-client and av have version conflicts
-# Install these manually after base installation:
-# pip install --no-deps scrcpy-client
+# These are installed separately in install.bat:
+# pip install --no-deps scrcpy-client  
 # pip install av>=15.0.0
