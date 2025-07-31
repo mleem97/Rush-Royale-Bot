@@ -17,5 +17,22 @@ pve = True
 # Require shaman opponent for certain strategies
 require_shaman = False
 
+[debug]
+# Enable comprehensive debug logging and visualization
+# WARNING: Debug mode generates large amounts of data and images
+enabled = False
+
+# Save screenshots during operations for debugging
+save_screenshots = True
+
+# Save grid state visualizations showing unit recognition
+save_grid_states = True
+
+# Save individual unit crop images for analysis
+save_unit_crops = True
+
+# Debug log file location
+log_file = debug.log
+
 # Add any additional configuration options as needed
 # The bot will use these settings during operation

@@ -3,6 +3,7 @@ import time
 import numpy as np
 import pandas as pd
 import logging
+import configparser
 from subprocess import Popen, DEVNULL
 # Suppress harmless warnings
 import warnings
@@ -16,6 +17,7 @@ import bot_perception
 import port_scan
 from performance_monitor import get_performance_monitor, time_function
 from error_recovery import get_error_recovery_system, with_error_recovery
+from debug_system import get_debug_system
 
 SLEEP_DELAY = 0.1
 
@@ -26,6 +28,24 @@ class Bot:
         self.bot_stop = False
         self.combat = self.output = self.grid_df = self.unit_series = self.merge_series = self.df_groups = self.info = self.combat_step = None
         self.logger = logging.getLogger('__main__')
+        
+        # Initialize debug system
+        self.debug = get_debug_system()
+        
+        # Load configuration for debug settings
+        config = configparser.ConfigParser()
+        config.read('config.ini')
+        if 'debug' in config:
+            debug_enabled = config.getboolean('debug', 'enabled', fallback=False)
+            self.debug.set_enabled(debug_enabled)
+            self.debug.save_screenshots = config.getboolean('debug', 'save_screenshots', fallback=True)
+            self.debug.save_grid_states = config.getboolean('debug', 'save_grid_states', fallback=True)
+            self.debug.save_unit_crops = config.getboolean('debug', 'save_unit_crops', fallback=True)
+            if debug_enabled:
+                self.logger.info("DEBUG MODE ENABLED - Detailed logging and visualization active")
+        
+        # Store config for later use
+        self.config = config
         
         # Initialize error recovery system
         self.error_recovery = get_error_recovery_system()
@@ -68,10 +88,42 @@ class Bot:
 
     # Send ADB to click screen
     def click(self, x, y, delay_mult=1):
-        self.client.control.touch(x, y, const.ACTION_DOWN)
-        time.sleep(SLEEP_DELAY / 2 * delay_mult)
-        self.client.control.touch(x, y, const.ACTION_UP)
-        time.sleep(SLEEP_DELAY * delay_mult)
+        # Debug the click action
+        self.debug.debug_action_plan(self, 'click', {
+            'position': [x, y],
+            'delay_multiplier': delay_mult,
+            'coordinates': f"({x}, {y})"
+        }, expected_outcome="UI element activated")
+        
+        start_time = time.time()
+        success = True
+        
+        try:
+            self.client.control.touch(x, y, const.ACTION_DOWN)
+            time.sleep(SLEEP_DELAY / 2 * delay_mult)
+            self.client.control.touch(x, y, const.ACTION_UP)
+            time.sleep(SLEEP_DELAY * delay_mult)
+            
+            self.debug.log_event("ACTION", "click_executed", {
+                'position': [x, y],
+                'delay_mult': delay_mult,
+                'duration': time.time() - start_time
+            })
+            
+        except Exception as e:
+            success = False
+            self.logger.error(f"Click failed at ({x}, {y}): {e}")
+            self.debug.log_event("ACTION", "click_failed", {
+                'position': [x, y],
+                'error': str(e)
+            }, success=False, warnings=[f"Click failed: {e}"])
+            raise
+        
+        finally:
+            # Debug action execution with current screen if available
+            img = getattr(self, 'screenRGB', None)
+            self.debug.debug_action_execution(self, 'click', success, 
+                                            actual_outcome="click_completed", img=img)
 
     # Click button coords offset and extra delay
     def click_button(self, pos):
@@ -106,9 +158,18 @@ class Bot:
     # Take screenshot of device screen and load pixel values
     @time_function('screen_capture')
     def getScreen(self):
+        start_time = time.time()
+        success = False
+        img = None
+        
         try:
             bot_id = self.device.split(':')[-1]
             screenshot_path = f'bot_feed_{bot_id}.png'
+            
+            self.debug.log_event("SCREEN_CAPTURE", "starting_capture", {
+                'device': self.device,
+                'screenshot_path': screenshot_path
+            })
             
             # Use ADB shell screencap command with proper output redirection
             cmd = ['.scrcpy\\adb', '-s', self.device, 'exec-out', 'screencap', '-p']
@@ -132,10 +193,25 @@ class Bot:
                 raise ValueError(f"Screenshot too small: {new_img.shape}")
                 
             self.screenRGB = new_img
+            img = new_img
+            success = True
+            
+            self.debug.log_event("SCREEN_CAPTURE", "capture_success", {
+                'image_shape': new_img.shape,
+                'file_size': os.path.getsize(screenshot_path),
+                'duration': time.time() - start_time
+            })
+            
             self.logger.debug(f"Screenshot captured: {new_img.shape}")
             
         except Exception as e:
             self.logger.error(f"Screenshot capture failed: {e}")
+            
+            self.debug.log_event("SCREEN_CAPTURE", "capture_failed", {
+                'error': str(e),
+                'error_type': type(e).__name__,
+                'duration': time.time() - start_time
+            }, success=False, warnings=[str(e)])
             
             # Try error recovery
             if hasattr(self, 'error_recovery'):
@@ -149,19 +225,30 @@ class Bot:
                             new_img = cv2.imread(screenshot_path)
                             if new_img is not None and new_img.shape[0] > 100 and new_img.shape[1] > 100:
                                 self.screenRGB = new_img
+                                img = new_img
+                                success = True
+                                self.debug.debug_error_recovery(self, e, "recovered_screenshot", True)
                                 self.logger.info("Screenshot recovery successful")
                                 return
                 except Exception as recovery_error:
                     self.logger.warning(f"Screenshot recovery failed: {recovery_error}")
+                    self.debug.debug_error_recovery(self, e, "screenshot_recovery_failed", False)
             
             # Try fallback: use existing screenshot if available
             bot_id = self.device.split(':')[-1]
             fallback_path = f'bot_feed_{bot_id}.png'
             if os.path.exists(fallback_path) and hasattr(self, 'screenRGB') and self.screenRGB is not None:
                 self.logger.warning("Using cached screenshot due to capture failure")
+                self.debug.log_event("SCREEN_CAPTURE", "using_cached", {
+                    'fallback_path': fallback_path
+                }, warnings=["Using cached screenshot - may be outdated"])
                 return
             else:
                 raise FileNotFoundError(f"Screenshot capture failed: bot_feed_{bot_id}.png")
+        
+        finally:
+            # Always debug the screen capture result
+            self.debug.debug_screen_capture(self, success, img)
 
     # Crop latest screenshot taken
     def crop_img(self, x, y, dx, dy, name='icon.png'):
@@ -334,15 +421,51 @@ class Bot:
 
     # Try to find a merge target and merge it
     def try_merge(self, rank=1, prev_grid=None, merge_target='zealot.png'):
+        start_time = time.time()
         info = ''
         merge_df = None
+        
+        # Debug the merge planning
+        self.debug.debug_decision_making(self, {
+            'rank': rank,
+            'merge_target': merge_target,
+            'has_previous_grid': prev_grid is not None
+        }, 'try_merge', f"Attempting to merge units targeting {merge_target}")
+        
+        # Scan grid and get unit status
         names = self.scan_grid(new=False)
         grid_df = bot_perception.grid_status(names, prev_grid=prev_grid)
+        
+        # Debug unit recognition results
+        self.debug.debug_unit_recognition(self, grid_df, getattr(self, 'screenRGB', None))
+        
+        # Log detailed grid analysis
+        recognized_units = grid_df[grid_df['unit'] != 'empty.png']
+        empty_slots = grid_df[grid_df['unit'] == 'empty.png']
+        
+        self.debug.log_event("GRID_ANALYSIS", "unit_scan_complete", {
+            'total_positions': len(grid_df),
+            'recognized_units': len(recognized_units),
+            'empty_slots': len(empty_slots),
+            'target_unit_count': len(grid_df[grid_df['unit'] == merge_target]),
+            'unit_types': grid_df['unit'].value_counts().to_dict(),
+            'average_rank': grid_df[grid_df['rank'] > 0]['rank'].mean() if len(grid_df[grid_df['rank'] > 0]) > 0 else 0
+        })
+        
         df_split, unit_series, df_groups, group_keys = grid_meta_info(grid_df)
         # Select stuff to merge
         merge_series = unit_series.copy()
         # Remove empty groups
         merge_series = adv_filter_keys(merge_series, units='empty.png', remove=True)
+        
+        # Debug merge strategy
+        merge_candidates = sum(merge_series)
+        self.debug.log_event("MERGE_STRATEGY", "planning_merges", {
+            'total_merge_candidates': merge_candidates,
+            'merge_target': merge_target,
+            'merge_series_summary': {k: v for k, v in zip(merge_series.index, merge_series.values) if v > 0}
+        })
+        
         # Do special merge with dryad/Harley
         self.special_merge(df_split, merge_series, merge_target)
         # Use harely on high dps targets
@@ -354,6 +477,10 @@ class Bot:
             if num_demon >= 11:
                 # If board is mostly demons, chill out
                 self.logger.info(f'Board is full of demons, waiting...')
+                self.debug.log_event("STRATEGY", "demon_overload", {
+                    'demon_count': num_demon,
+                    'action': 'waiting'
+                }, warnings=["Board full of demons - pausing merges"])
                 time.sleep(10)
             if self.config.getboolean('bot', 'require_shaman'):
                 merge_series = adv_filter_keys(merge_series, units='demon_hunter.png', remove=True)
@@ -376,10 +503,17 @@ class Bot:
                                      units=['chemist.png', 'bombardier.png', 'summoner.png', 'knight_statue.png'])
         if not merge_prio.empty:
             info = 'Merging High Priority!'
+            self.debug.log_event("MERGE_DECISION", "high_priority_merge", {
+                'priority_units': merge_prio.to_dict()
+            })
             merge_df = self.merge_unit(df_split, merge_prio)
         # Merge if board is getting full
         if df_groups['empty.png'] <= 2:
             info = 'Merging!'
+            self.debug.log_event("MERGE_DECISION", "board_full_merge", {
+                'empty_slots': df_groups['empty.png'],
+                'reason': 'Board getting full'
+            })
             # Add criteria
             low_series = adv_filter_keys(merge_series, ranks=rank, remove=False)
             if not low_series.empty:
@@ -387,6 +521,9 @@ class Bot:
             else:
                 # If grid seems full, merge more units
                 info = 'Merging high level!'
+                self.debug.log_event("MERGE_DECISION", "forced_high_level_merge", {
+                    'reason': 'No low level units available, board full'
+                }, warnings=["Forced to merge high level units"])
                 merge_series = adv_filter_keys(merge_series,
                                                ranks=[3, 4, 5, 6, 7],
                                                units=['zealot.png', 'crystal.png', 'bruser.png', merge_target],
@@ -395,6 +532,19 @@ class Bot:
                     merge_df = self.merge_unit(df_split, merge_series)
         else:
             info = 'need more units!'
+            self.debug.log_event("MERGE_DECISION", "no_merge_needed", {
+                'empty_slots': df_groups['empty.png'],
+                'reason': 'Board has space, spawning more units'
+            })
+        
+        # Final merge execution summary
+        duration = time.time() - start_time
+        self.debug.log_event("MERGE_EXECUTION", "merge_complete", {
+            'merge_info': info,
+            'execution_time': duration,
+            'merge_performed': merge_df is not None
+        })
+        
         return grid_df, unit_series, merge_series, merge_df, info
 
     # Mana level cards
@@ -409,84 +559,280 @@ class Bot:
     # Start a dungeon floor from PvE page
     def play_dungeon(self, floor=5):
         self.logger.debug(f'Starting Dungeon floor {floor}')
+        
+        # Debug the dungeon selection process
+        self.debug.log_event("DUNGEON_START", "play_dungeon_called", {
+            'target_floor': floor,
+            'chapter_calculation': int(np.ceil((floor)/3))
+        })
+        
         # Divide by 3 and take ceiling of floor as int
         target_chapter = f'chapter_{int(np.ceil((floor)/3))}.png'
         next_chapter = f'chapter_{int(np.ceil((floor+1)/3))}.png'
         pos = np.array([0, 0])
         avail_buttons = self.get_current_icons(available=True)
+        
+        # Debug current screen state
+        detected_icons = avail_buttons['icon'].tolist() if not avail_buttons.empty else []
+        self.debug.log_event("DUNGEON_START", "initial_screen_scan", {
+            'icons_detected': detected_icons,
+            'looking_for_chapter': target_chapter,
+            'dungeon_page_found': (avail_buttons == 'dungeon_page.png').any(axis=None) if not avail_buttons.empty else False
+        })
+        
         # Check if on dungeon page
         if (avail_buttons == 'dungeon_page.png').any(axis=None):
+            self.logger.info(f'Found dungeon page, looking for chapter {target_chapter}')
+            
             # Swipe to the top
             [self.swipe([0, 0], [2, 0]) for i in range(14)]
             self.click(30, 600, 5)  # stop scroll and scan screen for buttons
+            
             # Keep swiping until floor is found
             expanded = 0
+            chapter_found = False
+            
             for i in range(10):
                 # Scan screen for buttons
                 avail_buttons = self.get_current_icons(available=True)
+                current_icons = avail_buttons['icon'].tolist() if not avail_buttons.empty else []
+                
+                self.debug.log_event("DUNGEON_START", f"search_iteration_{i}", {
+                    'icons_found': current_icons,
+                    'looking_for': target_chapter,
+                    'expanded_chapter': expanded > 0
+                })
+                
                 # Look for correct chapter
                 if (avail_buttons == target_chapter).any(axis=None):
                     pos = get_button_pos(avail_buttons, target_chapter)
+                    chapter_found = True
+                    
+                    self.debug.log_event("DUNGEON_START", "chapter_found", {
+                        'chapter': target_chapter,
+                        'position': pos.tolist(),
+                        'expanded': expanded > 0
+                    })
+                    
                     if not expanded:
                         expanded = 1
+                        self.logger.info(f'Expanding chapter {target_chapter} at position {pos}')
                         self.click_button(pos + [500, 90])
+                        time.sleep(2)  # Wait for chapter to expand
+                        
                     # check button is near top of screen
                     if pos[1] < 550 and floor % 3 != 0:
                         # Stop scrolling when chapter is near top
+                        self.logger.info(f'Chapter {target_chapter} positioned correctly')
                         break
                 elif (avail_buttons == next_chapter).any(axis=None) and floor % 3 == 0:
                     pos = get_button_pos(avail_buttons, next_chapter)
+                    chapter_found = True
+                    self.logger.info(f'Found next chapter {next_chapter} for final floor')
                     # Stop scrolling if the next chapter is found and last floor of chapter is chosen
                     break
-                # Contiue to swiping to find correct chapter
+                
+                # Continue swiping to find correct chapter
                 [self.swipe([2, 0], [0, 0]) for i in range(2)]
                 self.click(30, 600)  # stop scroll
+                time.sleep(1)  # Give time for scroll to complete
 
             # Click play floor if found
-            if not (pos == np.array([0, 0])).any():
+            if not (pos == np.array([0, 0])).any() and chapter_found:
+                floor_offset = None
                 if floor % 3 == 0:
-                    self.click_button(pos + [30, -460])
+                    floor_offset = [30, -460]
                 elif floor % 3 == 1:
-                    self.click_button(pos + [30, 485])
+                    floor_offset = [30, 485]
                 elif floor % 3 == 2:
-                    self.click_button(pos + [30, 885])
+                    floor_offset = [30, 885]
+                
+                floor_button_pos = pos + floor_offset
+                self.logger.info(f'Clicking floor {floor} button at position {floor_button_pos}')
+                
+                self.debug.log_event("DUNGEON_START", "clicking_floor", {
+                    'floor': floor,
+                    'chapter_pos': pos.tolist(),
+                    'floor_offset': floor_offset,
+                    'final_pos': floor_button_pos.tolist()
+                })
+                
+                self.click_button(floor_button_pos)
+                time.sleep(2)  # Wait for floor selection
+                
+                # Click start/continue button
+                self.logger.info('Clicking start battle button')
                 self.click_button((500, 600))
-                for i in range(10):
+                
+                # Wait for match to start with better validation
+                match_started = False
+                for i in range(15):  # Increased timeout
                     time.sleep(2)
                     avail_buttons = self.get_current_icons(available=True)
-                    # Look for correct chapter
-                    self.logger.info(f'Waiting for match to start {i}')
-                    if avail_buttons['icon'].isin(['back_button.png', 'fighting.png']).any():
+                    current_icons = avail_buttons['icon'].tolist() if not avail_buttons.empty else []
+                    
+                    self.debug.log_event("DUNGEON_START", f"waiting_for_match_{i}", {
+                        'icons_detected': current_icons,
+                        'waiting_for': ['fighting.png', 'back_button.png']
+                    })
+                    
+                    self.logger.info(f'Waiting for match to start {i}/15 - Icons: {current_icons}')
+                    
+                    # Check if we're in battle
+                    if avail_buttons['icon'].isin(['fighting.png']).any():
+                        self.logger.info('✅ Successfully entered dungeon battle!')
+                        match_started = True
                         break
+                    # Check if we can go back (still in menu)
+                    elif avail_buttons['icon'].isin(['back_button.png']).any():
+                        self.logger.info('Still in dungeon menu, continuing to wait...')
+                        continue
+                    # Check if we're back at home screen (failed)
+                    elif avail_buttons['icon'].isin(['home_screen.png', 'battle_icon.png']).any():
+                        self.logger.warning('⚠️ Returned to home screen - dungeon selection may have failed')
+                        break
+                
+                if not match_started:
+                    self.debug.log_event("DUNGEON_START", "match_start_failed", {
+                        'warning': 'Failed to detect battle start after floor selection'
+                    }, warnings=["Dungeon may not have started properly"])
+                    self.logger.warning('⚠️ Failed to confirm dungeon match started')
+                    
+            else:
+                self.debug.log_event("DUNGEON_START", "chapter_not_found", {
+                    'target_chapter': target_chapter,
+                    'position_found': not (pos == np.array([0, 0])).any(),
+                    'chapter_found': chapter_found
+                }, warnings=["Could not locate target chapter for dungeon"])
+                self.logger.warning(f'⚠️ Could not find chapter {target_chapter} for floor {floor}')
+        else:
+            self.debug.log_event("DUNGEON_START", "not_on_dungeon_page", {
+                'current_icons': detected_icons
+            }, warnings=["Not on dungeon page when play_dungeon was called"])
+            self.logger.warning('⚠️ Not on dungeon page - cannot start dungeon')
 
     # Locate game home screen and try to start fight is chosen
     def battle_screen(self, start=False, pve=True, floor=5):
+        start_time = time.time()
+        
+        # Debug screen state analysis
+        self.debug.debug_action_plan(self, 'battle_screen_analysis', {
+            'start_mode': start,
+            'pve_mode': pve,
+            'target_floor': floor
+        }, expected_outcome="Screen state identified")
+        
         # Scan screen for any key buttons
         df = self.get_current_icons(available=True)
+        
+        # Debug icon detection results
+        detected_icons = df['icon'].tolist() if not df.empty else []
+        self.debug.log_event("SCREEN_ANALYSIS", "icon_detection", {
+            'icons_detected': detected_icons,
+            'total_icons': len(detected_icons),
+            'screen_empty': df.empty
+        })
+        
+        screen_state = None
+        action_taken = None
+        
         if not df.empty:
             # list of buttons
             if (df == 'fighting.png').any(axis=None) and not (df == '0cont_button.png').any(axis=None):
+                screen_state = 'fighting'
+                self.debug.log_event("SCREEN_STATE", "combat_detected", {
+                    'state': 'fighting',
+                    'combat_active': True
+                })
                 return df, 'fighting'
+                
             if (df == 'friend_menu.png').any(axis=None):
+                screen_state = 'friend_menu'
+                action_taken = 'close_friend_menu'
+                self.debug.log_event("SCREEN_STATE", "friend_menu_detected", {
+                    'action': 'clicking to close'
+                })
                 self.click_button(np.array([100, 600]))
                 return df, 'friend_menu'
+                
             # Start pvp if homescreen
             if (df == 'home_screen.png').any(axis=None) and (df == 'battle_icon.png').any(axis=None):
+                screen_state = 'home_screen'
                 if pve and start:
+                    action_taken = 'start_pve_dungeon'
+                    self.debug.log_event("SCREEN_STATE", "starting_pve", {
+                        'floor': floor,
+                        'mode': 'PvE dungeon'
+                    })
+                    self.logger.info(f'🎯 Starting PvE dungeon floor {floor}')
                     # Add a 500 pixel offset for PvE button
                     self.click_button(np.array([640, 1259]))
-                    self.play_dungeon(floor=floor)
+                    time.sleep(3)  # Wait for PvE menu to load
+                    
+                    # Verify we're on dungeon page before calling play_dungeon
+                    avail_buttons = self.get_current_icons(available=True)
+                    if (avail_buttons == 'dungeon_page.png').any(axis=None):
+                        self.logger.info('✅ Successfully navigated to dungeon page')
+                        self.play_dungeon(floor=floor)
+                    else:
+                        self.logger.warning('⚠️ Failed to navigate to dungeon page, retrying...')
+                        self.debug.log_event("SCREEN_STATE", "pve_navigation_failed", {
+                            'current_icons': avail_buttons['icon'].tolist() if not avail_buttons.empty else [],
+                            'expected': 'dungeon_page.png'
+                        }, warnings=["Failed to reach dungeon page after clicking PvE button"])
+                        # Try clicking PvE button again
+                        time.sleep(2)
+                        self.click_button(np.array([640, 1259]))
+                        time.sleep(3)
                 elif start:
+                    action_taken = 'start_pvp'
+                    self.debug.log_event("SCREEN_STATE", "starting_pvp", {
+                        'mode': 'PvP battle'
+                    })
+                    self.logger.info('🎯 Starting PvP battle')
                     self.click_button(np.array([140, 1259]))
                 time.sleep(1)
                 return df, 'home'
+                
             # Check first button is clickable
             df_click = df[df['icon'].isin(['back_button.png', 'battle_icon.png', '0cont_button.png', '1quit.png'])]
             if not df_click.empty:
+                screen_state = 'menu_interface'
+                action_taken = 'click_menu_button'
+                button_clicked = df_click.iloc[0]['icon']
                 button_pos = df_click['pos [X,Y]'].tolist()[0]
+                
+                self.debug.log_event("SCREEN_STATE", "menu_button_clicked", {
+                    'button': button_clicked,
+                    'position': button_pos
+                })
+                
                 self.click_button(button_pos)
                 return df, 'menu'
+        else:
+            screen_state = 'unknown_empty'
+            self.debug.log_event("SCREEN_STATE", "no_icons_detected", {
+                'warning': 'No recognizable UI elements found'
+            }, warnings=["Screen appears blank or unrecognized"])
+        
+        # Fallback action
+        action_taken = 'force_back_keypress'
+        self.debug.log_event("SCREEN_STATE", "fallback_action", {
+            'action': 'sending back key',
+            'reason': 'No other options available'
+        }, warnings=["Using fallback back key - screen state unclear"])
+        
         self.shell(f'input keyevent {const.KEYCODE_BACK}')  #Force back
+        
+        # Summary debug log
+        duration = time.time() - start_time
+        self.debug.log_event("BATTLE_SCREEN", "analysis_complete", {
+            'screen_state': screen_state,
+            'action_taken': action_taken,
+            'duration': duration,
+            'icons_found': detected_icons
+        })
+        
         return df, 'lost'
 
     # Navigate and locate store refresh button from battle screen
