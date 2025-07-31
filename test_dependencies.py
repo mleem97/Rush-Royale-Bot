@@ -11,6 +11,14 @@ warnings.filterwarnings("ignore", message="pkg_resources is deprecated", categor
 print("🧪 Testing Python 3.13 Rush Royale Bot Dependencies...")
 print("=" * 60)
 
+# Show version information
+try:
+    import version
+    print(f"🤖 {version.get_version_info().strip()}")
+    print("=" * 60)
+except ImportError:
+    pass
+
 import sys
 print(f"✅ Python version: {sys.version}")
 
