@@ -95,16 +95,23 @@ class Bot:
         time.sleep(10)  # wait for app to load
 
     # Take screenshot of device screen and load pixel values
+    @time_function('screen_capture')
     def getScreen(self):
-        bot_id = self.device.split(':')[-1]
-        p = Popen(['.scrcpy\\adb', 'exec-out', 'screencap', '-p', '>', f'bot_feed_{bot_id}.png'], shell=True)
-        p.wait()
-        # Store screenshot in class variable if valid
-        new_img = cv2.imread(f'bot_feed_{bot_id}.png')
-        if new_img is not None:
-            self.screenRGB = new_img
-        else:
-            self.logger.warning('Failed to get screen')
+        try:
+            bot_id = self.device.split(':')[-1]
+            p = Popen(['.scrcpy\\adb', 'exec-out', 'screencap', '-p', '>', f'bot_feed_{bot_id}.png'], shell=True)
+            p.wait()
+            # Store screenshot in class variable if valid
+            new_img = cv2.imread(f'bot_feed_{bot_id}.png')
+            if new_img is not None:
+                self.screenRGB = new_img
+            else:
+                self.logger.warning('Failed to get screen')
+                raise FileNotFoundError(f"Screenshot capture failed: bot_feed_{bot_id}.png")
+        except Exception as e:
+            if hasattr(self, 'error_recovery'):
+                self.error_recovery.handle_error(e, 'screen_capture')
+            raise
 
     # Crop latest screenshot taken
     def crop_img(self, x, y, dx, dy, name='icon.png'):
