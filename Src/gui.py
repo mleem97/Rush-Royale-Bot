@@ -100,7 +100,7 @@ class RR_bot:
         # Run startup of bot instance
         self.logger.warning('Starting bot...')
         self.bot_instance = bot_handler.start_bot_class(self.logger)
-        os.system("type src\startup_message.txt")
+        os.system("type src\\startup_message.txt")
         self.update_units()
         infos_ready = threading.Event()
         # Pass gui info to bot
