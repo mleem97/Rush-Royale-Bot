@@ -1,15 +1,86 @@
+# Python Runtime Files
 __pycache__/
-OCR_inputs/
-units/
-.bot_env
-.vscode
-.scrcpy
-machine_learning
-screens
-bot_feed_emulator-5554.png
-Src/old_functions.py
-bot_feed.png
-RR_bot.log
-build
-dist
-config.ini
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+.venv*/
+.bot_env/
+venv/
+ENV/
+env/
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Bot Runtime Files (Essential for end user operation)
+bot_feed*.png          # Screenshots captured by bot
+RR_bot.log            # Bot operation logs
+debug.log             # Debug logs when enabled
+units/                # User-selected unit deck (generated from all_units/)
+
+# User Configuration (Keep - users customize these)
+# config.ini           # User's bot configuration - KEEP THIS
+
+# Development and Testing Files
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.tox/
+test_*.py
+demo_*.py
+*debug*.json
+*debug*.png
+debug_output/
+*.tmp
+*.temp
+
+# System and Hardware Specific
+.scrcpy/              # ADB tools (downloaded automatically)
+
+# Build and Distribution
+build/
+dist/
+
+# Temporary and Backup Files
+*.backup
+*.bak
+*.orig
+*~
+
+# Legacy directories (transitional - v2.1.0)
+# Src/                  # Legacy code - kept for compatibility during transition
+
+# Development artifacts that should not be in end user distributions
+OCR_inputs/           # Legacy feature
+machine_learning/     # Legacy ML training data
+screens/              # Legacy screenshots
+
+# Git metadata (for reference)
+.gitattributes
+
+# End-user optimization: Files that change frequently during bot operation
+# These should not be committed but are normal for end users to have:
+# - RR_bot.log (bot operation logs)
+# - bot_feed*.png (screenshots)
+# - debug.log (debug output when enabled)  
+# - units/ (user's selected unit deck)
+# - config.ini is kept in repo as template but users will modify it
+
+# Distribution optimization: Include these for end users
+# !rank_model.pkl      # ML model - needed for operation
+# !all_units/          # Unit templates - needed for recognition
+# !icons/              # GUI icons - needed for interface
+# !.scrcpy/            # ADB tools - auto-downloaded but keep if present

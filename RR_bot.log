@@ -1,0 +1,15 @@
+DEBUG:bot_logger:GUI started!
+DEBUG:bot_logger:GUI started!
+INFO:bot_logger:Stored settings to config!
+WARNING:bot_logger:Starting bot...
+INFO:bot_logger:scrcpy is not installed, downloading...
+DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): github.com:443
+DEBUG:urllib3.connectionpool:https://github.com:443 "GET /Genymobile/scrcpy/releases/download/v1.24/scrcpy-win64-v1.24.zip HTTP/1.1" 302 0
+DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): release-assets.githubusercontent.com:443
+DEBUG:urllib3.connectionpool:https://release-assets.githubusercontent.com:443 "GET /github-production-release-asset/111583593/70ad3278-05bd-4cd3-a6bf-32803596115d?sp=r&sv=2018-11-09&sr=b&spr=https&se=2025-07-31T09%3A01%3A24Z&rscd=attachment%3B+filename%3Dscrcpy-win64-v1.24.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2025-07-31T08%3A00%3A58Z&ske=2025-07-31T09%3A01%3A24Z&sks=b&skv=2018-11-09&sig=F6R0llYWeaHMEriUcbxrdkVHDTaK%2FFxV%2BkOHe5T03tM%3D&jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc1Mzk0OTIwMywibmJmIjoxNzUzOTQ4OTAzLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.sBtPDs2XnNx9ZEI5JMFn0Ed1rV7vvABr9zTw10Ctc5I&response-content-disposition=attachment%3B%20filename%3Dscrcpy-win64-v1.24.zip&response-content-type=application%2Foctet-stream HTTP/1.1" 200 35639811
+ERROR:bot_logger:Failed to install scrcpy: [Errno 13] Permission denied: '.scrcpy\\AdbWinApi.dll'
+INFO:bot_logger:Selected units: chemist, harlequin, bombardier, dryad, demon_hunter
+11:07:08 - DEBUG - Modern GUI started!
+11:10:18 - DEBUG - Modern GUI started!
+11:11:41 - DEBUG - Modern GUI started!
+11:12:36 - INFO - scrcpy is not installed

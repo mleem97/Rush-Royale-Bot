@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 numpy
 pandas
 Pillow
@@ -7,3 +8,49 @@ ipykernel
 tqdm
 opencv-python
 ipywidgets
+=======
+# Core dependencies for Rush Royale Bot - Python 3.13 compatible
+# Updated for optimal performance and compatibility
+
+# Scientific computing libraries
+numpy>=2.0.0
+pandas>=2.2.0
+scikit-learn>=1.5.0
+
+# Image processing and computer vision  
+Pillow>=10.4.0
+opencv-python>=4.10.0
+
+# Plotting and visualization
+matplotlib>=3.9.0
+
+# Jupyter notebook support
+ipykernel>=6.29.0
+ipywidgets>=8.1.0
+
+# Progress bars and utilities
+tqdm>=4.66.0
+
+# Android/Device communication  
+adbutils>=0.14.1,<0.15.0
+requests>=2.32.0
+# Note: pure-python-adb only has dev versions available
+pure-python-adb>=0.3.0.dev0
+
+# Required dependencies for compatibility
+# Note: setuptools <81 to avoid pkg_resources deprecation warnings
+setuptools>=80.0.0,<81.0.0
+deprecation>=2.1.0
+retry2>=0.9.0
+
+# Modern GUI framework
+customtkinter>=5.2.0
+
+# Additional dependencies for full functionality
+psutil>=7.0.0
+
+# Note: scrcpy-client and av have version conflicts
+# These are installed separately in install.bat:
+# pip install --no-deps scrcpy-client  
+# pip install av>=15.0.0
+>>>>>>> Stashed changes
