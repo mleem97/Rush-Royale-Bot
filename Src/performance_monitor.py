@@ -15,6 +15,16 @@ from typing import Dict, List, Optional
 import statistics
 
 
+def safe_log(logger, level, message):
+    """Safe logging function that handles encoding errors"""
+    try:
+        getattr(logger, level)(message)
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        # Remove any problematic characters and try again
+        safe_message = message.encode('ascii', 'ignore').decode('ascii')
+        getattr(logger, level)(safe_message)
+
+
 @dataclass
 class PerformanceMetrics:
     """Data class for performance metrics"""
@@ -42,15 +52,21 @@ class PerformanceMonitor:
             'grid_analysis': 0.15,      # 150ms max for grid analysis
         }
         
-        # Setup logging
+        # Setup logging with Windows-safe encoding
         self.logger = logging.getLogger('performance')
-        handler = logging.FileHandler(self.log_file)
-        formatter = logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s')
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
-        self.logger.setLevel(logging.INFO)
+        if not self.logger.handlers:  # Avoid duplicate handlers
+            try:
+                # Try UTF-8 first
+                handler = logging.FileHandler(self.log_file, encoding='utf-8')
+            except Exception:
+                # Fallback to system default encoding
+                handler = logging.FileHandler(self.log_file)
+            formatter = logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+            self.logger.setLevel(logging.INFO)
         
-        self.logger.info("Performance monitoring initialized")
+        safe_log(self.logger, 'info', "Performance monitoring initialized")
     
     def record_metric(self, operation: str, duration: float, success: bool = True, **details):
         """Record a performance metric"""
@@ -68,12 +84,12 @@ class PerformanceMonitor:
         # Check against thresholds
         threshold = self.thresholds.get(operation)
         if threshold and duration > threshold:
-            self.logger.warning(
+            safe_log(self.logger, 'warning',
                 f"Performance threshold exceeded: {operation} took {duration:.3f}s "
                 f"(threshold: {threshold:.3f}s)"
             )
         
-        self.logger.info(f"{operation}: {duration:.3f}s ({'✓' if success else '✗'})")
+        safe_log(self.logger, 'info', f"{operation}: {duration:.3f}s ({'OK' if success else 'FAIL'})")
     
     def time_operation(self, operation: str):
         """Context manager for timing operations"""
@@ -112,12 +128,12 @@ class PerformanceMonitor:
     def get_performance_report(self) -> str:
         """Generate a comprehensive performance report"""
         report = []
-        report.append("🔍 Performance Monitoring Report")
+        report.append("=== Performance Monitoring Report ===")
         report.append("=" * 50)
         
         session_duration = time.time() - self.session_start
-        report.append(f"📊 Session Duration: {session_duration / 60:.1f} minutes")
-        report.append(f"📈 Total Metrics: {len(self.metrics)}")
+        report.append(f"Session Duration: {session_duration / 60:.1f} minutes")
+        report.append(f"Total Metrics: {len(self.metrics)}")
         report.append("")
         
         # Summary by operation type
@@ -125,7 +141,7 @@ class PerformanceMonitor:
         for operation in sorted(operations):
             summary = self.get_metrics_summary(operation)
             if summary['count'] > 0:
-                report.append(f"🎯 {operation.replace('_', ' ').title()}:")
+                report.append(f"[{operation.replace('_', ' ').title()}]:")
                 report.append(f"   Count: {summary['count']}")
                 report.append(f"   Success Rate: {summary['success_rate']:.1%}")
                 report.append(f"   Avg Duration: {summary['avg_duration']:.3f}s")
@@ -135,15 +151,15 @@ class PerformanceMonitor:
                 threshold = self.thresholds.get(operation)
                 if threshold:
                     if summary['avg_duration'] > threshold:
-                        report.append(f"   ⚠️  Above threshold ({threshold:.3f}s)")
+                        report.append(f"   [WARNING] Above threshold ({threshold:.3f}s)")
                     else:
-                        report.append(f"   ✅ Within threshold ({threshold:.3f}s)")
+                        report.append(f"   [OK] Within threshold ({threshold:.3f}s)")
                 report.append("")
         
         # Recent performance (last 10 minutes)
         recent_summary = self.get_metrics_summary(last_minutes=10)
         if recent_summary['count'] > 0:
-            report.append("⏱️  Recent Performance (Last 10 minutes):")
+            report.append("[RECENT] Performance (Last 10 minutes):")
             report.append(f"   Operations: {recent_summary['count']}")
             report.append(f"   Success Rate: {recent_summary['success_rate']:.1%}")
             report.append(f"   Avg Duration: {recent_summary['avg_duration']:.3f}s")
@@ -167,7 +183,7 @@ class PerformanceMonitor:
         with open(filepath, 'w') as f:
             json.dump(export_data, f, indent=2)
         
-        self.logger.info(f"Metrics exported to {filepath}")
+        safe_log(self.logger, 'info', f"Metrics exported to {filepath}")
         return filepath
     
     def clear_old_metrics(self, keep_hours: int = 24):
@@ -180,7 +196,7 @@ class PerformanceMonitor:
             removed = old_count - len(self.metrics)
         
         if removed > 0:
-            self.logger.info(f"Cleared {removed} old metrics (older than {keep_hours}h)")
+            safe_log(self.logger, 'info', f"Cleared {removed} old metrics (older than {keep_hours}h)")
 
 
 class PerformanceTimer:

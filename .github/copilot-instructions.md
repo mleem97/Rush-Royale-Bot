@@ -121,6 +121,7 @@ python tools\health_check.py  # 7-point system check
 - Implement comprehensive error handling and logging
 - Optimize image processing for 0.082s target performance
 - Test on actual Bluestacks device before committing
+- Update Gitignore so that only necessary files will be transferred to Github.
 
 **Code Patterns:**
 - Use `warnings.filterwarnings()` to suppress known harmless warnings
