@@ -208,7 +208,18 @@ def create_combat_info(frame2):
 
 def create_base():
     root = Tk()
-    root.title("RR bot")
+    # Import version info
+    try:
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'tools'))
+        from version import get_version_info
+        version_info = get_version_info()
+        title = f"{version_info['name']} v{version_info['version']}"
+    except ImportError:
+        title = "Rush Royale Bot v2.0.0"
+    
+    root.title(title)
     root.geometry("800x600")
     # Set dark background
     root.configure(background='#575559')

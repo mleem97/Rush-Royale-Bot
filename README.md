@@ -48,7 +48,40 @@ Optimized for use with Bluestacks on Windows PC
 
 
 
-## 🚀 Quick Setup Guide
+## � Project Structure
+
+```
+Rush-Royale-Bot/
+├── 🎮 Bot Files (Production)
+│   ├── install.bat              # Setup script
+│   ├── launch_gui.bat           # Start the bot
+│   ├── config.ini               # Bot configuration
+│   ├── rank_model.pkl           # ML model
+│   ├── RR_bot.ipynb            # Jupyter notebook
+│   ├── Src/                    # Source code
+│   ├── all_units/              # Unit images
+│   └── icons/                  # GUI icons
+│
+├── 🛠️ Development Tools
+│   └── tools/                  # All development utilities
+│       ├── test_dependencies.py    # System verification
+│       ├── device_manager.py       # ADB device management
+│       ├── fix_multiple_devices.py # Device conflict resolution
+│       ├── version_info.py         # Version display
+│       ├── CHANGELOG.md            # Version history
+│       └── README.md               # Tools documentation
+│
+└── 📚 Documentation
+    ├── README.md               # This file (main guide)
+    └── LICENSE                 # License information
+```
+
+**For normal use**: Only interact with files in the root directory  
+**For troubleshooting**: Use tools in the `tools/` folder  
+**For development**: All utilities and docs are organized in `tools/`
+
+## 🎯 Quick Start
+
 
 ### Prerequisites
 
@@ -174,56 +207,35 @@ require_shaman = False       # Shaman requirement
 - Bluestacks 5 installed and configured
 - Stable internet connection for ad watching
 
-## 🐛 Troubleshooting
+## 🆘 Need Help?
 
-### Common Issues
+### Quick Fixes
 - **Python not found**: Ensure Python 3.13 is in your PATH
-- **Scrcpy connection failed**: Check Bluestacks ADB settings
-- **Unit detection issues**: Verify screen resolution is 1600x900
-- **Permission errors**: Run as administrator if needed
-- **pkg_resources warning**: Harmless deprecation warning from adbutils - functionality not affected
+- **Device connection issues**: Run `python tools\fix_multiple_devices.py`
+- **Unit detection problems**: Verify Bluestacks resolution is 1600x900
+- **Dependency issues**: Run `python test_dependencies.py`
 
-### Performance Tips
-- Close unnecessary applications while running the bot
-- Use "Compatibility" graphics mode in Bluestacks
-- Ensure stable internet connection for ads
-- Monitor system resources during 24/7 operation
-
-### Version Migration
-- **From v1.x to v2.0**: Install Python 3.13, run `install.bat`, existing configs preserved ✅
-- **First-time users**: Simply follow the Quick Setup Guide above
-- **Rollback**: Keep old `.bot_env` folder as backup if needed
-
-## 📊 Bot Statistics & Monitoring
-
-The bot provides real-time monitoring through:
-- 📈 **Live combat information** - Unit placement and battle progress
-- 🔍 **Unit detection accuracy** - Visual feedback on recognized units
-- 📋 **Activity logs** - Detailed logging of all bot actions
-- ⏱️ **Performance metrics** - Runtime statistics and efficiency data
+### Comprehensive Support
+- **📖 [Full Troubleshooting Guide](wiki/Troubleshooting.md)** - Detailed solutions for all common issues
+- **⚡ [Quick Reference Guide](wiki/Quick-Reference.md)** - Essential commands and usage patterns
+- **🔧 [Development Tools Guide](wiki/Development-Tools.md)** - Using diagnostic and maintenance tools
+- **🏗️ [Technical Documentation](wiki/Technical-Architecture.md)** - System architecture and development info
 
 ## 🎯 Supported Game Modes
 
 - ✅ **PvE Dungeons** - Primary farming mode (floors 1-15)
 - ✅ **Quest Completion** - Automatic quest collection
-- ✅ **Store Management** - Auto-refresh and purchasing
+- ✅ **Store Management** - Auto-refresh and purchasing  
 - ✅ **Ad Collection** - Automated ad chest collection
 - ⚠️ **PvP Mode** - Limited support (experimental)
 
-## � Changelog
+## 📊 Version History
 
-### Version 2.0.0 (2025-07-31) - Python 3.13 Upgrade
-- 🎉 **Major upgrade** to Python 3.13.5 with significant performance improvements
-- 📦 **Modernized dependencies** - All packages updated to latest stable versions
-- 🔧 **Enhanced compatibility** - Fixed import errors and deprecation warnings
-- 📊 **Added matplotlib** support for data visualization
-- 🧪 **Comprehensive test suite** for dependency verification
-- 📋 **Detailed documentation** and troubleshooting guides
+**Current Version: 2.0.0** - Major Python 3.13 upgrade with 15-20% performance improvement
 
-### Previous Versions
-- **Version 1.x**: Original Python 3.9 implementation with core bot functionality
-
-> **📋 Full Changelog**: See [CHANGELOG.md](CHANGELOG.md) for detailed version history
+- **📋 [Complete Changelog](wiki/CHANGELOG.md)** - Detailed version history and release notes
+- **🚀 Latest**: Python 3.13.5, modern dependencies, enhanced stability
+- **🔧 Migration**: Seamless upgrade from v1.x, existing configs preserved
 
 ## �🔒 Safety & Fair Play
 

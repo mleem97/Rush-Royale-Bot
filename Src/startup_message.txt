@@ -1,4 +1,4 @@
-Rush Royale Bot v1.1                 |
+Rush Royale Bot v2.0.0 (Python 3.13)   |
 |                                    |
 |             ,.___          ___....--._
 |           ,'     `""""""""'           `-._
