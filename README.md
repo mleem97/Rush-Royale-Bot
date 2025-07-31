@@ -5,18 +5,20 @@
 ![OpenCV](https://img.shields.io/badge/opencv-4.12.0-green.svg)
 ![NumPy](https://img.shields.io/badge/numpy-2.2.6-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Version](https://img.shields.io/badge/version-2.0.0-brightgreen.svg)
 
 Optimized for use with Bluestacks on Windows PC
 
 ## 📋 Table of Contents
 - [✨ Features](#-features)
-- [🔧 Latest Updates](#-latest-updates-python-313-upgrade)
+- [🔧 Latest Updates (v2.0.0)](#-latest-updates-v200)
 - [🚀 Quick Setup Guide](#-quick-setup-guide)
 - [⚙️ Configuration](#️-configuration)
 - [🛠️ Technical Details](#️-technical-details)
 - [🐛 Troubleshooting](#-troubleshooting)
 - [📊 Bot Statistics & Monitoring](#-bot-statistics--monitoring)
 - [🎯 Supported Game Modes](#-supported-game-modes)
+- [📝 Changelog](#-changelog)
 
 ## ✨ Features 
 * 🔄 **24/7 Operation** - Farm unlimited gold continuously
@@ -28,11 +30,17 @@ Optimized for use with Bluestacks on Windows PC
 * 📊 **Interactive Control** - Jupyter notebook for real-time interaction and unit management
 * 🎮 **User-Friendly GUI** - Easy-to-use graphical interface for bot control
 
-## 🔧 Latest Updates (Python 3.13 Upgrade)
-* ⚡ **Performance Boost** - Upgraded to Python 3.13.5 for faster execution
+## 🔧 Latest Updates (v2.0.0)
+### 🎉 Major Python 3.13 Upgrade Release!
+* ⚡ **Performance Boost** - Upgraded to Python 3.13.5 for 15-20% faster execution
 * 📦 **Modern Dependencies** - Latest versions of NumPy 2.2, Pandas 2.3, OpenCV 4.12
 * 🛡️ **Enhanced Stability** - Updated scikit-learn 1.7 and improved error handling
 * 🔧 **Better Compatibility** - Resolved deprecation warnings and syntax issues
+* 📊 **Matplotlib Support** - Added plotting capabilities for data visualization
+* 🔍 **Enhanced ADB** - Improved Android device communication
+* 🧪 **Test Suite** - Comprehensive dependency verification system
+
+> **📋 Full Details**: See [CHANGELOG.md](CHANGELOG.md) for complete release notes
 
 ![output](https://user-images.githubusercontent.com/71280183/171181226-d680e7ca-729f-4c3d-8fc6-573736371dfb.png)
 
