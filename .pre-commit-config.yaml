@@ -1,0 +1,115 @@
+# Pre-commit hooks for Rush Royale Bot
+# Install with: pre-commit install
+# Run on all files: pre-commit run --all-files
+
+repos:
+  # Python code formatting
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        language_version: python3.13
+        args: [--line-length=100]
+
+  # Import sorting
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: [--profile=black, --line-length=100]
+
+  # General file formatting
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: \.md$
+      - id: end-of-file-fixer
+        exclude: \.png$|\.jpg$|\.pkl$
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-merge-conflict
+      - id: debug-statements
+
+  # Python linting
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        args: [--max-line-length=100, --extend-ignore=E203,W503]
+        additional_dependencies: [flake8-docstrings]
+
+  # Security checks
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        args: [-r, Src/, -f, json, -o, reports/bandit-report.json]
+        pass_filenames: false
+
+  # Documentation checks
+  - repo: https://github.com/pycqa/doc8
+    rev: v1.1.1
+    hooks:
+      - id: doc8
+        args: [--max-line-length=100]
+
+  # Jupyter notebook cleaning
+  - repo: https://github.com/nbQA-dev/nbQA
+    rev: 1.7.1
+    hooks:
+      - id: nbqa-black
+        args: [--line-length=100]
+      - id: nbqa-isort
+        args: [--profile=black]
+
+  # Local hooks for project-specific checks
+  - repo: local
+    hooks:
+      - id: dependency-check
+        name: Check dependencies
+        entry: python test_dependencies.py
+        language: system
+        pass_filenames: false
+        stages: [commit]
+
+      - id: config-validation
+        name: Validate configuration
+        entry: python -c "from Src.config_validator import validate_bot_config; validate_bot_config()"
+        language: system
+        pass_filenames: false
+        stages: [commit]
+
+      - id: unit-tests
+        name: Run unit tests
+        entry: python -m pytest tests/ -x -q
+        language: system
+        pass_filenames: false
+        stages: [push]
+
+# Configuration for specific tools
+default_language_version:
+  python: python3.13
+
+default_stages: [commit]
+
+# Files to exclude from all hooks
+exclude: |
+  (?x)^(
+      \.scrcpy/.*|
+      machine_learning/.*|
+      __pycache__/.*|
+      \.git/.*|
+      build/.*|
+      dist/.*|
+      \.venv313/.*|
+      all_units/.*\.png|
+      icons/.*\.png|
+      units/.*\.png|
+      .*\.pkl|
+      bot_feed_.*\.png|
+      15\.0\.0
+  )$
