@@ -14,7 +14,9 @@ print("=" * 60)
 # Show version information
 try:
     import version
-    print(f"🤖 {version.get_version_info().strip()}")
+    version_info = version.get_version_info()
+    print(f"🤖 {version_info['name']} v{version_info['version']}")
+    print(f"🐍 Python {version_info['python_version']} • Released: {version_info['release_date']}")
     print("=" * 60)
 except ImportError:
     pass
