@@ -38,12 +38,18 @@ env/
 .DS_Store
 Thumbs.db
 
-# Logs and Runtime Files
-*.log
-RR_bot.log
-performance.log
+# Runtime Files and Screenshots
 bot_feed*.png
-screenshot*.png
+*.log
+performance_metrics_*.json
+
+# Debug Files
+debug_output/
+debug*.log
+debug*.json
+*debug*.png
+demo_debug_session.json
+test_debug_export.json
 
 # Device and Runtime Specific
 .scrcpy/
@@ -94,6 +100,7 @@ docs/_build/
 test_fixes.py
 test_fixes.bat
 test_screenshot_fix.py
+test_pve_navigation.py
 BUGFIX_SUMMARY.md
 SCREENSHOT_FIX_SUMMARY.md
 
