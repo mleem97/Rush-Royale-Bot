@@ -1,4 +1,10 @@
-# Python 3.13 Upgrade Summary
+# Python 3.13 Upgrade Su- **requests**: `2.32.4` (added `>=2.32.0`)
+- **setuptools**: `80.9.0` (added `>=80.0.0,<81.0.0`)
+- **deprecation**: `2.1.0` (added `>=2.1.0`)
+- **retry2**: `0.9.5` (added `>=0.9.0`)
+- **psutil**: `7.0.0` (added `>=7.0.0`)
+- **matplotlib**: `3.10.3` (added `>=3.9.0`)
+- **pure-python-adb**: `0.3.0.dev0` (added `>=0.3.0.dev0` for ppadb.client support)
 
 ## 🎉 Successfully Upgraded to Python 3.13.5!
 
@@ -40,6 +46,9 @@ Updated `requirements.txt` with latest compatible versions and proper dependency
 - **Automated installation**: Updated install.bat to handle complex dependency scenarios
 ### 5. Code Fixes
 - Fixed invalid escape sequence warning in `gui.py` (line 103)
+- Added warning suppression to `bot_core.py` for cleaner operation
+- Fixed path reference in `RR_bot.ipynb` (was `./src`, now `./Src`)
+- Added missing dependencies: `matplotlib`, `pure-python-adb`
 
 ## Dependencies Status
 ✅ All core dependencies installed and working

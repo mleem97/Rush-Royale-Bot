@@ -46,6 +46,14 @@ try:
 except ImportError as e:
     print(f"❌ Pillow failed: {e}")
 
+# Test plotting library
+try:
+    import matplotlib.pyplot as plt
+    import matplotlib
+    print(f"✅ Matplotlib {matplotlib.__version__} - OK")
+except ImportError as e:
+    print(f"❌ Matplotlib failed: {e}")
+
 # Test Android/Device communication
 try:
     import scrcpy
@@ -58,6 +66,12 @@ try:
     print("✅ adbutils - OK")
 except ImportError as e:
     print(f"❌ adbutils failed: {e}")
+
+try:
+    from ppadb.client import Client as PPADBClient
+    print("✅ ppadb.client - OK")
+except ImportError as e:
+    print(f"❌ ppadb.client failed: {e}")
 
 # Test Jupyter components
 try:

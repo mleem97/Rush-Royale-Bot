@@ -4,6 +4,9 @@ import numpy as np
 import pandas as pd
 import logging
 from subprocess import Popen, DEVNULL
+# Suppress harmless warnings
+import warnings
+warnings.filterwarnings("ignore", message="pkg_resources is deprecated", category=UserWarning)
 # Android ADB
 from scrcpy import Client, const
 # Image processing
