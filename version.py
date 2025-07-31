@@ -32,7 +32,18 @@ VERSION_HISTORY = {
 }
 
 def get_version_info():
-    """Return formatted version information"""
+    """Return version information as dictionary"""
+    return {
+        "name": "Rush Royale Bot",
+        "version": __version__,
+        "python_version": __python_version__,
+        "release_date": __release_date__,
+        "tag": __codename__,
+        "codename": __codename__
+    }
+
+def get_version_string():
+    """Return formatted version information as string"""
     return f"""
 Rush Royale Bot v{__version__} ({__codename__})
 Python {__python_version__}
@@ -41,7 +52,7 @@ Released: {__release_date__}
 
 def print_version():
     """Print version information to console"""
-    print(get_version_info())
+    print(get_version_string())
 
 if __name__ == "__main__":
     print_version()
