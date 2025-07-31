@@ -251,17 +251,92 @@ class ErrorRecoverySystem:
         self.logger.info("Attempting to recover screen capture...")
         
         try:
-            # Try to take a test screenshot
             import subprocess
-            result = subprocess.run(['.scrcpy\\adb', 'shell', 'screencap', '/sdcard/test.png'],
-                                  capture_output=True, timeout=10)
+            import os
             
-            if result.returncode == 0:
-                # Clean up test file
-                subprocess.run(['.scrcpy\\adb', 'shell', 'rm', '/sdcard/test.png'],
-                             capture_output=True, timeout=5)
-                return True
+            # Step 1: Check if ADB is responsive
+            result = subprocess.run(['.scrcpy\\adb', 'devices'], 
+                                  capture_output=True, timeout=10, text=True)
+            if result.returncode != 0:
+                self.logger.error("ADB not responsive")
+                return False
             
+            # Step 2: Check if device is connected
+            if 'emulator-5554' not in result.stdout:
+                self.logger.error("Device not connected")
+                return False
+            
+            # Step 3: Try alternative screenshot methods
+            methods = [
+                # Method 1: Direct screencap to stdout
+                ['.scrcpy\\adb', '-s', 'emulator-5554', 'exec-out', 'screencap', '-p'],
+                # Method 2: Screencap to device then pull
+                ['.scrcpy\\adb', '-s', 'emulator-5554', 'shell', 'screencap', '/sdcard/temp_screenshot.png'],
+            ]
+            
+            for i, method in enumerate(methods, 1):
+                self.logger.info(f"Trying screenshot method {i}")
+                
+                if i == 1:
+                    # Direct method
+                    try:
+                        with open('bot_feed_test_recovery.png', 'wb') as f:
+                            result = subprocess.run(method, stdout=f, stderr=subprocess.PIPE, timeout=15)
+                        
+                        if result.returncode == 0 and os.path.exists('bot_feed_test_recovery.png'):
+                            # Verify the file is a valid image
+                            import cv2
+                            test_img = cv2.imread('bot_feed_test_recovery.png')
+                            if test_img is not None:
+                                os.remove('bot_feed_test_recovery.png')  # Clean up
+                                self.logger.info("Screen capture recovery successful (direct method)")
+                                return True
+                        
+                        if os.path.exists('bot_feed_test_recovery.png'):
+                            os.remove('bot_feed_test_recovery.png')
+                            
+                    except Exception as e:
+                        self.logger.warning(f"Direct method failed: {e}")
+                        continue
+                
+                elif i == 2:
+                    # Two-step method
+                    try:
+                        # Step 2a: Take screenshot on device
+                        result = subprocess.run(method, capture_output=True, timeout=15)
+                        if result.returncode != 0:
+                            continue
+                        
+                        # Step 2b: Pull screenshot from device
+                        result = subprocess.run(['.scrcpy\\adb', '-s', 'emulator-5554', 'pull', 
+                                               '/sdcard/temp_screenshot.png', 'bot_feed_test_recovery.png'],
+                                               capture_output=True, timeout=10)
+                        
+                        if result.returncode == 0 and os.path.exists('bot_feed_test_recovery.png'):
+                            # Verify the file is a valid image
+                            import cv2
+                            test_img = cv2.imread('bot_feed_test_recovery.png')
+                            if test_img is not None:
+                                # Clean up
+                                os.remove('bot_feed_test_recovery.png')
+                                subprocess.run(['.scrcpy\\adb', '-s', 'emulator-5554', 'shell', 
+                                              'rm', '/sdcard/temp_screenshot.png'], 
+                                              capture_output=True, timeout=5)
+                                self.logger.info("Screen capture recovery successful (two-step method)")
+                                return True
+                        
+                        # Clean up on failure
+                        if os.path.exists('bot_feed_test_recovery.png'):
+                            os.remove('bot_feed_test_recovery.png')
+                        subprocess.run(['.scrcpy\\adb', '-s', 'emulator-5554', 'shell', 
+                                      'rm', '/sdcard/temp_screenshot.png'], 
+                                      capture_output=True, timeout=5)
+                        
+                    except Exception as e:
+                        self.logger.warning(f"Two-step method failed: {e}")
+                        continue
+            
+            self.logger.error("All screenshot recovery methods failed")
             return False
             
         except Exception as e:

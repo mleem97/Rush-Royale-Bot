@@ -26,6 +26,11 @@ class Bot:
         self.bot_stop = False
         self.combat = self.output = self.grid_df = self.unit_series = self.merge_series = self.df_groups = self.info = self.combat_step = None
         self.logger = logging.getLogger('__main__')
+        
+        # Initialize error recovery system
+        self.error_recovery = get_error_recovery_system()
+        self.error_recovery.logger = self.logger
+        
         if device is None:
             device = port_scan.get_device()
         if not device:
@@ -37,7 +42,11 @@ class Bot:
         self.shell('monkey -p com.my.defense 1')
         # Check if 'bot_feed.png' exists
         if not os.path.isfile(f'bot_feed_{self.bot_id}.png'):
-            self.getScreen()
+            try:
+                self.getScreen()
+            except Exception as e:
+                self.logger.warning(f"Initial screenshot failed: {e}")
+                # Continue initialization - we'll try again later
         self.screenRGB = cv2.imread(f'bot_feed_{self.bot_id}.png')
         self.client = Client(device=self.device)
         # Start scrcpy client
@@ -99,19 +108,60 @@ class Bot:
     def getScreen(self):
         try:
             bot_id = self.device.split(':')[-1]
-            p = Popen(['.scrcpy\\adb', 'exec-out', 'screencap', '-p', '>', f'bot_feed_{bot_id}.png'], shell=True)
-            p.wait()
-            # Store screenshot in class variable if valid
-            new_img = cv2.imread(f'bot_feed_{bot_id}.png')
-            if new_img is not None:
-                self.screenRGB = new_img
-            else:
-                self.logger.warning('Failed to get screen')
-                raise FileNotFoundError(f"Screenshot capture failed: bot_feed_{bot_id}.png")
+            screenshot_path = f'bot_feed_{bot_id}.png'
+            
+            # Use ADB shell screencap command with proper output redirection
+            cmd = ['.scrcpy\\adb', '-s', self.device, 'exec-out', 'screencap', '-p']
+            
+            # Execute command and save output to file
+            with open(screenshot_path, 'wb') as f:
+                p = Popen(cmd, stdout=f, stderr=DEVNULL)
+                p.wait()
+            
+            # Verify file exists and is valid
+            if not os.path.exists(screenshot_path):
+                raise FileNotFoundError(f"Screenshot file not created: {screenshot_path}")
+                
+            # Load screenshot and verify it's valid
+            new_img = cv2.imread(screenshot_path)
+            if new_img is None:
+                raise ValueError(f"Invalid screenshot data in: {screenshot_path}")
+            
+            # Check if image has reasonable dimensions
+            if new_img.shape[0] < 100 or new_img.shape[1] < 100:
+                raise ValueError(f"Screenshot too small: {new_img.shape}")
+                
+            self.screenRGB = new_img
+            self.logger.debug(f"Screenshot captured: {new_img.shape}")
+            
         except Exception as e:
+            self.logger.error(f"Screenshot capture failed: {e}")
+            
+            # Try error recovery
             if hasattr(self, 'error_recovery'):
-                self.error_recovery.handle_error(e, 'screen_capture')
-            raise
+                try:
+                    recovery_success = self.error_recovery.handle_error(e, 'screen_capture')
+                    if recovery_success:
+                        # Try to load the recovered screenshot
+                        bot_id = self.device.split(':')[-1]
+                        screenshot_path = f'bot_feed_{bot_id}.png'
+                        if os.path.exists(screenshot_path):
+                            new_img = cv2.imread(screenshot_path)
+                            if new_img is not None and new_img.shape[0] > 100 and new_img.shape[1] > 100:
+                                self.screenRGB = new_img
+                                self.logger.info("Screenshot recovery successful")
+                                return
+                except Exception as recovery_error:
+                    self.logger.warning(f"Screenshot recovery failed: {recovery_error}")
+            
+            # Try fallback: use existing screenshot if available
+            bot_id = self.device.split(':')[-1]
+            fallback_path = f'bot_feed_{bot_id}.png'
+            if os.path.exists(fallback_path) and hasattr(self, 'screenRGB') and self.screenRGB is not None:
+                self.logger.warning("Using cached screenshot due to capture failure")
+                return
+            else:
+                raise FileNotFoundError(f"Screenshot capture failed: bot_feed_{bot_id}.png")
 
     # Crop latest screenshot taken
     def crop_img(self, x, y, dx, dy, name='icon.png'):

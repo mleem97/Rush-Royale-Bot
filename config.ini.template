@@ -1,0 +1,21 @@
+[bot]
+# Dungeon floor target (1-15)
+floor = 7
+
+# Mana upgrade sequence (comma-separated levels)
+mana_level = 1,3,5
+
+# Active units for the bot (must have corresponding images in units/ folder)
+units = chemist, harlequin, bombardier, dryad, demon_hunter
+
+# Primary damage dealer unit
+dps_unit = demon_hunter
+
+# PvE mode (dungeon farming)
+pve = True
+
+# Require shaman opponent for certain strategies
+require_shaman = False
+
+# Add any additional configuration options as needed
+# The bot will use these settings during operation
