@@ -1,6 +1,8 @@
 
 # Rush-Royale-Bot
 ## May not Work properly. Currently doing Overhaul. Please report any Issues here: https://github.com/mleem97/Rush-Royale-Bot/issues
+## Currently working on 3.0 (AI Learning) - If there is a Stable version you will find it in Releases Tab.
+
 🤖 Advanced Python bot for Rush Royale - **Now running on Python 3.13!**
 
 ![Python Version](https://img.shields.io/badge/python-3.13.5-blue.svg)
