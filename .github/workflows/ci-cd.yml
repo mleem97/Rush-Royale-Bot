@@ -2,7 +2,7 @@ name: Rush Royale Bot CI/CD
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, testing ]
   pull_request:
     branches: [ main ]
 
