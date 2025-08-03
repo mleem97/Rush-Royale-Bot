@@ -498,7 +498,8 @@ This project is licensed under the **MIT License** with additional research ethi
 - **Model Zoo**: Pre-trained models and checkpoints for research use
 - **Benchmark Datasets**: Standardized evaluation datasets for comparison
 
-### 🔬 Research Publications & Citations
-*Coming Soon: Academic papers on multi-agent RL in gaming environments*
+## Future of this Bot
+This Bot is created in my Free Time, powered by the will to Learn something new. 
 
-**Happy AI Research! 🧠🎮🤖**
+The following Image shows the Structure of the Bot-To-Be
+<img width="3840" height="2291" alt="Untitled diagram _ Mermaid Chart-2025-08-03-205957" src="https://github.com/user-attachments/assets/ec46e243-9d00-401a-a54a-b7180c835d9c" />
