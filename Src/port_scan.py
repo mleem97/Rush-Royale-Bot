@@ -49,39 +49,18 @@ def scan_ports(target_ip, port_start, port_end, batch=3):
 
 # Check if adb device is already connected
 def get_adb_device():
-    """Get the first available ADB device, prioritizing emulators"""
-    try:
-        devList = check_output('.scrcpy\\adb devices', shell=True)
-        devListArr = str(devList).split('\\n')
-        # Check for online status
-        devices = []
-        for client in devListArr[1:]:
-            if '\\t' in client:
-                client_ip = client.split('\\t')[0]
-                if 'device' in client and client_ip.strip():
-                    devices.append(client_ip)
-                elif client_ip.strip():
-                    # Disconnect offline devices
-                    Popen(f'.scrcpy\\adb disconnect {client_ip}', shell=True, stderr=DEVNULL)
-        
-        if devices:
-            # Prioritize emulators (they usually contain 'emulator' or have port 5554/5556)
-            emulators = [d for d in devices if 'emulator' in d or ':5554' in d or ':5556' in d]
-            if emulators:
-                selected_device = emulators[0]
-            else:
-                selected_device = devices[0]
-            
-            print(f"Found ADB device! {selected_device}")
-            if len(devices) > 1:
-                print(f"Note: {len(devices)} devices found, using: {selected_device}")
-                print(f"All devices: {devices}")
-            return selected_device
-        
-        return None
-    except Exception as e:
-        print(f"Error getting ADB devices: {e}")
-        return None
+    devList = check_output('.scrcpy\\adb devices', shell=True)
+    devListArr = str(devList).split('\\n')
+    # Check for online status
+    deivce = None
+    for client in devListArr[1:]:
+        client_ip = client.split('\\t')[0]
+        if 'device' in client:
+            deivce = client_ip
+            print("Found ADB device! {}".format(deivce))
+        else:
+            Popen(f'.scrcpy\\adb disconnect {client_ip}', shell=True, stderr=DEVNULL)
+    return deivce
 
 
 def get_device():

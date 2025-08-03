@@ -135,33 +135,12 @@ def bot_loop(bot, info_event):
             watch_ad = False
         else:
             combat = 0
-            bot.logger.info(f'🔄 Screen state: {output[1]}, wait count: {wait}')
-            
-            # Add debug info for non-fighting states
-            if hasattr(bot, 'debug'):
-                bot.debug.log_event("BOT_LOOP", "non_fighting_state", {
-                    'screen_state': output[1],
-                    'wait_count': wait,
-                    'attempting_start': True,
-                    'pve_mode': user_pve,
-                    'target_floor': user_floor
-                })
-            
-            # Check if we've been waiting too long in the same state
-            if wait > 10 and output[1] == 'home':
-                bot.logger.warning(f'⚠️ Stuck at home screen for {wait} cycles, may need manual intervention')
-            
+            bot.logger.info(f'{output[1]}, wait count: {wait}')
             output = bot.battle_screen(start=True, pve=user_pve, floor=user_floor)
             wait += 1
-            
             if wait > 40:
-                bot.logger.warning('🔄 Too many wait cycles, restarting game...')
-                if hasattr(bot, 'debug'):
-                    bot.debug.log_event("BOT_LOOP", "forced_restart", {
-                        'reason': 'wait_count_exceeded',
-                        'wait_count': wait
-                    }, warnings=["Bot appears stuck, forcing restart"])
-                bot.restart_RR()
+                bot.logger.info('RESTARTING')
+                bot.restart_RR(),
                 wait = 0
 
 

@@ -4,12 +4,10 @@ import numpy as np
 import threading
 import logging
 import configparser
-import json
 
 # internal
 import bot_handler
 import bot_logger
-from debug_system import get_debug_system
 
 
 # GUI Class
@@ -23,28 +21,13 @@ class RR_bot:
         # Read config file
         self.config = configparser.ConfigParser()
         self.config.read('config.ini')
-        
-        # Initialize debug system
-        self.debug_system = get_debug_system()
-        debug_enabled = self.config.getboolean('debug', 'enabled', fallback=False)
-        self.debug_system.set_enabled(debug_enabled)
-        
         # Create tkinter window base
         self.root = create_base()
         self.frames = self.root.winfo_children()
-        
         # Setup frame 1 (options)
         self.ads_var, self.pve_var, self.mana_vars, self.floor = create_options(self.frames[0], self.config)
-        
-        # Add debug controls to options frame
-        self.debug_var = self.create_debug_controls(self.frames[0], debug_enabled)
-        
         # Setup frame 2 (combat info)
         self.grid_dump, self.unit_dump, self.merge_dump = create_combat_info(self.frames[1])
-        
-        # Add debug info frame
-        self.debug_info = self.create_debug_info(self.frames[1])
-        
         ## rest need to be cleaned up
         # Log frame
         bg = '#575559'
@@ -56,24 +39,15 @@ class RR_bot:
         start_button = Button(self.frames[2], text="Start Bot", command=self.start_command)
         stop_button = Button(self.frames[2], text='Stop Bot', command=self.stop_bot, padx=20)
         leave_dungeon = Button(self.frames[2], text='Quit Floor', command=self.leave_game, bg='#ff0000', fg='#000000')
-        debug_export_button = Button(self.frames[2], text='Export Debug', command=self.export_debug, bg='#4CAF50', fg='#000000')
-        
         start_button.grid(row=0, column=1, padx=10)
         stop_button.grid(row=0, column=2, padx=5)
         leave_dungeon.grid(row=0, column=3, padx=5)
-        debug_export_button.grid(row=0, column=4, padx=5)
 
         self.frames[0].pack(padx=0, pady=0, side=TOP, anchor=NW)
         self.frames[1].pack(padx=10, pady=10, side=RIGHT, anchor=SE)
         self.frames[2].pack(padx=10, pady=10, side=BOTTOM, anchor=SW)
         self.frames[3].pack(padx=10, pady=10, side=LEFT, anchor=SW)
         self.logger.debug('GUI started!')
-        
-        # Start debug info update thread
-        if debug_enabled:
-            self.debug_update_thread = threading.Thread(target=self.update_debug_info, daemon=True)
-            self.debug_update_thread.start()
-        
         self.root.mainloop()
 
     # Clear loggers, collect threads, and close window
@@ -126,7 +100,7 @@ class RR_bot:
         # Run startup of bot instance
         self.logger.warning('Starting bot...')
         self.bot_instance = bot_handler.start_bot_class(self.logger)
-        os.system("type src\\startup_message.txt")
+        os.system("type src\startup_message.txt")
         self.update_units()
         infos_ready = threading.Event()
         # Pass gui info to bot
@@ -186,99 +160,6 @@ class RR_bot:
             #merge_series['unit'] = merge_series['unit'].apply(lambda x: x.replace('.png',''))
             write_to_widget(self.root, self.merge_dump, merge_series.to_string())
 
-    def create_debug_controls(self, parent_frame, debug_enabled):
-        """Create debug control UI elements"""
-        # Debug section
-        debug_label = Label(parent_frame, text="Debug Controls", justify=LEFT, fg='#FFD700')
-        debug_label.grid(row=4, column=0, sticky=W)
-        
-        debug_var = IntVar(value=int(debug_enabled))
-        debug_check = Checkbutton(parent_frame, text='Debug Mode', variable=debug_var, 
-                                 command=self.toggle_debug, justify=LEFT, fg='#FFD700')
-        debug_check.grid(row=4, column=1, sticky=W)
-        
-        return debug_var
-    
-    def create_debug_info(self, parent_frame):
-        """Create debug information display"""
-        debug_info = Text(parent_frame, height=8, width=60, bg='#2C2C2C', fg='#00FF00', 
-                         font=('Consolas', 8))
-        debug_info.grid(row=2, columnspan=2, sticky='ew', pady=5)
-        return debug_info
-    
-    def toggle_debug(self):
-        """Toggle debug mode on/off"""
-        debug_enabled = bool(self.debug_var.get())
-        self.debug_system.set_enabled(debug_enabled)
-        
-        # Update config file
-        if not self.config.has_section('debug'):
-            self.config.add_section('debug')
-        self.config.set('debug', 'enabled', str(debug_enabled))
-        
-        with open('config.ini', 'w') as configfile:
-            self.config.write(configfile)
-        
-        status = "ENABLED" if debug_enabled else "DISABLED"
-        self.logger.info(f"Debug mode {status}")
-        
-        if debug_enabled and not hasattr(self, 'debug_update_thread'):
-            self.debug_update_thread = threading.Thread(target=self.update_debug_info, daemon=True)
-            self.debug_update_thread.start()
-    
-    def update_debug_info(self):
-        """Update debug information display in real-time"""
-        while True:
-            try:
-                if self.debug_system.enabled and hasattr(self, 'debug_info'):
-                    summary = self.debug_system.get_debug_summary(5)  # Last 5 minutes
-                    
-                    debug_text = "=== DEBUG STATUS ===\n"
-                    debug_text += f"Debug Enabled: {summary.get('debug_enabled', False)}\n"
-                    debug_text += f"Recent Events: {summary.get('recent_events', 0)}\n"
-                    debug_text += f"Warnings: {summary.get('warnings_count', 0)}\n"
-                    debug_text += f"Errors: {summary.get('errors_count', 0)}\n"
-                    
-                    if 'event_types' in summary:
-                        debug_text += "\nEvent Types:\n"
-                        for event_type, count in summary['event_types'].items():
-                            debug_text += f"  {event_type}: {count}\n"
-                    
-                    if 'last_event' in summary and summary['last_event']:
-                        debug_text += f"\nLast Operation: {summary['last_event']}\n"
-                    
-                    if summary.get('current_grid_units', 0) > 0:
-                        debug_text += f"Grid Units Tracked: {summary['current_grid_units']}\n"
-                    
-                    # Update GUI
-                    if hasattr(self, 'debug_info'):
-                        write_to_widget(self.root, self.debug_info, debug_text)
-                
-                threading.Event().wait(2.0)  # Update every 2 seconds
-                
-            except Exception as e:
-                self.logger.error(f"Debug info update error: {e}")
-                threading.Event().wait(5.0)  # Wait longer on error
-    
-    def export_debug(self):
-        """Export debug session data"""
-        try:
-            if not self.debug_system.enabled:
-                self.logger.warning("Debug mode is not enabled - no data to export")
-                return
-            
-            filepath = self.debug_system.export_debug_session()
-            self.logger.info(f"Debug data exported to: {filepath}")
-            
-            # Also show quick summary
-            summary = self.debug_system.get_debug_summary(60)  # Last hour
-            self.logger.info(f"Debug Summary - Events: {summary.get('recent_events', 0)}, "
-                           f"Warnings: {summary.get('warnings_count', 0)}, "
-                           f"Errors: {summary.get('errors_count', 0)}")
-            
-        except Exception as e:
-            self.logger.error(f"Failed to export debug data: {e}")
-
 
 ###
 ### END OF GUI CLASS
@@ -327,18 +208,7 @@ def create_combat_info(frame2):
 
 def create_base():
     root = Tk()
-    # Import version info
-    try:
-        import sys
-        import os
-        sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'tools'))
-        from version import get_version_info
-        version_info = get_version_info()
-        title = f"{version_info['name']} v{version_info['version']}"
-    except ImportError:
-        title = "Rush Royale Bot v2.0.0"
-    
-    root.title(title)
+    root.title("RR bot")
     root.geometry("800x600")
     # Set dark background
     root.configure(background='#575559')
