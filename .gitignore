@@ -1,114 +1,15 @@
-# Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Virtual Environments
-.venv/
-.venv313/
-venv/
-ENV/
-env/
-.env
-
-# IDE and Editor Files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
-
-# Runtime Files and Screenshots
-bot_feed*.png
-*.log
-performance_metrics_*.json
-
-# Debug Files
-debug_output/
-debug*.log
-debug*.json
-*debug*.png
-demo_debug_session.json
-test_debug_export.json
-
-# Device and Runtime Specific
-.scrcpy/
-.bot_env/
 OCR_inputs/
-machine_learning/
-screens/
-
-# User Configuration (may contain sensitive data)
-config.ini
-
-# Unit Selection (generated at runtime)
 units/
-
-# Temporary and Cache Files
-*.tmp
-*.temp
-.cache/
-.pytest_cache/
-
-# Build and Distribution
-build/
-dist/
-*.spec
-
-# Windows
-*.exe
-*.dll
-*.pdb
-
-# Version Files (if auto-generated)
-15.0.0
-
-# Development Tools Output
-coverage.xml
-.coverage
-htmlcov/
-.tox/
-.coverage.*
-
-# Documentation Build
-docs/_build/
-
-# Jupyter Notebook Checkpoints
-.ipynb_checkpoints/
-
-# Local Development Files
-test_fixes.py
-test_fixes.bat
-test_screenshot_fix.py
-test_pve_navigation.py
-BUGFIX_SUMMARY.md
-SCREENSHOT_FIX_SUMMARY.md
-
-# Keep these important files:
-# - Source code (Src/)
-# - Tests (tests/)
-# - Configuration templates
-# - Documentation (wiki/, README.md, etc.)
-# - GitHub workflows (.github/)
-# - Requirements and setup files
-# - License and project files
+.bot_env
+.vscode
+.scrcpy
+machine_learning
+screens
+bot_feed_emulator-5554.png
+Src/old_functions.py
+bot_feed.png
+RR_bot.log
+build
+dist
+config.ini
