@@ -6,7 +6,8 @@ This project is designed to push the boundaries of AI in gaming, enabling the bo
 ## Please note: This is a research project and not intended for commercial use. 
 Most of the AI features are still under development and may not be fully functional. 
 The Project Originally started as a project by AxelBjork (https://github.com/AxelBjork/Rush-Royale-Bot)
-The Current main codebase is basically a fixed version of the original project with some improvements.
+The Current main codebase is basically a fixed version of the original project with some improvements. Please check the [original project](https://github.com/AxelBjork/Rush-Royale-Bot) for more details on the current state.
+
 
 
 
