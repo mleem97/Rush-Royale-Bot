@@ -1,136 +1,315 @@
-# Rush Royale Bot - AI Assistant Instructions
+# 🎮 Comprehensive Rush Royale RL Bot Development Prompt
 
-You are working on a Python 3.13 automation bot for Rush Royale mobile game. This bot runs on Windows with Bluestacks emulator, using computer vision (OpenCV) and machine learning (scikit-learn) for autonomous dungeon farming.
+---
 
-## Key Architecture
+## 🎯 **Role and Context**
 
-**Core Components:**
-- `Src/bot_core.py` - Main bot class with ADB/scrcpy communication
-- `Src/bot_perception.py` - OpenCV unit recognition (color matching + ORB detection)  
-- `Src/gui.py` - Tkinter GUI with real-time combat info
-- `Src/bot_handler.py` - Unit management and dependency handling
-- `RR_bot.ipynb` - Jupyter notebook for development/manual control
+You are a **senior AI research engineer** and **game automation specialist** with extensive experience in:
+- Reinforcement learning for complex games
+- Computer vision for mobile applications  
+- Android automation and bot development
+- Real-time strategy game AI
 
-**Device Communication:**
-- Uses `scrcpy-client` for screen capture and input injection
-- ADB commands via subprocess for device management
-- Screen analysis from cached screenshots: `bot_feed_{device_id}.png`
-- Target device: `emulator-5554` (Bluestacks default)
+**Mission**: Develop a fully autonomous Rush Royale bot using reinforcement learning that can learn the game from scratch through a Points of Interest (POI) training system.
 
-**Unit Recognition System:**
-- Color-based matching with HSV analysis (`get_color()`, `match_unit()`)
-- ML rank detection via `rank_model.pkl` (LogisticRegression)
-- Unit images: `all_units/` (source) → `units/` (active deck)
-- MSE threshold: 2000 for unit matching confidence
+---
 
-## Development Patterns
+## 📋 **Project Background and Constraints**
 
-**Environment Setup:**
-```powershell
-python -m venv .venv313
-.venv313\Scripts\activate
-pip install -r requirements.txt
-```
+### **Existing Foundation**
+I'm building upon an existing Rush Royale bot: [AxelBjork/Rush-Royale-Bot](https://github.com/AxelBjork/Rush-Royale-Bot)
 
-**Running the Bot:**
-- Production: `launch_gui.bat`
-- Development: `jupyter notebook RR_bot.ipynb`
-- Testing: `python test_dependencies.py`
+**Current Capabilities** (Python 3.9 legacy system):
+- ✅ **BlueStacks 5** (1600x900 resolution) for Android emulation
+- ✅ **Scrcpy + ADB** for low-latency screen capture and control
+- ✅ **OpenCV ORB** for unit detection
+- ✅ **Sklearn LogisticRegression** with pickle model for rank detection
+- ✅ **Automated tasks**: Store refresh, ad watching, quest completion, dungeon floor 5 farming
 
-**Device Management Commands:**
-```powershell
-python tools\fix_multiple_devices.py    # Fix "more than one device" errors
-python tools\device_manager.py --list   # List connected devices
-python tools\health_check.py            # 7-point system check
-```
+### **🚀 Modernization Requirements**
+**Upgrade from Python 3.9 → Python 3.13** for:
+- **Better Performance**: 10-15% performance improvements in Python 3.13
+- **Enhanced Stability**: Improved garbage collection and memory management
+- **Modern Features**: Pattern matching, improved type hints, better asyncio
+- **Security**: Latest security patches and vulnerability fixes
+- **Dependencies**: Access to latest versions of ML libraries (PyTorch 2.3+, TensorFlow 2.16+)
+- **Development Experience**: Better debugging tools and error messages
 
-## Configuration & Conventions
+---
 
-**Bot Configuration (`config.ini`):**
-```ini
-[bot]
-floor = 10              # Dungeon floor target
-mana_level = 1,3,5      # Mana upgrade sequence
-units = chemist, harlequin, bombardier, dryad, demon_hunter
-dps_unit = demon_hunter # Primary damage dealer
-pve = True              # PvE mode (dungeon farming)
-```
+## 🎲 **Rush Royale Game Mechanics Understanding**
 
-**Unit Selection Workflow:**
-1. Copy images from `all_units/` to `units/` via `select_units()`
-2. Generate color references for active deck
-3. Bot uses only units in `units/` folder for recognition
+### **Core Game Principles**:
 
-**Critical Patterns:**
-- Suppress `pkg_resources` warnings: `warnings.filterwarnings("ignore", message="pkg_resources is deprecated")`
-- GUI threading: Bot runs in separate thread to prevent UI blocking
-- Screen caching: Reduce ADB calls with `bot_feed_{device_id}.png`
-- Performance target: Color analysis optimized for 0.082s execution time
+| Component | Description |
+|-----------|-------------|
+| **3x5 Grid System** | 15 placement positions for tower defense units |
+| **Unit Merging** | Combining two identical units creates a stronger random unit |
+| **Mana System** | Resource management with exponentially increasing costs |
+| **Wave-based Combat** | Defending against increasingly difficult monster waves |
+| **Hero Abilities** | Special powers with morale-based activation timing |
+| **PvP and Co-op Modes** | Real-time multiplayer battles |
 
-**File Organization:**
-- **Production files**: Root directory only
-- **Development tools**: `tools/` directory (isolated utilities)
-- **Documentation**: `wiki/` directory (technical docs, troubleshooting, changelog)
-- **Assets**: `all_units/`, `icons/`, `units/` directories
-- **Logs**: `RR_bot.log` in root
+---
 
-**Development vs Production:**
-- Development: Use Jupyter notebook for experimentation
-- Production: Use GUI or batch files for automated operation
-- Tools: Always run from root directory: `python tools\tool_name.py`
+## 🏗️ **Technical Requirements and Architecture**
 
-## Integration Requirements
+### **🎯 Primary Challenge**
 
-**Bluestacks Setup:**
-- Resolution: 1600x900 (critical for image recognition)
-- ADB enabled on default port (5555)
-- Graphics: Compatibility mode for scrcpy stability
+The bot must start with **ZERO game knowledge** and learn through:
 
-**External Dependencies:**
-- `scrcpy` binary automatically downloaded if missing
-- `rank_model.pkl` for ML-based rank detection
-- Batch files handle environment activation automatically
+#### **1. POI (Points of Interest) Training Categories**:
+- 🧭 **Navigation**: Menu buttons, battle start, settings
+- ⚔️ **Units**: Card selection, merge spots, placement grid
+- 🦸 **Heroes**: Hero selection, abilities, upgrades  
+- 💰 **Resources**: Mana counter, coins/gems, chests
+- 🎮 **Game Flow**: Wave indicators, health/lives, victory/defeat screens
 
-## Testing & Validation
+#### **2. Hybrid RL Architecture**:
+- 🔴 **DQN System**: Meta-game decisions (menu navigation, deck building, hero selection, resource optimization)
+- 🔵 **PPO System**: Real-time combat (grid placement, unit merging, mana management, hero ability timing)
 
-**Dependency Verification:**
-```powershell
-python test_dependencies.py  # Should show "✅ All 17 modules imported successfully"
-```
+---
 
-**Device Health Check:**
-```powershell
-python tools\health_check.py  # 7-point system check
-```
+## 📊 **Detailed Analysis Request**
 
-**Documentation & Support:**
-- **Troubleshooting**: See `wiki/Troubleshooting.md` for comprehensive issue resolution
-- **Technical docs**: See `wiki/Technical-Architecture.md` for system details
-- **Tool usage**: See `wiki/Development-Tools.md` for diagnostic utilities
+Please provide a comprehensive development plan that addresses each of the following areas with **step-by-step reasoning** and **specific implementation details**:
 
-**Common Issues:**
-- Multiple devices: Use `fix_multiple_devices.py`
-- Missing scrcpy: Auto-downloads in `bot_handler.py`
-- Unit recognition fails: Check `units/` folder population and image quality
+---
 
-## Development Guidelines
+### **1. 🏗️ System Architecture Design**
 
-**Core Requirements:**
-- Always use Python 3.13 virtual environment (`.venv313`)
-- Follow PEP 8 style guidelines consistently
-- Implement comprehensive error handling and logging
-- Optimize image processing for 0.082s target performance
-- Test on actual Bluestacks device before committing
-- Update Gitignore so that only necessary files will be transferred to Github.
+**Think through this systematically and provide:**
 
-**Code Patterns:**
-- Use `warnings.filterwarnings()` to suppress known harmless warnings
-- Cache screen captures to minimize ADB calls
-- Implement graceful fallbacks for device communication failures
-- Document complex algorithms with clear docstrings
+- **🔹 5-Layer Architecture**: 
+  - Foundation (existing bot)
+  - RL Integration 
+  - DQN System
+  - PPO System
+  - Enhanced Components
+  - Management Layer
+- **🔹 Data Flow Diagrams**: How information moves between layers
+- **🔹 Integration Strategy**: How to seamlessly blend existing automation with new RL capabilities
+- **🔹 Mode Selection Logic**: Legacy/Hybrid/Full RL switching mechanisms
+- **🔹 Conflict Resolution**: Handling competing decisions between old and new systems
 
-**Testing Strategy:**
-- Run `python test_dependencies.py` before making changes
-- Use `python tools\health_check.py` for system validation
-- Test unit recognition with actual game screenshots
-- Verify GUI responsiveness in separate thread execution
+---
+
+### **2. 🧠 Reinforcement Learning Implementation Strategy**
+
+**For each RL component, specify:**
+
+#### **🔴 DQN System Design:**
+- **State Space Representation**: How to encode menu states, available options, resource levels
+- **Action Space Definition**: Discrete actions for navigation, selection, purchasing decisions
+- **Reward Function**: Immediate rewards for successful navigation, progression milestones
+- **Network Architecture**: Input layers, hidden layers, output dimensions
+- **Training Strategy**: Epsilon-greedy exploration, experience replay buffer size, target network updates
+
+#### **🔵 PPO System Design:**
+- **State Space Representation**: 3x5 grid encoding, unit types, levels, mana, wave information
+- **Action Space Definition**: Continuous coordinates for placement, discrete actions for merging/abilities
+- **Reward Function**: Real-time combat rewards, survival bonuses, efficiency metrics
+- **Network Architecture**: Actor-critic networks, shared feature extraction layers
+- **Training Strategy**: Advantage estimation, clipping parameters, batch sizes
+
+---
+
+### **3. 👁️ Computer Vision Pipeline Enhancement**
+
+**Provide detailed specifications for:**
+
+- **🔹 Hybrid Detection Approach**: When to use template matching vs. deep learning
+- **🔹 POI Detection Implementation**: Specific OpenCV techniques for each category
+- **🔹 Real-time Processing**: Multi-threading architecture for 60+ FPS analysis
+- **🔹 State Extraction**: Converting visual information to RL-compatible state representations
+- **🔹 Robustness Measures**: Handling game updates, UI changes, different lighting conditions
+
+---
+
+### **4. 📱 Android Automation Integration**
+
+**Detail the implementation of:**
+
+- **🔹 Enhanced ADB Controller**: Building upon existing Scrcpy integration
+- **🔹 Human-like Behavior**: Touch variance, timing randomization, fatigue simulation
+- **🔹 Coordinate Mapping**: Resolution-independent positioning system
+- **🔹 Action Execution Pipeline**: From RL decisions to actual touch events
+- **🔹 Error Recovery**: Handling connection drops, game crashes, unexpected states
+
+---
+
+### **5. 📚 Training and Learning Strategy**
+
+**Provide a comprehensive curriculum learning plan:**
+
+#### **🔹 Phase 1 (Weeks 1-2): Foundation & Modernization**
+- **Python 3.13 Migration**: Upgrade existing codebase, dependency updates, compatibility testing
+- Data collection setup and basic environment creation
+- DQN training for simple navigation tasks
+- Integration testing with modernized bot systems
+
+#### **🔹 Phase 2 (Weeks 3-6): Core RL Development**
+- **Modern Python Features**: Leverage improved asyncio, pattern matching for state handling
+- PPO training for combat scenarios utilizing Python 3.13 performance improvements
+- POI detection system implementation
+- Reward function tuning and validation
+
+#### **🔹 Phase 3 (Weeks 7-12): Advanced Integration**
+- Multi-agent coordination between DQN and PPO
+- Self-play training implementation
+- Performance optimization and robustness testing
+
+**For each phase, specify:**
+- ✅ Success metrics and evaluation criteria
+- ✅ Expected performance improvements
+- ✅ Potential challenges and mitigation strategies
+- ✅ Resource requirements (compute, time, data)
+
+---
+
+### **6. 💻 Technical Implementation Details**
+
+**Provide specific code architecture recommendations:**
+
+- **🔹 Python 3.13 Migration Strategy**: 
+  - Upgrade path from existing Python 3.9 codebase
+  - Dependencies compatibility matrix (PyTorch 2.3+, OpenCV 4.9+, Stable-Baselines3 2.3+)
+  - Performance optimizations unique to Python 3.13
+  - Modern syntax adoption (pattern matching, improved type hints)
+- **🔹 Python Framework Selection**: Stable-Baselines3 vs. Ray RLlib comparison for Python 3.13
+- **🔹 Modular Code Structure**: Directory organization, class hierarchies, interface definitions
+- **🔹 Multi-threading Design**: Producer-consumer patterns leveraging Python 3.13's improved asyncio
+- **🔹 Memory Management**: Efficient handling of image data and experience replay buffers with enhanced GC
+- **🔹 Model Persistence**: Checkpointing, versioning, and deployment strategies
+
+---
+
+### **7. 📈 Performance Optimization and Monitoring**
+
+**Detail the implementation of:**
+
+- **🔹 Real-time Performance Metrics**: FPS, decision latency, accuracy measurements
+- **🔹 Learning Progress Tracking**: Training curves, performance benchmarks, comparative analysis
+- **🔹 System Health Monitoring**: Resource usage, error rates, stability metrics
+- **🔹 A/B Testing Framework**: Comparing RL vs. rule-based performance
+- **🔹 Continuous Improvement Loop**: Online learning, model updates, performance feedback
+
+---
+
+### **8. ⚠️ Risk Assessment and Mitigation**
+
+**Identify and provide solutions for:**
+
+- **🔹 Bot Detection Avoidance**: Behavioral patterns, timing variations, human-like imperfections
+- **🔹 Game Update Resilience**: Version compatibility, rapid adaptation strategies
+- **🔹 Performance Degradation**: Model drift, catastrophic forgetting, retraining protocols
+- **🔹 Technical Failures**: System crashes, network issues, recovery mechanisms
+- **🔹 Legal and Ethical Considerations**: Terms of service compliance, fair play principles
+
+---
+
+## 📋 **Output Format Requirements**
+
+Please structure your response as follows:
+
+### **1. 📊 Executive Summary** 
+*(3-4 sentences highlighting the key approach and expected outcomes)*
+
+### **2. 🏗️ Technical Architecture Overview** 
+*(with ASCII diagrams or detailed descriptions of system components)*
+
+### **3. 🛣️ Implementation Roadmap** 
+*(8-month timeline with specific milestones, deliverables, and success criteria)*
+
+### **4. 💻 Code Structure Recommendations** 
+*(detailed directory structure, key classes, and interfaces)*
+
+### **5. 🎯 Training Protocol** 
+*(step-by-step curriculum learning approach with hyperparameters)*
+
+### **6. 📈 Performance Benchmarks** 
+*(expected improvements, KPIs, and measurement methods)*
+
+### **7. ⚠️ Risk Management Plan** 
+*(potential challenges and specific mitigation strategies)*
+
+### **8. 💰 Resource Requirements** 
+*(hardware, software, development time, and budget estimates)*
+
+---
+
+## ❓ **Specific Questions to Address**
+
+After providing the comprehensive analysis above, please answer these targeted questions:
+
+### **🔴 1. Top 3 Technical Challenges**
+What are the **top 3 technical challenges** you anticipate in this project, and what are your **specific solutions** for each?
+
+### **🔵 2. Cold Start Problem**
+How would you **handle the cold start problem** where the bot has zero knowledge of the game mechanics?
+
+### **🟡 3. Performance Metrics**
+What **specific metrics** would you use to determine when the RL system is ready to replace the rule-based system?
+
+### **🟢 4. Bot Detection Prevention**
+How would you **ensure the bot remains undetectable** while still achieving optimal performance?
+
+### **🟠 5. Fallback Mechanisms**
+What **fallback mechanisms** would you implement if the RL system fails during operation?
+
+### **🟣 6. Python 3.13 Migration Strategy**
+What is your **step-by-step migration plan** from the existing Python 3.9 codebase to Python 3.13, including **dependency upgrades**, **compatibility considerations**, and **performance optimizations** unique to the newer version?
+
+---
+
+## 🎯 **Success Criteria**
+
+The final system should achieve:
+
+| Metric | Target | Description |
+|--------|---------|-------------|
+| **🚀 Performance Improvement** | 15-25% | Resource farming efficiency over existing bot |
+| **🎮 Multi-mode Capability** | 100% | Beyond just dungeon floor 5 farming |
+| **📚 Adaptive Learning** | Continuous | Performance improvement over time |
+| **🛡️ Robust Operation** | 99%+ | Uptime with graceful error recovery |
+| **🔗 Seamless Integration** | Perfect | With existing bot infrastructure |
+| **⚡ Modernization Success** | Complete | Successful Python 3.13 migration with enhanced performance |
+
+---
+
+## 📝 **Deliverable Requirements**
+
+Please provide:
+
+- ✅ **Detailed reasoning** for all recommendations
+- ✅ **Citations** of specific research papers or techniques where relevant  
+- ✅ **Concrete implementation examples** where helpful
+- ✅ **Uncertainty acknowledgment**: If uncertain about any aspect, acknowledge it and provide alternative approaches
+- ✅ **Further research suggestions**: Areas that may need additional investigation
+
+---
+
+## 🎯 **Additional Context**
+
+### **Project Purpose**
+- **Personal Research**: Educational and learning purposes
+- **Advanced RL Techniques**: Demonstrate sophisticated learning systems
+- **Practical Application**: Real-world AI implementation
+- **Modernization Focus**: Upgrade from legacy Python 3.9 to cutting-edge Python 3.13
+
+### **Resources Available**
+- **Budget**: Reasonable cloud computing resources for training
+- **Timeline**: Flexible but expecting meaningful progress within 2-3 months
+- **Focus**: Sophisticated learning system that adapts to game changes
+- **Technical**: Modern development environment with Python 3.13's enhanced performance and features
+
+### **Migration Priorities**
+- **Performance**: Leverage Python 3.13's 10-15% speed improvements
+- **Stability**: Utilize enhanced garbage collection and memory management
+- **Modern Features**: Adopt pattern matching, improved type hints, better asyncio
+- **Dependencies**: Upgrade to latest ML library versions (PyTorch 2.3+, TensorFlow 2.16+, OpenCV 4.9+)
+
+---
+
+> **Note**: This bot is intended for personal research and educational purposes, focusing on creating an advanced learning system that demonstrates state-of-the-art RL techniques in a practical gaming application.

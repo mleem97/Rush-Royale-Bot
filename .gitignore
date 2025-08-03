@@ -13,3 +13,6 @@ RR_bot.log
 build
 dist
 config.ini
+.github/prompts
+*instructions.md
+*.prompt.md
