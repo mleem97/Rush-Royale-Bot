@@ -19,8 +19,10 @@ The Current main codebase is basically a fixed version of the original project w
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > **🚀 Revolutionary Features**: Zero-knowledge learning • POI-based training • Hybrid RL architecture • Human-like behavior patterns • Self-improving strategies
+This Bot is created in my Free Time, powered by the will to Learn something new. The Following Image shows the Future State in Developement.
 
-![Rush Royale RL Bot Architecture](https://user-images.githubusercontent.com/71280183/183141310-841b100a-2ddb-4f59-a6d9-4c7789ba72db.png)
+<img width="3840" height="2291" alt="Untitled diagram _ Mermaid Chart-2025-08-03-205957" src="https://github.com/user-attachments/assets/ec46e243-9d00-401a-a54a-b7180c835d9c" />
+
 
 ---
 
@@ -498,8 +500,4 @@ This project is licensed under the **MIT License** with additional research ethi
 - **Model Zoo**: Pre-trained models and checkpoints for research use
 - **Benchmark Datasets**: Standardized evaluation datasets for comparison
 
-## Future of this Bot
-This Bot is created in my Free Time, powered by the will to Learn something new. 
 
-The following Image shows the Structure of the Bot-To-Be
-<img width="3840" height="2291" alt="Untitled diagram _ Mermaid Chart-2025-08-03-205957" src="https://github.com/user-attachments/assets/ec46e243-9d00-401a-a54a-b7180c835d9c" />
