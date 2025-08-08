@@ -12,6 +12,7 @@ import numpy as np
 import threading
 import logging
 import configparser
+import time
 from typing import Optional, Dict, Any, List, Tuple
 
 # internal
@@ -28,11 +29,14 @@ except ImportError as e:
 class RR_bot:
 
     def __init__(self):
+        print("Creating GUI instance...")
+        
         # State variables
         self.stop_flag = False
         self.running = False
         self.info_ready = threading.Event()
         self.bot_instance = None
+        self.bot_thread = None
         
         # Validate environment before starting
         if not self.validate_environment():
@@ -45,6 +49,10 @@ class RR_bot:
         
         # Create tkinter window base
         self.root = create_base()
+        
+        # Set up window close protocol
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
         self.frames = self.root.winfo_children()
         # Setup frame 1 (options)
         self.ads_var, self.pve_var, self.mana_vars, self.floor = create_options(self.frames[0], self.config)
@@ -75,6 +83,14 @@ class RR_bot:
         self.frames[2].pack(padx=10, pady=10, side=BOTTOM, anchor=SW)
         self.frames[3].pack(padx=10, pady=10, side=LEFT, anchor=SW)
         self.logger.debug('GUI started!')
+        
+        print("GUI instance created successfully")
+        
+        # Don't start mainloop in __init__ - this blocks the constructor
+        # mainloop will be started by the main function
+    
+    def run(self):
+        """Start the GUI main loop - call this after creating the instance"""
         self.root.mainloop()
 
     def validate_environment(self):
@@ -147,56 +163,79 @@ class RR_bot:
             self.logger.error(f"Error during System Check: {e}")
 
     # Clear loggers, collect threads, and close window
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.logger.info('Exiting GUI')
-        self.logger.handlers.clear()
-        if hasattr(self, 'thread_run'):
-            self.thread_run.join()
-        if hasattr(self, 'thread_init'):
-            self.thread_init.join()
-        self.root.destroy()
+    def cleanup(self):
+        """Properly cleanup resources when closing GUI"""
         try:
-            self.bot_instance.client.stop()
+            self.logger.info('Cleaning up GUI resources...')
+            
+            # Set stop flags
+            self.stop_flag = True
+            self.running = False
+            
+            # Stop bot if running
+            if hasattr(self, 'bot_instance') and self.bot_instance:
+                self.bot_instance.bot_stop = True
+                self.logger.info('Bot stop signal sent')
+            
+            # Wait for threads to finish
+            if hasattr(self, 'thread_run') and self.thread_run.is_alive():
+                self.logger.info('Waiting for bot thread to finish...')
+                self.thread_run.join(timeout=5)
+                
+                if self.thread_run.is_alive():
+                    self.logger.warning('Bot thread did not finish within timeout')
+            
+            # Clear logger handlers
+            self.logger.handlers.clear()
+            
+            # Destroy GUI
+            if hasattr(self, 'root'):
+                self.root.quit()  # Exit mainloop
+                self.root.destroy()  # Destroy window
+                
+            self.logger.info('GUI cleanup completed')
+            
+        except Exception as e:
+            print(f"Error during cleanup: {e}")
+
+    def on_closing(self):
+        """Handle window close event"""
+        self.cleanup()
+    
+    def __del__(self):
+        """Destructor - ensure cleanup happens"""
+        try:
+            self.cleanup()
         except:
             pass
 
     # Initialize the thread for main bot
-    def start_command(self):
-        self.stop_flag = False
-        
-        # Validiere Umgebung vor dem Start
-        if not self.validate_environment():
-            messagebox.showerror("Error", "Environment not correct. Run System Check.")
-            return
-        
-        self.update_config()
-        if self.running:
-            self.logger.warning("Bot is already running!")
-            return
-        
-        try:
-            self.running = True
-            # Start main thread
-            self.thread_run = threading.Thread(target=self.start_bot, args=())
-            self.thread_run.start()
-            self.logger.info("Bot thread started")
-        except Exception as e:
-            self.logger.error(f"Error starting bot: {e}")
-            self.running = False
-
-    # Update config file
     def update_config(self):
-        # Update config file
-        floor_var = int(self.floor.get())
-        card_level = [var.get() for var in self.mana_vars] * np.arange(1, 6)
-        card_level = card_level[card_level != 0]
-        self.config.read('config.ini')
-        self.config['bot']['floor'] = str(floor_var)
-        self.config['bot']['mana_level'] = np.array2string(card_level, separator=',')[1:-1]
-        self.config['bot']['pve'] = str(bool(self.pve_var.get()))
-        with open('config.ini', 'w') as configfile:
-            self.config.write(configfile)
-        self.logger.info("Stored settings to config!")
+        """Update configuration based on GUI settings"""
+        try:
+            # Update config with current GUI values
+            self.config.set('bot', 'pve', str(self.pve_var.get()))
+            
+            # Update mana targets
+            mana_targets = []
+            for i, var in enumerate(self.mana_vars, 1):
+                if var.get():
+                    mana_targets.append(str(i))
+            self.config.set('bot', 'mana_level', ','.join(mana_targets))
+            
+            # Update floor
+            floor_value = str(self.floor.get())
+            if floor_value.isdigit():
+                self.config.set('bot', 'floor', floor_value)
+            
+            # Save to file
+            with open('config.ini', 'w') as configfile:
+                self.config.write(configfile)
+                
+            self.logger.debug('Configuration updated')
+            
+        except Exception as e:
+            self.logger.error(f'Failed to update config: {e}')
 
     # Update unit selection
     def update_units(self):
@@ -208,68 +247,206 @@ class RR_bot:
 
     # Run the bot
     def start_bot(self):
+        """Start bot with comprehensive error handling and connection testing"""
         try:
-            # Run startup of bot instance
             self.logger.warning('Starting bot...')
-            self.bot_instance = bot_handler.start_bot_class(self.logger)
+            
+            # Check if bot is already running
+            if self.running:
+                self.logger.warning('Bot is already running!')
+                return
+            
+            # Enhanced error handling for bot creation
+            try:
+                # Import bot_core directly for better control
+                import bot_core
+                
+                # Create bot instance with logger
+                self.bot_instance = bot_core.Bot(logger=self.logger)
+                self.logger.info('✅ Bot core instance created successfully')
+                
+                # Test connection immediately
+                if not self.bot_instance.is_connected():
+                    self.logger.error('❌ ADB connection test failed')
+                    messagebox.showerror("Connection Error", 
+                                       "Could not connect to Android device.\n"
+                                       "Please check BlueStacks is running and ADB is enabled.")
+                    return
+                else:
+                    self.logger.info('✅ ADB connection verified')
+                
+            except Exception as e:
+                self.logger.error(f'❌ Failed to create bot instance: {e}')
+                messagebox.showerror("Bot Creation Error", 
+                                   f"Failed to create bot instance:\n{str(e)}")
+                return
             
             # Check if startup message exists
             startup_file = r"Src\startup_message.txt"
             if os.path.exists(startup_file):
-                os.system(f"type {startup_file}")
+                try:
+                    with open(startup_file, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        self.logger.info(f'Startup message:\n{content}')
+                except Exception as e:
+                    self.logger.debug(f'Could not read startup message: {e}')
             
-            self.update_units()
+            # Enhanced error handling for unit update
+            try:
+                self.update_units()
+                self.logger.info('✅ Units updated successfully')
+            except Exception as e:
+                self.logger.warning(f'⚠️ Failed to update units (continuing anyway): {e}')
+            
+            # Create event for thread communication
             infos_ready = threading.Event()
             
-            # Pass gui info to bot
-            self.bot_instance.bot_stop = False
-            self.bot_instance.logger = self.logger
-            self.bot_instance.config = self.config
-            bot = self.bot_instance
+            # Configure bot with GUI settings
+            try:
+                self.bot_instance.bot_stop = False
+                self.bot_instance.logger = self.logger
+                self.bot_instance.config = self.config
+                bot = self.bot_instance
+                self.logger.info('✅ Bot configuration completed')
+            except Exception as e:
+                self.logger.error(f'❌ Failed to configure bot: {e}')
+                return
             
-            # Start bot thread
-            thread_bot = threading.Thread(target=bot_handler.bot_loop, args=([bot, infos_ready]))
-            thread_bot.start()
+            # Start bot thread with enhanced error handling
+            try:
+                # Use simplified bot handler for initial testing
+                import bot_handler_simple
+                
+                thread_bot = threading.Thread(
+                    target=bot_handler_simple.bot_loop, 
+                    args=(bot, infos_ready),
+                    daemon=True  # Daemon thread for cleaner shutdown
+                )
+                thread_bot.start()
+                self.logger.info('✅ Bot thread started successfully')
+                
+                # Set running state
+                self.running = True
+                self.stop_flag = False
+                
+                # Start info update loop
+                self.start_info_update_loop(infos_ready, thread_bot)
+                
+            except Exception as e:
+                self.logger.error(f'❌ Failed to start bot thread: {e}')
+                messagebox.showerror("Thread Error", 
+                                   f"Failed to start bot thread:\n{str(e)}")
+                return
             
-            # Dump infos to gui whenever ready
-            while not self.stop_flag:
-                infos_ready.wait(timeout=5)
+        except Exception as e:
+            self.logger.error(f'❌ Critical error in start_bot: {e}')
+            messagebox.showerror("Critical Error", 
+                               f"Critical error starting bot:\n{str(e)}")
+            self.running = False
+
+    def start_info_update_loop(self, infos_ready, thread_bot):
+        """Start the info update loop in a separate method for better organization"""
+        def info_update_thread():
+            try:
+                while self.running and not self.stop_flag and thread_bot.is_alive():
+                    try:
+                        # Wait for bot to signal new info (with timeout)
+                        if infos_ready.wait(timeout=5):
+                            # Schedule GUI update in main thread
+                            self.root.after(0, self.update_display)
+                            infos_ready.clear()
+                        else:
+                            # Timeout - bot might be stuck
+                            self.logger.debug("Info update timeout - bot may be busy")
+                            
+                    except Exception as e:
+                        self.logger.error(f"Info update error: {e}")
+                        break
+                        
+                # Thread ended
+                self.root.after(0, self.on_bot_thread_ended)
                 
-                # Check if bot_instance still exists and has required attributes
-                if hasattr(bot, 'combat_step') and hasattr(bot, 'combat'):
-                    self.update_text(bot.combat_step, bot.combat, bot.output, 
-                                   bot.grid_df, bot.unit_series, bot.merge_series, bot.info)
-                
-                infos_ready.clear()
-                
-                if self.stop_flag:
-                    self.bot_instance.bot_stop = True
-                    self.logger.warning('Exiting main loop...')
-                    thread_bot.join(timeout=10)  # Wait max 10 seconds for thread to finish
+            except Exception as e:
+                self.logger.error(f"Info update thread error: {e}")
+        
+        # Start info update thread
+        info_thread = threading.Thread(target=info_update_thread, daemon=True)
+        info_thread.start()
+
+    def update_display(self):
+        """Update GUI display with bot information (thread-safe)"""
+        try:
+            if self.bot_instance:
+                # Update text displays with bot status
+                if hasattr(self.bot_instance, 'combat_step') and self.bot_instance.combat_step:
+                    self.update_text(
+                        self.bot_instance.combat_step,
+                        self.bot_instance.combat or "No combat data",
+                        self.bot_instance.output or "No output",
+                        "N/A",  # Grid info
+                        "N/A",  # Unit info  
+                        "N/A",  # Merge info
+                        "N/A"   # Additional info
+                    )
                     
-                    # Stop scrcpy process if running
-                    if hasattr(self.bot_instance, 'scrcpy_process') and self.bot_instance.scrcpy_process:
-                        self.bot_instance.stop_scrcpy()
-                    
-                    self.logger.info('Bot stopped!')
-                    self.logger.critical('Safe to close gui')
-                    self.running = False
-                    return
+                # Clear output after displaying
+                if hasattr(self.bot_instance, 'output'):
+                    self.bot_instance.output = ""
                     
         except Exception as e:
-            self.logger.error(f"Critical error in start_bot: {e}")
-            self.running = False
+            self.logger.error(f"Display update error: {e}")
+
+    def on_bot_thread_ended(self):
+        """Handle bot thread ending (called from main thread)"""
+        self.running = False
+        self.logger.info("Bot thread has ended")
+        
+        # Update GUI to reflect stopped state
+        try:
+            if hasattr(self, 'start_button'):
+                self.start_button.config(state=NORMAL)
+            if hasattr(self, 'stop_button'):
+                self.stop_button.config(state=DISABLED)
+        except:
+            pass
+
+    def start_command(self):
+        """Wrapper for start_bot to maintain compatibility"""
+        self.start_bot()
+
+    def stop_bot(self):
+        """Stop the bot with proper cleanup"""
+        try:
+            self.logger.info('Stopping bot...')
             self.stop_flag = True
-            if self.stop_flag:
+            
+            if self.bot_instance:
                 self.bot_instance.bot_stop = True
-                self.logger.warning('Exiting main loop...')
-                thread_bot.join()
-                # Stop scrcpy process if running
-                if hasattr(self.bot_instance, 'scrcpy_process') and self.bot_instance.scrcpy_process:
-                    self.bot_instance.stop_scrcpy()
-                self.logger.info('Bot stopped!')
-                self.logger.critical('Safe to close gui')
-                return
+            
+            if self.bot_thread and self.bot_thread.is_alive():
+                self.bot_thread.join(timeout=5)
+                if self.bot_thread.is_alive():
+                    self.logger.warning('Bot thread did not stop cleanly')
+            
+            self.running = False
+            self.logger.info('Bot stopped successfully')
+            
+        except Exception as e:
+            self.logger.error(f'Error stopping bot: {e}')
+            self.running = False
+
+    def on_closing(self):
+        """Handle window closing with proper cleanup"""
+        try:
+            if self.running:
+                self.stop_bot()
+            
+            self.root.quit()
+            self.root.destroy()
+            
+        except Exception as e:
+            print(f"Error during shutdown: {e}")
+            self.root.destroy()
 
     # Raise stop flag to threads
     def stop_bot(self):
@@ -357,9 +534,16 @@ def create_base():
     root.geometry("800x600")
     # Set dark background
     root.configure(background='#575559')
-    # Set window icon to png
-    root.iconbitmap('calculon.ico')
-    root.resizable(False, False)  # ai
+    
+    # Set window icon with error handling
+    try:
+        if os.path.exists('calculon.ico'):
+            root.iconbitmap('calculon.ico')
+    except Exception as e:
+        print(f"Warning: Could not load icon: {e}")
+    
+    root.resizable(False, False)
+    
     # Add frames
     frame1 = Frame(root)
     frame2 = Frame(root)
@@ -382,4 +566,18 @@ def write_to_widget(root, tbox, text):
 
 # Start the actual bot
 if __name__ == "__main__":
-    bot_gui = RR_bot()
+    try:
+        print("Creating GUI instance...")
+        bot_gui = RR_bot()
+        print("GUI instance created successfully")
+        
+        print("Starting GUI main loop...")
+        bot_gui.run()
+        print("GUI closed")
+        
+    except KeyboardInterrupt:
+        print("GUI interrupted by user")
+    except Exception as e:
+        print(f"GUI failed: {e}")
+        import traceback
+        traceback.print_exc()

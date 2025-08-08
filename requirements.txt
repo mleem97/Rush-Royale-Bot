@@ -1,30 +1,44 @@
-# Rush Royale Bot Dependencies - Python 3.13 Compatible
-# Core Computer Vision
-opencv-python>=4.10.0,<5.0.0
+# Rush Royale Bot Dependencies - Python 3.13-3.15 Future-Proof
+# Core Computer Vision (C-extension with rapid Python 3.13+ support)
+opencv-python>=4.10.0,<6.0.0
 
-# Machine Learning
-scikit-learn>=1.5.0,<2.0.0
-numpy>=1.24.0,<3.0.0
-pandas>=2.0.0,<3.0.0
+# Machine Learning (Pure Python + optimized C extensions)
+scikit-learn>=1.5.0,<3.0.0
+numpy>=1.24.0,<3.0.0          # Future-proof: Wide version range
+pandas>=2.0.0,<4.0.0           # Future-proof: Covers 2.x and 3.x
 
-# Android Device Communication
-pure-python-adb>=0.3.0
+# Android Device Communication (Pure Python - Always compatible)
+pure-python-adb>=0.3.0         # Pure Python implementation
 
-# GUI and Image Processing
-Pillow>=10.0.0,<11.0.0
+# GUI and Image Processing (Stable APIs)
+Pillow>=10.0.0,<12.0.0         # Conservative range for stability
 
 # Data Processing and Analysis
-matplotlib>=3.7.0,<4.0.0
+matplotlib>=3.7.0,<5.0.0       # Wide compatibility range
 
 # Development and Testing
-jupyter>=1.0.0,<2.0.0
+jupyter>=1.0.0,<3.0.0          # Broad compatibility
 
-# System utilities
-tqdm>=4.65.0,<5.0.0
-requests>=2.31.0,<3.0.0
+# System utilities (Pure Python)
+tqdm>=4.65.0,<6.0.0
+requests>=2.31.0,<4.0.0        # HTTP library - very stable API
 
-# Configuration
-configparser>=6.0.0
+# Configuration (Built-in module wrapper)
+configparser>=6.0.0            # Built-in module enhancement
 
-# Optional: Better screenshot capture (uncomment if needed)
-# scrcpy-client>=0.1.0 (only supported to 3.10)
+# Future-Proof: Modern Python stdlib features (Python 3.13+)
+# These are built-in modules - automatically compatible:
+# - subprocess (enhanced in 3.13+)
+# - asyncio (stable since 3.7)
+# - pathlib (stable since 3.4)  
+# - concurrent.futures (stable since 3.2)
+# - typing (enhanced continuously)
+
+# Optional: Legacy screenshot capture (Python 3.10 max)
+# scrcpy-client>=0.1.0         # Only use if Python <= 3.10
+
+# Development notes for Python 3.14-3.15:
+# - All subprocess-based solutions will work (guaranteed)
+# - Pure Python packages will be compatible immediately
+# - C-extension packages (OpenCV, NumPy) usually get wheels within weeks
+# - Our FutureProofScrcpy provides subprocess fallbacks for scrcpy

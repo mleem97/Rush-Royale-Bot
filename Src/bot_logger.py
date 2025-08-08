@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 from tkinter import *
 import re
+import threading
 from typing import Optional, Dict, Any, List, Union
 
 
@@ -16,6 +17,12 @@ class TextHandler(logging.StreamHandler):
     def __init__(self, textctrl):
         logging.StreamHandler.__init__(self)  # initialize parent
         self.textctrl = textctrl
+        self.root = textctrl.master
+        
+        # Find the root window
+        while hasattr(self.root, 'master') and self.root.master:
+            self.root = self.root.master
+            
         # Load color map
         self.ansi_color_fg = {39: 'foreground default'}
         self.ansi_color_bg = {49: 'background default'}
@@ -40,15 +47,39 @@ class TextHandler(logging.StreamHandler):
             self.textctrl.tag_configure('background ' + col_light, background=col_light)
 
     def emit(self, record):
+        """Thread-safe emit method that schedules GUI updates in main thread"""
         msg = self.format(record)
-        self.textctrl.config(state="normal")
-        self.insert_ansi(msg, ''
-                         "end")
-        #self.textctrl.insert("end", "\n")
-        self.flush()
-        # scroll to the bottom
-        self.textctrl.see("end")
-        self.textctrl.config(state="disabled")
+        
+        # Check if we're in the main thread
+        if threading.current_thread() is threading.main_thread():
+            # We're in the main thread, safe to update GUI directly
+            self._emit_to_gui(msg)
+        else:
+            # We're in a worker thread, schedule GUI update in main thread
+            try:
+                if self.root and hasattr(self.root, 'after'):
+                    self.root.after(0, self._emit_to_gui, msg)
+                else:
+                    # Fallback: print to console if GUI is not available
+                    print(f"[THREAD LOG] {msg}")
+            except Exception as e:
+                # Emergency fallback: print to console
+                print(f"[LOGGER ERROR] {msg}")
+                print(f"[LOGGER ERROR] GUI update failed: {e}")
+
+    def _emit_to_gui(self, msg):
+        """Update GUI with log message - must be called from main thread"""
+        try:
+            if self.textctrl and hasattr(self.textctrl, 'config'):
+                self.textctrl.config(state="normal")
+                self.insert_ansi(msg, "end")
+                # scroll to the bottom
+                self.textctrl.see("end")
+                self.textctrl.config(state="disabled")
+        except Exception as e:
+            # If GUI update fails, print to console
+            print(f"[GUI UPDATE ERROR] {msg}")
+            print(f"[GUI UPDATE ERROR] {e}")
 
     # Functions to color messages according to utf-8 color codes set by formatter
     def insert_ansi(self, txt, index="insert"):
@@ -100,6 +131,11 @@ class TextHandler(logging.StreamHandler):
         # close still opened tag
         for tag, start in opened_tags.items():
             self.textctrl.tag_add(tag, start, "end")
+
+    def flush(self):
+        """Thread-safe flush method"""
+        # Nothing needed here since emit() handles everything
+        pass
 
 
 class CustomFormatter(logging.Formatter):

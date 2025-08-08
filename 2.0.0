@@ -27,5 +27,3 @@ Using cached six-1.17.0-py2.py3-none-any.whl (11 kB)
 Using cached threadpoolctl-3.6.0-py3-none-any.whl (18 kB)
 Using cached tzdata-2025.2-py2.py3-none-any.whl (347 kB)
 Installing collected packages: pytz, tzdata, threadpoolctl, six, scipy, joblib, scikit-learn, python-dateutil, pandas
-
-Successfully installed joblib-1.5.1 pandas-2.3.1 python-dateutil-2.9.0.post0 pytz-2025.2 scikit-learn-1.7.1 scipy-1.16.1 six-1.17.0 threadpoolctl-3.6.0 tzdata-2025.2

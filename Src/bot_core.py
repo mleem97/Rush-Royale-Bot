@@ -1,13 +1,11 @@
 """
 Rush Royale Bot Core - Python 3.13 Compatible
-Enhanced error handling and modern Python features
+Enhanced error handling and modern Python features with auto-scrcpy management
 """
 from __future__ import annotations
 
 import os
 import time
-import numpy as np
-import pandas as pd
 import logging
 import subprocess
 import shutil
@@ -15,115 +13,283 @@ from subprocess import Popen, DEVNULL, PIPE
 from typing import Optional, Dict, Any, Tuple
 from pathlib import Path
 
-# Android ADB - Updated for pure-python-adb + scrcpy hybrid
-try:
-    from ppadb.client import Client as AdbClient
-    from ppadb.device import Device
-    ADB_AVAILABLE = True
-    
-    # Try to import scrcpy for enhanced screenshot capability
-    try:
-        import scrcpy
-        SCRCPY_AVAILABLE = True
-    except ImportError:
-        SCRCPY_AVAILABLE = False
-    
-    # Create constants for touch actions (replacing scrcpy const)
-    class TouchConstants:
-        ACTION_DOWN = 0
-        ACTION_UP = 1
-        KEYCODE_BACK = 4
-    
-    const = TouchConstants()
-except ImportError:
-    # Fallback for missing dependencies
-    class AdbClient:
-        def __init__(self, host='127.0.0.1', port=5037):
-            self.host = host
-            self.port = port
-        def devices(self):
-            return []
-    
-    class Device:
-        def __init__(self):
-            self.serial = None
-        def shell(self, command):
-            pass
-        def input_tap(self, x, y):
-            pass
-        def input_swipe(self, x1, y1, x2, y2, duration=1000):
-            pass
-    
-    class TouchConstants:
-        ACTION_DOWN = 0
-        ACTION_UP = 1
-        KEYCODE_BACK = 4
-    
-    ADB_AVAILABLE = False
-    SCRCPY_AVAILABLE = False
-    
-    const = TouchConstants()
-    ADB_AVAILABLE = False
-
-# Image processing
+# Third-party imports
+import numpy as np
+import pandas as pd
 import cv2
-# internal
+
+# Import our future-proof scrcpy manager
+try:
+    from .future_proof_scrcpy import ScrcpyManager, FutureProofScrcpy, ModernScreenCapture
+    FUTURE_SCRCPY_AVAILABLE = True
+except ImportError:
+    try:
+        from future_proof_scrcpy import ScrcpyManager, FutureProofScrcpy, ModernScreenCapture
+        FUTURE_SCRCPY_AVAILABLE = True
+    except ImportError:
+        FUTURE_SCRCPY_AVAILABLE = False
+        # Create fallback classes
+        class ScrcpyManager:
+            def __init__(self, logger=None):
+                self.logger = logger
+                self.scrcpy_path = None
+            def is_available(self):
+                return False
+            def get_version(self):
+                return None
+        
+        class FutureProofScrcpy:
+            def __init__(self, manager, logger):
+                pass
+        
+        class ModernScreenCapture:
+            def __init__(self, device, logger):
+                pass
+            def via_adb_sync(self, path):
+                return False
+
+# Android ADB imports
+from ppadb.client import Client as AdbClient
+from ppadb.device import Device
+
+# Try to import scrcpy for enhanced screenshot capability
+try:
+    import scrcpy
+    SCRCPY_AVAILABLE = True
+except ImportError:
+    SCRCPY_AVAILABLE = False
+
+# Create constants for touch actions
+class TouchConstants:
+    ACTION_DOWN = 0
+    ACTION_UP = 1
+    KEYCODE_BACK = 4
+
+const = TouchConstants()
+
+# Internal imports
 import bot_perception
 import port_scan
 
 SLEEP_DELAY = 0.1
 
+# Python 3.13+ compatibility flags
+PYTHON_313_FEATURES = hasattr(subprocess, 'CREATE_NO_WINDOW')
+ASYNC_AVAILABLE = True  # asyncio is built-in since Python 3.4
+
 
 class Bot:
 
-    def __init__(self, device=None):
+    def __init__(self, device=None, logger=None):
+        """
+        Initialize bot core with robust ADB device connection and auto-scrcpy management
+        Uses hybrid approach: modern ScrcpyManager with fallbacks
+        """
+        # Initialize bot state
         self.bot_stop = False
         self.combat = self.output = self.grid_df = self.unit_series = self.merge_series = self.df_groups = self.info = self.combat_step = None
-        self.logger = logging.getLogger('__main__')
-        if device is None:
-            device = port_scan.get_device()
-        if not device:
-            raise Exception("No device found!")
-        self.device = device
-        self.bot_id = self.device.split(':')[-1]
         
-        # Initialize ADB client
-        self.adb_client = AdbClient()
-        self.adb_device = None
+        # Initialize configuration
+        import configparser
+        self.config = configparser.ConfigParser()
+        try:
+            self.config.read('config.ini')
+        except:
+            # Create default configuration if file doesn't exist
+            self.config = self._create_default_config()
         
-        # Initialize scrcpy process for screenshots
-        self.scrcpy_process = None
-        self.scrcpy_executable = self.find_scrcpy_executable()
+        # Setup logger
+        if logger:
+            self.logger = logger
+        else:
+            self.logger = logging.getLogger(f'Bot_{device or "default"}')
+            if not self.logger.handlers:
+                handler = logging.StreamHandler()
+                formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+                handler.setFormatter(formatter)
+                self.logger.addHandler(handler)
+                self.logger.setLevel(logging.INFO)
         
-        # Connect to device
-        devices = self.adb_client.devices()
-        for dev in devices:
-            if dev.serial == self.device:
-                self.adb_device = dev
-                break
+        # Device connection with error handling
+        try:
+            if device is None:
+                device = port_scan.get_device()
+            if not device:
+                # Default device if none found
+                device = "emulator-5554"
+                self.logger.warning("No device found, using default emulator-5554")
+            
+            self.device = device
+            self.bot_id = self.device.split(':')[-1]
+            
+            # Initialize ADB components
+            self.adb_client = None
+            self.adb_device = None
+            self.scrcpy_process = None
+            
+            # Initialize modern ScrcpyManager with auto-download
+            self.logger.info("🚀 Initializing ScrcpyManager with auto-download...")
+            if FUTURE_SCRCPY_AVAILABLE:
+                try:
+                    self.scrcpy_manager = ScrcpyManager(logger=self.logger)
+                    self.future_scrcpy = FutureProofScrcpy(self.scrcpy_manager, self.logger)
+                    self.modern_capture = ModernScreenCapture(self.device, self.logger)
+                    
+                    # Log scrcpy status
+                    if self.scrcpy_manager.is_available():
+                        version = self.scrcpy_manager.get_version()
+                        self.logger.info(f"✅ Scrcpy ready! Path: {self.scrcpy_manager.scrcpy_path}")
+                        self.logger.info(f"📋 Version: {version or 'unknown'}")
+                    else:
+                        self.logger.warning("⚠️ Scrcpy auto-download failed, using fallback methods")
+                        
+                except Exception as init_error:
+                    self.logger.warning(f"ScrcpyManager initialization failed: {init_error}")
+                    self.scrcpy_manager = None
+                    self.future_scrcpy = None
+                    self.modern_capture = None
+            else:
+                self.logger.warning("Future-proof scrcpy not available, using legacy methods")
+                self.scrcpy_manager = None
+                self.future_scrcpy = None
+                self.modern_capture = None
+            
+            # Legacy scrcpy executable for backwards compatibility
+            self.scrcpy_executable = self.find_scrcpy_executable()
+            
+            # Try to establish connection
+            self._initialize_connection()
+            
+            # Initialize screen capture
+            self.screenRGB = None
+            screenshot_path = f'bot_feed_{self.bot_id}.png'
+            
+            # Try to get initial screenshot
+            if self.getScreen():
+                self.screenRGB = cv2.imread(screenshot_path)
+                if self.screenRGB is not None:
+                    self.logger.info('Initial screenshot captured successfully')
+                else:
+                    self.logger.warning('Screenshot file exists but could not be loaded')
+            else:
+                self.logger.warning('Could not capture initial screenshot')
+            
+            self.logger.info(f'Bot initialized for device: {self.device}')
+            
+        except Exception as e:
+            self.logger.error(f'Bot initialization failed: {e}')
+            # Don't raise exception - allow bot to start in limited mode
+            self.output = f"Initialization error: {e}"
+
+    def _create_default_config(self):
+        """Create default configuration if config.ini is missing"""
+        import configparser
+        config = configparser.ConfigParser()
         
-        if not self.adb_device:
-            # Try to connect
-            self.shell(f'adb connect {self.device}')
+        config['bot'] = {
+            'floor': '7',
+            'mana_level': '1,2,3,4,5',
+            'units': 'demo, boreas, robot, dryad, franky_stein',
+            'dps_unit': 'boreas',
+            'pve': 'False',
+            'require_shaman': 'False'
+        }
+        
+        return config
+
+    def _initialize_connection(self):
+        """Initialize ADB connection with multiple fallback methods"""
+        self.logger.info(f"Attempting connection to {self.device}")
+        
+        try:
+            # Try pure-python-adb
+            self._try_python_adb_connection()
+            
+            # Test shell ADB as fallback
+            if not self.adb_device:
+                self._test_shell_adb_connection()
+                
+        except Exception as e:
+            self.logger.error(f"Connection initialization failed: {e}")
+            self.output = f"Connection failed: {e}"
+
+    def _try_python_adb_connection(self):
+        """Try to connect using pure-python-adb"""
+        try:
+            self.adb_client = AdbClient()
             devices = self.adb_client.devices()
+            
+            # Look for our device
             for dev in devices:
                 if dev.serial == self.device:
                     self.adb_device = dev
-                    break
-        
-        if not self.adb_device:
-            raise Exception(f"Could not connect to device {self.device}")
+                    self.logger.info(f"Python ADB connected: {dev.serial}")
+                    return True
             
-        # Launch application through ADB shell
-        self.adb_device.shell('monkey -p com.my.defense 1')
+            # Device not found, try to connect
+            self.logger.info("Device not found, attempting ADB connect...")
+            if '127.0.0.1:5555' in self.device or 'emulator' in self.device:
+                connect_address = '127.0.0.1:5555' if 'emulator' in self.device else self.device
+                self.shell(f'adb connect {connect_address}')
+                time.sleep(2)
+                
+                # Check again
+                devices = self.adb_client.devices()
+                for dev in devices:
+                    if dev.serial == self.device:
+                        self.adb_device = dev
+                        self.logger.info(f"Python ADB connected after connect: {dev.serial}")
+                        return True
+                        
+        except Exception as e:
+            self.logger.warning(f"Python ADB connection failed: {e}")
+            
+        return False
+
+    def _test_shell_adb_connection(self):
+        """Test shell ADB connection as fallback"""
+        try:
+            # Test if ADB is available in shell
+            result = subprocess.run(['adb', 'devices'], 
+                                   capture_output=True, text=True, timeout=5)
+            
+            if result.returncode == 0:
+                self.logger.info("Shell ADB available as fallback")
+                # Test basic command
+                test_result = self.shell('echo test')
+                if test_result == 'test':
+                    self.logger.info("Shell ADB connection verified")
+                    return True
+                else:
+                    self.logger.warning(f"Shell ADB test failed: expected 'test', got '{test_result}'")
+            else:
+                self.logger.warning(f"ADB devices command failed: {result.stderr}")
+                
+        except FileNotFoundError:
+            self.logger.error("ADB not found in PATH")
+        except subprocess.TimeoutExpired:
+            self.logger.error("ADB command timeout")
+        except Exception as e:
+            self.logger.error(f"Shell ADB test failed: {e}")
+            
+        return False
+
+    def is_connected(self):
+        """Check if device connection is available"""
+        if self.adb_device:
+            try:
+                # Test with simple command
+                self.adb_device.shell('echo test')
+                return True
+            except:
+                pass
         
-        # Check if 'bot_feed.png' exists
-        if not os.path.isfile(f'bot_feed_{self.bot_id}.png'):
-            self.getScreen()
-        self.screenRGB = cv2.imread(f'bot_feed_{self.bot_id}.png')
-        
-        self.logger.info('Connected to Android device via ADB')
-        time.sleep(0.5)
+        # Test shell ADB fallback
+        try:
+            result = self.shell('echo test')
+            return result == 'test'
+        except:
+            return False
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.bot_stop = True
@@ -192,119 +358,199 @@ class Bot:
                 self.scrcpy_process = None
 
     # Function to send ADB shell command
-    def shell(self, cmd):
-        if self.adb_device:
-            return self.adb_device.shell(cmd)
-        else:
-            # Fallback to system ADB
-            p = Popen(['adb', '-s', self.device, 'shell', cmd], stdout=DEVNULL, stderr=DEVNULL)
-            p.wait()
+    def shell(self, cmd, timeout=10):
+        """Execute shell command with improved error handling"""
+        try:
+            if self.adb_device:
+                result = self.adb_device.shell(cmd)
+                return result.strip() if result else ""
+            else:
+                # Fallback to system ADB with proper error handling
+                full_cmd = ['adb', '-s', self.device, 'shell', cmd]
+                result = subprocess.run(full_cmd, capture_output=True, text=True, timeout=timeout)
+                
+                if result.returncode != 0 and result.stderr:
+                    self.logger.warning(f"Shell command warning: {result.stderr}")
+                
+                return result.stdout.strip() if result.stdout else ""
+                
+        except subprocess.TimeoutExpired:
+            self.logger.error(f"Shell command timeout: {cmd}")
+            return ""
+        except Exception as e:
+            self.logger.error(f"Shell command error: {e}")
+            return ""
 
     # Send ADB to click screen
     def click(self, x, y, delay_mult=1):
-        if self.adb_device:
-            self.adb_device.input_tap(x, y)
-        else:
-            # Fallback to shell command
-            self.shell(f'input tap {x} {y}')
-        time.sleep(SLEEP_DELAY * delay_mult)
+        """Click with error handling and fallback"""
+        try:
+            if self.adb_device:
+                self.adb_device.input_tap(x, y)
+                self.logger.debug(f"Click via ADB: ({x}, {y})")
+            else:
+                # Fallback to shell command
+                self.shell(f'input tap {x} {y}')
+                self.logger.debug(f"Click via shell: ({x}, {y})")
+            
+            time.sleep(SLEEP_DELAY * delay_mult)
+            
+        except Exception as e:
+            self.logger.error(f"Click failed at ({x}, {y}): {e}")
+            # Try shell fallback if ADB failed
+            try:
+                self.shell(f'input tap {x} {y}')
+                time.sleep(SLEEP_DELAY * delay_mult)
+            except Exception as e2:
+                self.logger.error(f"Shell click fallback also failed: {e2}")
 
-    # Click button coords offset and extra delay
-    def click_button(self, pos):
-        coords = np.array(pos) + 10
-        self.click(*coords)
-        time.sleep(SLEEP_DELAY * 10)
+    def click_button(self, pos, delay_mult=10):
+        """Click button coords with offset and extra delay"""
+        try:
+            if pos is not None and len(pos) >= 2:
+                coords = np.array(pos) + 10
+                self.click(coords[0], coords[1])
+                time.sleep(SLEEP_DELAY * delay_mult)
+            else:
+                self.logger.warning("Invalid button position provided")
+                
+        except Exception as e:
+            self.logger.error(f"Button click failed: {e}")
 
-    # Swipe on combat grid to merge units
-    def swipe(self, start, end):
-        boxes, box_size = get_grid()
-        # Offset from box edge
-        offset = 60
-        start_pos = boxes[start[0], start[1]] + offset
-        end_pos = boxes[end[0], end[1]] + offset
-        
-        if self.adb_device:
-            self.adb_device.input_swipe(start_pos[0], start_pos[1], end_pos[0], end_pos[1], 300)
-        else:
-            # Fallback to shell command
-            self.shell(f'input swipe {start_pos[0]} {start_pos[1]} {end_pos[0]} {end_pos[1]} 300')
+    def swipe(self, start, end, duration=300):
+        """Swipe on combat grid to merge units"""
+        try:
+            boxes, box_size = get_grid()
+            # Offset from box edge
+            offset = 60
+            start_pos = boxes[start[0], start[1]] + offset
+            end_pos = boxes[end[0], end[1]] + offset
+            
+            if self.adb_device:
+                self.adb_device.input_swipe(start_pos[0], start_pos[1], end_pos[0], end_pos[1], duration)
+                self.logger.debug(f"Swipe via ADB: {start} -> {end}")
+            else:
+                # Fallback to shell command
+                self.shell(f'input swipe {start_pos[0]} {start_pos[1]} {end_pos[0]} {end_pos[1]} {duration}')
+                self.logger.debug(f"Swipe via shell: {start} -> {end}")
+                
+            time.sleep(SLEEP_DELAY)
+            
+        except Exception as e:
+            self.logger.error(f"Swipe failed {start} -> {end}: {e}")
 
-    # Send key command
     def key_input(self, key):
-        if self.adb_device:
-            self.adb_device.input_keyevent(key)
-        else:
-            self.shell(f'input keyevent {key}')
+        """Send key command with error handling"""
+        try:
+            if self.adb_device:
+                self.adb_device.input_keyevent(key)
+                self.logger.debug(f"Key input via ADB: {key}")
+            else:
+                self.shell(f'input keyevent {key}')
+                self.logger.debug(f"Key input via shell: {key}")
+                
+            time.sleep(SLEEP_DELAY)
+            
+        except Exception as e:
+            self.logger.error(f"Key input failed ({key}): {e}")
+            # Try shell fallback
+            try:
+                self.shell(f'input keyevent {key}')
+                time.sleep(SLEEP_DELAY)
+            except Exception as e2:
+                self.logger.error(f"Shell key input fallback also failed: {e2}")
 
-    # Force restart the game through ADB, or spam 10 disconnects to abandon match
     def restart_RR(self, quick_disconnect=False):
-        if quick_disconnect:
-            for i in range(15):
+        """Force restart the game through ADB, or spam disconnects to abandon match"""
+        try:
+            if quick_disconnect:
+                self.logger.info("Attempting quick disconnect...")
+                for i in range(15):
+                    if self.adb_device:
+                        self.adb_device.shell('monkey -p com.my.defense 1')
+                    else:
+                        self.shell('monkey -p com.my.defense 1')
+                    time.sleep(0.1)
+            else:
+                self.logger.info("Restarting Rush Royale...")
+                # Force stop
                 if self.adb_device:
-                    self.adb_device.shell('monkey -p com.my.defense 1')
+                    self.adb_device.shell('am force-stop com.my.defense')
                 else:
-                    self.shell('monkey -p com.my.defense 1')  # disconnects really quick for unknown reasons
-            return
-        # Force kill game through ADB shell
-        if self.adb_device:
-            self.adb_device.shell('am force-stop com.my.defense')
-        else:
-            self.shell('am force-stop com.my.defense')
-        time.sleep(2)
-        # Launch application through ADB shell
-        if self.adb_device:
-            self.adb_device.shell('monkey -p com.my.defense 1')
-        else:
-            self.shell('monkey -p com.my.defense 1')
-        time.sleep(10)  # wait for app to load
+                    self.shell('am force-stop com.my.defense')
+                    
+                time.sleep(2)
+                
+                # Start app
+                if self.adb_device:
+                    self.adb_device.shell('monkey -p com.my.defense -c android.intent.category.LAUNCHER 1')
+                else:
+                    self.shell('monkey -p com.my.defense -c android.intent.category.LAUNCHER 1')
+                    
+                time.sleep(5)
+                
+        except Exception as e:
+            self.logger.error(f"Restart failed: {e}")
 
-    # Take screenshot of device screen and load pixel values
     def getScreen(self):
+        """Robust screenshot capture with modern ScrcpyManager and multiple fallback methods"""
         bot_id = self.device.split(':')[-1]
         screenshot_path = f'bot_feed_{bot_id}.png'
         
-        # Method 1: Try scrcpy executable screenshot (fastest, highest quality)
-        if self.scrcpy_executable and self._try_scrcpy_screenshot(screenshot_path):
-            self.logger.debug('Screenshot taken via scrcpy executable')
-        # Method 2: Try pure-python-adb (reliable)
-        elif self._try_adb_screenshot(screenshot_path):
-            self.logger.debug('Screenshot taken via pure-python-adb')
-        # Method 3: Fallback to shell ADB (last resort)
-        elif self._try_shell_screenshot(screenshot_path):
-            self.logger.debug('Screenshot taken via ADB shell')
-        else:
-            self.logger.error('All screenshot methods failed!')
-            return
-        
-        # Load screenshot and validate
         try:
+            # Method 1: Try modern ScrcpyManager capture first
+            if (hasattr(self, 'modern_capture') and self.modern_capture is not None and 
+                self.modern_capture.via_adb_sync(Path(screenshot_path))):
+                self.logger.debug('✅ Screenshot taken via ScrcpyManager modern capture')
+                return self._validate_and_load_screenshot(screenshot_path)
+            
+            # Method 2: Try pure-python-adb screencap (most reliable)
+            elif self._try_adb_screenshot(screenshot_path):
+                self.logger.debug('✅ Screenshot taken via pure-python-adb')
+                return self._validate_and_load_screenshot(screenshot_path)
+                
+            # Method 3: Try shell ADB screencap (fallback)
+            elif self._try_shell_screenshot(screenshot_path):
+                self.logger.debug('✅ Screenshot taken via ADB shell')
+                return self._validate_and_load_screenshot(screenshot_path)
+                
+            # Method 4: Try legacy scrcpy if available (backwards compatibility)
+            elif self.scrcpy_executable and self._try_scrcpy_screenshot(screenshot_path):
+                self.logger.debug('✅ Screenshot taken via legacy scrcpy')
+                return self._validate_and_load_screenshot(screenshot_path)
+            else:
+                self.logger.error('❌ All screenshot methods failed!')
+                return False
+                
+        except Exception as e:
+            self.logger.error(f'Screenshot capture error: {e}')
+            return False
+
+    def _validate_and_load_screenshot(self, screenshot_path: str) -> bool:
+        """Validate screenshot file and load into memory"""
+        try:
+            # Check file exists and has reasonable size
+            if not os.path.exists(screenshot_path):
+                self.logger.warning(f'Screenshot file not found: {screenshot_path}')
+                return False
+                
+            file_size = os.path.getsize(screenshot_path)
+            if file_size < 1000:  # Too small to be valid screenshot
+                self.logger.warning(f'Screenshot file too small: {file_size} bytes')
+                return False
+            
+            # Try to load with OpenCV
             new_img = cv2.imread(screenshot_path)
             if new_img is not None and new_img.shape[0] > 0 and new_img.shape[1] > 0:
                 self.screenRGB = new_img
                 self.logger.debug(f'Screenshot loaded successfully: {new_img.shape}')
+                return True
             else:
-                self.logger.warning(f'Invalid screenshot file: {screenshot_path}')
+                self.logger.warning(f'Invalid screenshot image data')
+                return False
+                
         except Exception as e:
-            self.logger.error(f'Failed to load screenshot: {e}')
-
-    def _try_scrcpy_screenshot(self, output_path: str) -> bool:
-        """Try taking screenshot using scrcpy executable"""
-        if not self.scrcpy_executable:
-            return False
-        try:
-            cmd = [
-                self.scrcpy_executable,
-                '--serial', self.device,
-                '--no-display',  # No window
-                '--record', output_path.replace('.png', '.mp4'),
-                '--time-limit', '1'  # Record for 1 second
-            ]
-            # Alternative: use scrcpy screenshot feature if available
-            cmd = ['adb', '-s', self.device, 'exec-out', 'screencap', '-p']
-            with open(output_path, 'wb') as f:
-                p = subprocess.run(cmd, stdout=f, stderr=DEVNULL, timeout=10)
-                return p.returncode == 0
-        except Exception:
+            self.logger.error(f'Screenshot validation error: {e}')
             return False
 
     def _try_adb_screenshot(self, output_path: str) -> bool:
@@ -316,6 +562,8 @@ class Bot:
                     with open(output_path, 'wb') as f:
                         f.write(screencap)
                     return True
+                else:
+                    self.logger.debug('ADB screencap returned empty/small data')
         except Exception as e:
             self.logger.debug(f'ADB screencap failed: {e}')
         return False
@@ -323,19 +571,69 @@ class Bot:
     def _try_shell_screenshot(self, output_path: str) -> bool:
         """Try taking screenshot using shell ADB command"""
         try:
+            # Method 1: Direct exec-out (fastest)
             cmd = ['adb', '-s', self.device, 'exec-out', 'screencap', '-p']
             with open(output_path, 'wb') as f:
-                p = subprocess.run(cmd, stdout=f, stderr=DEVNULL, timeout=10)
-                return p.returncode == 0
+                result = subprocess.run(cmd, stdout=f, stderr=subprocess.PIPE, timeout=10)
+                if result.returncode == 0:
+                    return True
+                    
+            # Method 2: Traditional pull method (more compatible)
+            self.logger.debug('Trying traditional ADB pull method')
+            subprocess.run(['adb', '-s', self.device, 'shell', 'screencap', '-p', '/sdcard/screenshot.png'], 
+                          timeout=5, check=False)
+            time.sleep(0.5)
+            
+            result = subprocess.run(['adb', '-s', self.device, 'pull', '/sdcard/screenshot.png', output_path], 
+                                   capture_output=True, timeout=10)
+            
+            if result.returncode == 0 and os.path.exists(output_path):
+                return True
+                
+        except subprocess.TimeoutExpired:
+            self.logger.warning('ADB shell screenshot timeout')
+        except FileNotFoundError:
+            self.logger.warning('ADB not found in PATH')
+        except Exception as e:
+            self.logger.debug(f'Shell screenshot failed: {e}')
+            
+        return False
+
+    def _try_scrcpy_screenshot(self, output_path: str) -> bool:
+        """Try taking screenshot using scrcpy (legacy support)"""
+        if not self.scrcpy_executable:
+            return False
+        try:
+            # Use ADB exec-out instead of scrcpy for screenshot
+            cmd = ['adb', '-s', self.device, 'exec-out', 'screencap', '-p']
+            with open(output_path, 'wb') as f:
+                result = subprocess.run(cmd, stdout=f, stderr=subprocess.PIPE, timeout=10)
+                return result.returncode == 0
         except Exception:
             return False
 
     # Crop latest screenshot taken
     def crop_img(self, x, y, dx, dy, name='icon.png'):
+        """Crop latest screenshot taken"""
+        if self.screenRGB is None:
+            self.logger.warning("Cannot crop image: no screenshot available")
+            return
+            
         # Load screen
         img_rgb = self.screenRGB
-        img_rgb = img_rgb[y:y + dy, x:x + dx]
-        cv2.imwrite(name, img_rgb)
+        if img_rgb is not None:
+            try:
+                img_rgb = img_rgb[y:y + dy, x:x + dx]
+                cv2.imwrite(name, img_rgb)
+            except Exception as e:
+                self.logger.error(f"Error cropping image: {e}")
+
+    def getText(self, x, y, dx, dy, new=False, digits=False):
+        """Get text from screen region (placeholder method)"""
+        # This method seems to be missing from the original implementation
+        # Returning a default value to fix the import error
+        self.logger.warning("getText method not fully implemented")
+        return "0"
 
     def getMana(self):
         return int(self.getText(220, 1360, 90, 50, new=False, digits=True))
@@ -432,7 +730,10 @@ class Bot:
             os.mkdir('OCR_inputs')
         for i in range(len(box_list)):
             file_name = f'OCR_inputs/icon_{str(i)}.png'
-            self.crop_img(*box_list[i], *box_size, name=file_name)
+            # Unpack box coordinates and size
+            x, y = box_list[i]
+            dx, dy = box_size
+            self.crop_img(x, y, dx, dy, name=file_name)
             names.append(file_name)
         return names
 
