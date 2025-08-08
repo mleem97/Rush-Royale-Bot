@@ -1,11 +1,13 @@
 """
 Rush Royale Bot GUI - Python 3.13 Compatible
-Legacy Tkinter interface with modern Python features
+Legacy Tkinter interface with modern Python features and enhanced error handling
 """
 from __future__ import annotations
 
 from tkinter import *
+from tkinter import messagebox
 import os
+import sys
 import numpy as np
 import threading
 import logging
@@ -13,8 +15,13 @@ import configparser
 from typing import Optional, Dict, Any, List, Tuple
 
 # internal
-import bot_handler
-import bot_logger
+try:
+    import bot_handler
+    import bot_logger
+except ImportError as e:
+    print(f"ERROR: Could not import bot modules: {e}")
+    print("Make sure all dependencies are installed.")
+    sys.exit(1)
 
 
 # GUI Class
@@ -25,9 +32,17 @@ class RR_bot:
         self.stop_flag = False
         self.running = False
         self.info_ready = threading.Event()
+        self.bot_instance = None
+        
+        # Validate environment before starting
+        if not self.validate_environment():
+            messagebox.showerror("Error", "Environment not properly configured. See console for details.")
+            sys.exit(1)
+        
         # Read config file
         self.config = configparser.ConfigParser()
-        self.config.read('config.ini')
+        self.load_or_create_config()
+        
         # Create tkinter window base
         self.root = create_base()
         self.frames = self.root.winfo_children()
@@ -43,9 +58,14 @@ class RR_bot:
         logger_feed.grid(row=0, sticky=S)
         # Setup & Connect logger to text widget
         self.logger = bot_logger.create_log_feed(logger_feed)
+        
+        # Add system check button
+        system_check_button = Button(self.frames[2], text="System Check", command=self.run_system_check, bg='#4CAF50', fg='#000000')
         start_button = Button(self.frames[2], text="Start Bot", command=self.start_command)
         stop_button = Button(self.frames[2], text='Stop Bot', command=self.stop_bot, padx=20)
         leave_dungeon = Button(self.frames[2], text='Quit Floor', command=self.leave_game, bg='#ff0000', fg='#000000')
+        
+        system_check_button.grid(row=0, column=0, padx=5)
         start_button.grid(row=0, column=1, padx=10)
         stop_button.grid(row=0, column=2, padx=5)
         leave_dungeon.grid(row=0, column=3, padx=5)
@@ -57,28 +77,112 @@ class RR_bot:
         self.logger.debug('GUI started!')
         self.root.mainloop()
 
+    def validate_environment(self):
+        """Validates the environment before starting"""
+        try:
+            # Check critical directories
+            required_dirs = ['icons', 'all_units']
+            for dir_path in required_dirs:
+                if not os.path.isdir(dir_path):
+                    print(f"ERROR: Directory '{dir_path}' not found!")
+                    return False
+            
+            # Check critical modules
+            required_modules = ['cv2', 'numpy', 'pandas', 'sklearn']
+            for module in required_modules:
+                try:
+                    __import__(module)
+                except ImportError:
+                    print(f"ERROR: Module '{module}' not installed!")
+                    return False
+            
+            return True
+        except Exception as e:
+            print(f"ERROR during environment validation: {e}")
+            return False
+
+    def load_or_create_config(self):
+        """Loads config.ini or creates a default configuration"""
+        if os.path.exists('config.ini'):
+            self.config.read('config.ini')
+        else:
+            # Create default configuration
+            self.config['bot'] = {
+                'floor': '7',
+                'mana_level': '1,2,3,4,5',
+                'units': 'demo, boreas, robot, dryad, franky_stein',
+                'dps_unit': 'boreas',
+                'pve': 'False',
+                'require_shaman': 'False'
+            }
+            self.config['rl_system'] = {
+                'enabled': 'False'
+            }
+            with open('config.ini', 'w') as configfile:
+                self.config.write(configfile)
+
+    def run_system_check(self):
+        """Runs System Check"""
+        try:
+            from system_check import main as system_check_main
+            self.logger.info("Running System Check...")
+            
+            # Run System Check in separate thread
+            def run_check():
+                try:
+                    result = system_check_main()
+                    if result:
+                        self.logger.info("✅ System Check successful!")
+                    else:
+                        self.logger.warning("⚠️ System Check with warnings!")
+                except Exception as e:
+                    self.logger.error(f"System Check error: {e}")
+            
+            thread = threading.Thread(target=run_check)
+            thread.start()
+            
+        except ImportError:
+            self.logger.error("System Check module not found!")
+        except Exception as e:
+            self.logger.error(f"Error during System Check: {e}")
+
     # Clear loggers, collect threads, and close window
     def __exit__(self, exc_type, exc_value, traceback):
         self.logger.info('Exiting GUI')
         self.logger.handlers.clear()
-        self.thread_run.join()
-        self.thread_init.join()
+        if hasattr(self, 'thread_run'):
+            self.thread_run.join()
+        if hasattr(self, 'thread_init'):
+            self.thread_init.join()
         self.root.destroy()
         try:
             self.bot_instance.client.stop()
         except:
             pass
 
-    # Initilzie the thread for main bot
+    # Initialize the thread for main bot
     def start_command(self):
         self.stop_flag = False
+        
+        # Validiere Umgebung vor dem Start
+        if not self.validate_environment():
+            messagebox.showerror("Error", "Environment not correct. Run System Check.")
+            return
+        
         self.update_config()
         if self.running:
+            self.logger.warning("Bot is already running!")
             return
-        self.running = True
-        # Start main thread
-        self.thread_run = threading.Thread(target=self.start_bot, args=())
-        self.thread_run.start()
+        
+        try:
+            self.running = True
+            # Start main thread
+            self.thread_run = threading.Thread(target=self.start_bot, args=())
+            self.thread_run.start()
+            self.logger.info("Bot thread started")
+        except Exception as e:
+            self.logger.error(f"Error starting bot: {e}")
+            self.running = False
 
     # Update config file
     def update_config(self):
@@ -104,26 +208,58 @@ class RR_bot:
 
     # Run the bot
     def start_bot(self):
-        # Run startup of bot instance
-        self.logger.warning('Starting bot...')
-        self.bot_instance = bot_handler.start_bot_class(self.logger)
-        os.system(r"type src\startup_message.txt")
-        self.update_units()
-        infos_ready = threading.Event()
-        # Pass gui info to bot
-        self.bot_instance.bot_stop = False
-        self.bot_instance.logger = self.logger
-        self.bot_instance.config = self.config
-        bot = self.bot_instance
-        # Start bot thread
-        thread_bot = threading.Thread(target=bot_handler.bot_loop, args=([bot, infos_ready]))
-        thread_bot.start()
-        # Dump infos to gui whenever ready
-        while (1):
-            infos_ready.wait(timeout=5)
-            self.update_text(bot.combat_step, bot.combat, bot.output, bot.grid_df, bot.unit_series, bot.merge_series,
-                             bot.info)
-            infos_ready.clear()
+        try:
+            # Run startup of bot instance
+            self.logger.warning('Starting bot...')
+            self.bot_instance = bot_handler.start_bot_class(self.logger)
+            
+            # Check if startup message exists
+            startup_file = r"Src\startup_message.txt"
+            if os.path.exists(startup_file):
+                os.system(f"type {startup_file}")
+            
+            self.update_units()
+            infos_ready = threading.Event()
+            
+            # Pass gui info to bot
+            self.bot_instance.bot_stop = False
+            self.bot_instance.logger = self.logger
+            self.bot_instance.config = self.config
+            bot = self.bot_instance
+            
+            # Start bot thread
+            thread_bot = threading.Thread(target=bot_handler.bot_loop, args=([bot, infos_ready]))
+            thread_bot.start()
+            
+            # Dump infos to gui whenever ready
+            while not self.stop_flag:
+                infos_ready.wait(timeout=5)
+                
+                # Check if bot_instance still exists and has required attributes
+                if hasattr(bot, 'combat_step') and hasattr(bot, 'combat'):
+                    self.update_text(bot.combat_step, bot.combat, bot.output, 
+                                   bot.grid_df, bot.unit_series, bot.merge_series, bot.info)
+                
+                infos_ready.clear()
+                
+                if self.stop_flag:
+                    self.bot_instance.bot_stop = True
+                    self.logger.warning('Exiting main loop...')
+                    thread_bot.join(timeout=10)  # Wait max 10 seconds for thread to finish
+                    
+                    # Stop scrcpy process if running
+                    if hasattr(self.bot_instance, 'scrcpy_process') and self.bot_instance.scrcpy_process:
+                        self.bot_instance.stop_scrcpy()
+                    
+                    self.logger.info('Bot stopped!')
+                    self.logger.critical('Safe to close gui')
+                    self.running = False
+                    return
+                    
+        except Exception as e:
+            self.logger.error(f"Critical error in start_bot: {e}")
+            self.running = False
+            self.stop_flag = True
             if self.stop_flag:
                 self.bot_instance.bot_stop = True
                 self.logger.warning('Exiting main loop...')

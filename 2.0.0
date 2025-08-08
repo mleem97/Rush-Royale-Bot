@@ -1,0 +1,31 @@
+Collecting scikit-learn
+  Using cached scikit_learn-1.7.1-cp313-cp313-win_amd64.whl.metadata (11 kB)
+Requirement already satisfied: numpy in c:\users\marvi\documents\github\rush-royale-bot\.bot_env\lib\site-packages (2.2.6)
+Collecting pandas
+  Using cached pandas-2.3.1-cp313-cp313-win_amd64.whl.metadata (19 kB)
+Collecting scipy>=1.8.0 (from scikit-learn)
+  Using cached scipy-1.16.1-cp313-cp313-win_amd64.whl.metadata (60 kB)
+Collecting joblib>=1.2.0 (from scikit-learn)
+  Using cached joblib-1.5.1-py3-none-any.whl.metadata (5.6 kB)
+Collecting threadpoolctl>=3.1.0 (from scikit-learn)
+  Using cached threadpoolctl-3.6.0-py3-none-any.whl.metadata (13 kB)
+Collecting python-dateutil>=2.8.2 (from pandas)
+  Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+Collecting pytz>=2020.1 (from pandas)
+  Using cached pytz-2025.2-py2.py3-none-any.whl.metadata (22 kB)
+Collecting tzdata>=2022.7 (from pandas)
+  Using cached tzdata-2025.2-py2.py3-none-any.whl.metadata (1.4 kB)
+Collecting six>=1.5 (from python-dateutil>=2.8.2->pandas)
+  Using cached six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+Using cached scikit_learn-1.7.1-cp313-cp313-win_amd64.whl (8.7 MB)
+Using cached pandas-2.3.1-cp313-cp313-win_amd64.whl (11.0 MB)
+Using cached joblib-1.5.1-py3-none-any.whl (307 kB)
+Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+Using cached pytz-2025.2-py2.py3-none-any.whl (509 kB)
+Using cached scipy-1.16.1-cp313-cp313-win_amd64.whl (38.5 MB)
+Using cached six-1.17.0-py2.py3-none-any.whl (11 kB)
+Using cached threadpoolctl-3.6.0-py3-none-any.whl (18 kB)
+Using cached tzdata-2025.2-py2.py3-none-any.whl (347 kB)
+Installing collected packages: pytz, tzdata, threadpoolctl, six, scipy, joblib, scikit-learn, python-dateutil, pandas
+
+Successfully installed joblib-1.5.1 pandas-2.3.1 python-dateutil-2.9.0.post0 pytz-2025.2 scikit-learn-1.7.1 scipy-1.16.1 six-1.17.0 threadpoolctl-3.6.0 tzdata-2025.2

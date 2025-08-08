@@ -1,0 +1,9 @@
+Collecting opencv-python
+  Using cached opencv_python-4.12.0.88-cp37-abi3-win_amd64.whl.metadata (19 kB)
+Collecting numpy<2.3.0,>=2 (from opencv-python)
+  Using cached numpy-2.2.6-cp313-cp313-win_amd64.whl.metadata (60 kB)
+Using cached opencv_python-4.12.0.88-cp37-abi3-win_amd64.whl (39.0 MB)
+Using cached numpy-2.2.6-cp313-cp313-win_amd64.whl (12.6 MB)
+Installing collected packages: numpy, opencv-python
+
+Successfully installed numpy-2.2.6 opencv-python-4.12.0.88

@@ -1,0 +1,5 @@
+Collecting Pillow
+  Using cached pillow-11.3.0-cp313-cp313-win_amd64.whl.metadata (9.2 kB)
+Using cached pillow-11.3.0-cp313-cp313-win_amd64.whl (7.0 MB)
+Installing collected packages: Pillow
+Successfully installed Pillow-11.3.0

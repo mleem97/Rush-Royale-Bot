@@ -187,10 +187,33 @@ python -m venv .bot_env
 pip install -r requirements.txt
 
 # Key dependencies with version constraints:
-# pure-python-adb>=0.3.0.dev0 (primary Android control)
-# opencv-python>=4.12.0 (computer vision)
-# scikit-learn>=1.7.0 (ML rank classification)
-# numpy>=2.1.0,pandas>=2.3.0 (data processing)
+# pure-python-adb>=0.3.0 (primary Android control)
+# opencv-python>=4.10.0 (computer vision)
+# scikit-learn>=1.5.0 (ML rank classification)
+# numpy>=1.24.0,pandas>=2.0.0 (data processing)
+```
+
+### Enhanced Installation Process
+1. **Automated Installation**: `install.bat` with comprehensive Python version checking
+2. **System Validation**: `debug_start.bat` runs full system check before launch
+3. **Error Recovery**: Improved fallback mechanisms and dependency validation
+
+### Installation Scripts Features
+- **Python Version Validation**: Requires Python 3.11+ with clear error messages
+- **Dependency Installation**: Individual package installation with error handling
+- **Environment Validation**: Checks all critical components before bot start
+- **Auto-Config Creation**: Generates default config.ini if missing
+
+### Debugging Workflow
+```batch
+# Enhanced installation with validation
+install.bat
+
+# System diagnostic before running
+debug_start.bat  # Runs system_check.py + launches GUI
+
+# Standard launch (with built-in validation)
+launch_gui.bat
 ```
 
 ### Android Device Setup (Critical Steps)
@@ -211,6 +234,9 @@ pip install -r requirements.txt
    ```
 
 ### Testing & Debugging Workflows
+- **Enhanced Installation**: `install.bat` with Python version validation and dependency checking
+- **System Diagnostics**: `Src/system_check.py` validates environment, dependencies, and ADB connection
+- **Debug Launch**: `debug_start.bat` runs full system check before GUI launch
 - **Screenshot Inspection**: Check `bot_feed_emulator-5554.png` for vision issues
 - **Icon Detection Debug**: Use `get_current_icons()` with `available=False` to see all matches
 - **Grid Analysis**: Inspect `OCR_inputs/` directory for unit recognition problems
@@ -227,6 +253,9 @@ print(icons_df[icons_df['available'] == True])  # See what's detected
 names = bot.scan_grid(new=True)
 grid_df = bot_perception.grid_status(names)
 print(grid_df[['unit', 'rank', 'u_prob', 'r_prob']])  # Check recognition accuracy
+
+# Run comprehensive system check
+python Src/system_check.py
 ```
 
 ### Adding New Features (Step-by-Step)
