@@ -1,8 +1,17 @@
+"""
+Rush Royale Bot Handler - Python 3.13 Compatible
+Enhanced download and installation handling
+"""
+from __future__ import annotations
+
 import os
 import time
 import numpy as np
 import logging
 from subprocess import Popen, DEVNULL
+from typing import Optional, Dict, Any, List
+from pathlib import Path
+
 # Image processing
 import cv2
 # internal
@@ -57,9 +66,9 @@ def select_units(units):
 
 
 def start_bot_class(logger):
-    # auto-install scrcpy if needed
-    if not check_scrcpy(logger):
-        return None
+    # auto-install ADB if needed (removed scrcpy dependency)
+    # ADB is included with pure-python-adb, no manual installation needed
+    logger.info('Using pure-python-adb for Android device control')
     bot = bot_core.Bot()
     return bot
 
@@ -136,6 +145,23 @@ def bot_loop(bot, info_event):
         else:
             combat = 0
             bot.logger.info(f'{output[1]}, wait count: {wait}')
+            # Debug: Show what icons are detected
+            if hasattr(output[0], 'values') and len(output[0]) > 0:
+                detected_icons = output[0]['icon'].unique() if 'icon' in output[0].columns else []
+                bot.logger.debug(f'Detected icons: {list(detected_icons)}')
+            else:
+                bot.logger.debug('No icons detected on screen')
+                # Additional debug: Check if screenshot exists and is valid
+                import os
+                screenshot_path = f'bot_feed_{bot.device.split(":")[-1]}.png'
+                if os.path.exists(screenshot_path):
+                    file_size = os.path.getsize(screenshot_path)
+                    bot.logger.debug(f'Screenshot file exists: {screenshot_path} ({file_size} bytes)')
+                    # Force a new screenshot
+                    bot.getScreen()
+                    bot.logger.debug('Forced new screenshot capture')
+                else:
+                    bot.logger.warning(f'Screenshot file missing: {screenshot_path}')
             output = bot.battle_screen(start=True, pve=user_pve, floor=user_floor)
             wait += 1
             if wait > 40:
@@ -144,18 +170,21 @@ def bot_loop(bot, info_event):
                 wait = 0
 
 
-def check_scrcpy(logger):
-    if os.path.exists('.scrcpy/scrcpy.exe'):
-        return True
-    else:
-        logger.info('scrcpy is not installed')
-        # Download
-        download('https://github.com/Genymobile/scrcpy/releases/download/v1.24/scrcpy-win64-v1.24.zip', 'scrcpy.zip')
-        with zipfile.ZipFile('scrcpy.zip', 'r') as zip_ref:
-            zip_ref.extractall('.scrcpy')
-        # Verify
-        if os.path.exists('.scrcpy/scrcpy.exe'):
-            logger.info('scrcpy succesfully installed')
-            # remove zip file
-            os.remove('scrcpy.zip')
+def check_adb_connection(logger):
+    """Check if ADB can connect to devices (replaces scrcpy check)"""
+    try:
+        from ppadb.client import Client as AdbClient
+        client = AdbClient()
+        devices = client.devices()
+        if devices:
+            logger.info(f'Found {len(devices)} ADB device(s)')
             return True
+        else:
+            logger.warning('No ADB devices found - make sure BlueStacks is running')
+            return False
+    except ImportError:
+        logger.error('pure-python-adb not installed')
+        return False
+    except Exception as e:
+        logger.error(f'ADB connection failed: {e}')
+        return False

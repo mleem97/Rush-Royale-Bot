@@ -1,9 +1,16 @@
+"""
+Rush Royale Bot GUI - Python 3.13 Compatible
+Legacy Tkinter interface with modern Python features
+"""
+from __future__ import annotations
+
 from tkinter import *
 import os
 import numpy as np
 import threading
 import logging
 import configparser
+from typing import Optional, Dict, Any, List, Tuple
 
 # internal
 import bot_handler
@@ -100,7 +107,7 @@ class RR_bot:
         # Run startup of bot instance
         self.logger.warning('Starting bot...')
         self.bot_instance = bot_handler.start_bot_class(self.logger)
-        os.system("type src\startup_message.txt")
+        os.system(r"type src\startup_message.txt")
         self.update_units()
         infos_ready = threading.Event()
         # Pass gui info to bot
@@ -121,7 +128,9 @@ class RR_bot:
                 self.bot_instance.bot_stop = True
                 self.logger.warning('Exiting main loop...')
                 thread_bot.join()
-                self.bot_instance.client.stop()
+                # Stop scrcpy process if running
+                if hasattr(self.bot_instance, 'scrcpy_process') and self.bot_instance.scrcpy_process:
+                    self.bot_instance.stop_scrcpy()
                 self.logger.info('Bot stopped!')
                 self.logger.critical('Safe to close gui')
                 return

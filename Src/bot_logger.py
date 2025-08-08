@@ -1,6 +1,13 @@
+"""
+Rush Royale Bot Logger - Python 3.13 Compatible
+Enhanced logging with modern Python features and type hints
+"""
+from __future__ import annotations
+
 import logging
 from tkinter import *
 import re
+from typing import Optional, Dict, Any, List, Union
 
 
 # Logger classes
