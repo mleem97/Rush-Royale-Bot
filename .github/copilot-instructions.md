@@ -3,7 +3,7 @@
 ## Project Overview
 
 This is a Python 3.13-compatible game automation bot for "Rush Royale" with hybrid RL (Reinforcement Learning) capabilities. The project combines traditional computer vision-based automation with emerging ML/RL features. Originally based on AxelBjork's work, this version adds modern Python 3.13 support, enhanced error handling, and planned RL integration.
-NEVER USE MOCK DATA! NEVER USE EMOJIS! ONLY PYTHON 3.13-3.15! NEVER ADD ANY FILES. ONLY USE #CODEBASE and .bot_env!
+NEVER USE MOCK DATA! NEVER USE GERMAN IN CODE OR COMMENTS! NEVER USE EMOJIS! ONLY PYTHON 3.13-3.15! NEVER ADD ANY FILES. ONLY USE #CODEBASE and .bot_env!
 **Target Environment**: BlueStacks Android emulator on Windows with ADB connectivity on port 5555.
 **Dev Environment**: Python 3.13-3.15, Windows 10/11, ADB installed and accessible, powershell.
 
