@@ -19,7 +19,7 @@ This repository represents the next evolution, focusing on advanced reinforcemen
 - **Machine Learning Analytics**: Scikit-learn powered pattern recognition and decision making
 - **Real-time Screenshot Processing**: Fast image capture and analysis pipeline
 - **Data-Driven Insights**: Comprehensive gameplay analytics and performance tracking
-- **Cross-Platform Compatibility**: Works with Android emulators and physical devices
+- **Cross-Platform Compatibility**: Works with Android emulators (physical devices are not tested yet)
 - **Development Tools**: Jupyter notebook integration for analysis and debugging
 
 ## 🏗️ Architecture
