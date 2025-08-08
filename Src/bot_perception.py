@@ -1,9 +1,17 @@
+"""
+Rush Royale Bot Perception - Python 3.13 Compatible
+Computer vision and machine learning for unit recognition
+"""
+from __future__ import annotations
+
 import os
 import numpy as np
 import pandas as pd
 import cv2
 from sklearn.linear_model import LogisticRegression
 import pickle
+from typing import Optional, Dict, Any, List, Tuple, Union
+from pathlib import Path
 
 # internal
 

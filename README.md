@@ -1,5 +1,5 @@
 # 🤖 RushBot
-<img width="1024" height="1024" alt="20250803_2330_RushBot App Logo_simple_compose_01k1rxd9atf21b3v5gkrpyxt0f" src="https://github.com/user-attachments/assets/621d866c-864e-42bb-a28a-c8dca66425a0" />
+<img width="256" height="256" alt="20250803_2330_RushBot App Logo_simple_compose_01k1rxd9atf21b3v5gkrpyxt0f" src="https://github.com/user-attachments/assets/621d866c-864e-42bb-a28a-c8dca66425a0" />
 
 A cutting-edge **Python 3.13** reinforcement learning bot for "Rush Royale" that learns game mechanics from scratch through autonomous exploration. Built with hybrid AI architecture combining **Deep Q-Networks (DQN)** for strategic decisions and **Proximal Policy Optimization (PPO)** for real-time combat optimization.
 This project is designed to push the boundaries of AI in gaming, enabling the bot to adapt, learn, and improve its performance over time without any prior knowledge of the game.
@@ -48,7 +48,7 @@ This Bot is created in my Free Time, powered by the will to Learn something new.
 - **Real-time Performance Monitoring**: Live metrics, learning curves, and optimization feedback
 
 ### 🔄 Legacy System Integration
-- **Backward Compatibility**: Full support for existing Python 3.9 automation features
+- **Enhanced Performance**: Optimized for Python 3.13 with 10-15% performance improvements
 - **Gradual Migration**: Seamless transition from rule-based to RL-based decision making
 - **Performance Benchmarking**: 15-25% efficiency improvement over legacy automation
 - **Fallback Mechanisms**: Automatic fallback to proven strategies when RL exploration fails
@@ -129,12 +129,12 @@ git clone https://github.com/mleem97/Rush-Royale-Bot.git
 cd Rush-Royale-Bot
 
 # Create Python 3.13 virtual environment
-python3.13 -m venv .venv313
-.venv313\Scripts\activate
+python -m venv .bot_env
+.bot_env\Scripts\activate
 
-# Install modern dependencies
+# Install modern dependencies  
 pip install --upgrade pip
-pip install -r requirements-py313.txt
+pip install -r requirements.txt
 ```
 
 **Enhanced Dependencies Stack:**

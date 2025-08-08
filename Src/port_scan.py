@@ -1,10 +1,16 @@
+"""
+Rush Royale Bot Port Scanner - Python 3.13 Compatible
+Enhanced networking and device detection
+"""
+from __future__ import annotations
+
 import socket
-# import thread module
-from _thread import *
 import threading
 import time
 import os
 from subprocess import check_output, Popen, DEVNULL
+from typing import Optional, Dict, Any, List, Set
+from concurrent.futures import ThreadPoolExecutor
 
 
 # Connects to a target IP and port, if port is open try to connect adb
