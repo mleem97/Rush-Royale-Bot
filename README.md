@@ -1,7 +1,5 @@
 # RushBot 🎮🤖
 
-| Logo | Description |
-|------|-------------|
 | <img width="256" height="256" alt="20250803_2330_RushBot App Logo_simple_compose_01k1rxd9atf21b3v5gkrpyxt0f" src="https://github.com/user-attachments/assets/621d866c-864e-42bb-a28a-c8dca66425a0" /> | A cutting-edge **Python 3.13** reinforcement learning bot for "Rush Royale" that learns game mechanics from scratch through autonomous exploration. Built with hybrid AI architecture combining **Deep Q-Networks (DQN)** for strategic decisions and **Proximal Policy Optimization (PPO)** for real-time combat optimization. This project is planned to push the boundaries of AI in gaming, enabling the bot to adapt, learn, and improve its performance over time without any prior knowledge of the game. |
 
 ## 🔗 Project History & Related Work
