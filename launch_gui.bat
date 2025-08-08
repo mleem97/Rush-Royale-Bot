@@ -21,6 +21,30 @@ if errorlevel 1 (
     exit /b 1
 )
 
+:: Verify Virtual Environment is active
+echo Verifying Virtual Environment...
+python -c "import sys; print('✓ Python:', sys.executable)" 2>nul
+if errorlevel 1 (
+    echo ERROR: Python not found in Virtual Environment!
+    echo Please run install.bat to fix the environment.
+    pause
+    exit /b 1
+)
+echo ✓ Virtual Environment is active
+
+:: Verify Virtual Environment is active
+if "%VIRTUAL_ENV%"=="" (
+    echo ERROR: Virtual Environment activation failed!
+    echo VIRTUAL_ENV variable not set.
+    pause
+    exit /b 1
+)
+
+echo Virtual Environment active: %VIRTUAL_ENV%
+echo Python version:
+python --version
+echo.
+
 :: Check if Src directory exists
 if not exist "Src" (
     echo ERROR: Src directory not found!
