@@ -67,9 +67,13 @@ except ImportError:
 
 # Image processing
 import cv2
-# internal
-import bot_perception
-import port_scan
+# internal (support both package and script execution)
+try:
+    from . import bot_perception  # type: ignore
+    from . import port_scan  # type: ignore
+except Exception:  # pragma: no cover - fallback for direct script run
+    import bot_perception  # type: ignore
+    import port_scan  # type: ignore
 
 SLEEP_DELAY = 0.1
 
@@ -79,16 +83,18 @@ class Bot:
     def __init__(self, device=None):
         self.bot_stop = False
         self.combat = self.output = self.grid_df = self.unit_series = self.merge_series = self.df_groups = self.info = self.combat_step = None
-    self.logger = logging.getLogger('__main__')
-    # Will be set by GUI; keep attribute to avoid type issues
-    self.config = None
+        self.logger = logging.getLogger('__main__')
+        # Will be set by GUI; keep attribute to avoid type issues
+        self.config = None
+
+        # Resolve target device
         if device is None:
             device = port_scan.get_device()
         if not device:
             raise Exception("No device found!")
         self.device = device
         self.bot_id = self.device.split(':')[-1]
-        
+
         # Initialize ADB client
         self.adb_client = AdbClient()
         self.adb_device = None
@@ -97,18 +103,18 @@ class Bot:
             self.adb_bin = port_scan.find_adb()
         except Exception:
             self.adb_bin = 'adb'
-        
+
         # Initialize scrcpy process for screenshots
         self.scrcpy_process = None
         self.scrcpy_executable = self.find_scrcpy_executable()
-        
+
         # Connect to device
         devices = self.adb_client.devices()
         for dev in devices:
             if dev.serial == self.device:
                 self.adb_device = dev
                 break
-        
+
         if not self.adb_device:
             # Try to connect
             self._system_adb(['connect', self.device])
@@ -117,18 +123,18 @@ class Bot:
                 if dev.serial == self.device:
                     self.adb_device = dev
                     break
-        
+
         if not self.adb_device:
             raise Exception(f"Could not connect to device {self.device}")
-            
+
         # Launch application through ADB shell
         self.adb_device.shell('monkey -p com.my.defense 1')
-        
+
         # Check if 'bot_feed.png' exists
         if not os.path.isfile(f'bot_feed_{self.bot_id}.png'):
             self.getScreen()
         self.screenRGB = cv2.imread(f'bot_feed_{self.bot_id}.png')
-        
+
         self.logger.info('Connected to Android device via ADB')
         time.sleep(0.5)
 
