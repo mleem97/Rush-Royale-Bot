@@ -23,6 +23,66 @@ if %ERRORLEVEL% EQU 0 (
     exit /b 1
 )
 
+:: Ensure scrcpy exists in .scrcpy (download if missing)
+echo.
+echo Checking scrcpy in .scrcpy ...
+set "SCRCPY_VERSION=3.3.1"
+set "SCRCPY_ZIP=scrcpy-win64-v%SCRCPY_VERSION%.zip"
+set "SCRCPY_DIR=scrcpy-win64-v%SCRCPY_VERSION%"
+set "SCRCPY_URL=https://github.com/Genymobile/scrcpy/releases/download/v%SCRCPY_VERSION%/scrcpy-win64-v%SCRCPY_VERSION%.zip"
+
+if exist ".scrcpy\adb.exe" (
+    echo Found scrcpy: .scrcpy\adb.exe
+) else (
+    echo scrcpy not found. Downloading %SCRCPY_ZIP% ...
+    where powershell >nul 2>&1
+    if %ERRORLEVEL% NEQ 0 (
+        echo ERROR: PowerShell is required to download and extract scrcpy.
+        echo Please install scrcpy manually: %SCRCPY_URL%
+        pause
+        exit /b 1
+    )
+
+    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+        "$ErrorActionPreference='Stop'; " ^
+        "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; " ^
+        "Invoke-WebRequest -Uri '%SCRCPY_URL%' -OutFile '%SCRCPY_ZIP%';"
+    if not exist "%SCRCPY_ZIP%" (
+        echo ERROR: Download failed: %SCRCPY_ZIP%
+        pause
+        exit /b 1
+    )
+
+    echo Extracting %SCRCPY_ZIP% ...
+    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+        "$ErrorActionPreference='Stop'; " ^
+        "Expand-Archive -Path '%SCRCPY_ZIP%' -DestinationPath '.' -Force;"
+    if not exist "%SCRCPY_DIR%" (
+        echo ERROR: Extracted folder not found: %SCRCPY_DIR%
+        echo Please extract the zip manually and rename the folder to .scrcpy
+        pause
+        exit /b 1
+    )
+
+    if exist ".scrcpy" (
+        echo Removing existing .scrcpy ...
+        rmdir /s /q ".scrcpy"
+    )
+
+    echo Renaming %SCRCPY_DIR% to .scrcpy ...
+    ren "%SCRCPY_DIR%" ".scrcpy"
+    if exist "%SCRCPY_ZIP%" del /f /q "%SCRCPY_ZIP%"
+
+    if exist ".scrcpy\adb.exe" (
+        echo scrcpy installed successfully in .scrcpy
+    ) else (
+        echo ERROR: .scrcpy\adb.exe not found after installation.
+        echo Please verify contents of the .scrcpy directory.
+        pause
+        exit /b 1
+    )
+)
+
 :: Create virtual environment
 echo Creating virtual environment...
 if exist .bot_env (
