@@ -404,7 +404,7 @@ class Bot:
             icon_found = len(loc[0]) > 0
             
             # Debug for key icons
-            if target in ['home_screen.png', 'battle_icon.png']:
+            if target in ['home_screen.png', 'battle_icon.png'] or 'chapter_' in target:
                 self.logger.debug(f'Icon {target}: max_val={max_val:.3f}, found={icon_found}')
             
             if icon_found:
@@ -599,10 +599,11 @@ class Bot:
         # Divide by 3 and take ceiling of floor as int
         target_chapter = f'chapter_{int(np.ceil((floor)/3))}.png'
         next_chapter = f'chapter_{int(np.ceil((floor+1)/3))}.png'
+        self.logger.debug(f'Looking for target chapter: {target_chapter}, next chapter: {next_chapter}')
         pos = np.array([0, 0])
         avail_buttons = self.get_current_icons(available=True)
         # Check if on dungeon page
-        if (avail_buttons == 'dungeon_page.png').any(axis=None):
+        if (avail_buttons['icon'] == 'dungeon_page.png').any():
             # Swipe to the top
             [self.swipe([0, 0], [2, 0]) for i in range(14)]
             self.click(30, 600, 5)  # stop scroll and scan screen for buttons
@@ -611,9 +612,12 @@ class Bot:
             for i in range(10):
                 # Scan screen for buttons
                 avail_buttons = self.get_current_icons(available=True)
+                available_chapters = [icon for icon in avail_buttons['icon'] if 'chapter_' in icon]
+                self.logger.debug(f'Iteration {i}: Available chapters: {available_chapters}')
                 # Look for correct chapter
-                if (avail_buttons == target_chapter).any(axis=None):
+                if (avail_buttons['icon'] == target_chapter).any():
                     pos = get_button_pos(avail_buttons, target_chapter)
+                    self.logger.info(f'Found target chapter {target_chapter} at position {pos}')
                     if not expanded:
                         expanded = 1
                         self.click_button(pos + [500, 90])
@@ -621,8 +625,9 @@ class Bot:
                     if pos[1] < 550 and floor % 3 != 0:
                         # Stop scrolling when chapter is near top
                         break
-                elif (avail_buttons == next_chapter).any(axis=None) and floor % 3 == 0:
+                elif (avail_buttons['icon'] == next_chapter).any() and floor % 3 == 0:
                     pos = get_button_pos(avail_buttons, next_chapter)
+                    self.logger.info(f'Found next chapter {next_chapter} at position {pos}')
                     # Stop scrolling if the next chapter is found and last floor of chapter is chosen
                     break
                 # Contiue to swiping to find correct chapter
@@ -631,6 +636,7 @@ class Bot:
 
             # Click play floor if found
             if not (pos == np.array([0, 0])).any():
+                self.logger.info(f'Clicking floor {floor} for chapter at position {pos}')
                 if floor % 3 == 0:
                     self.click_button(pos + [30, -460])
                 elif floor % 3 == 1:
@@ -645,6 +651,8 @@ class Bot:
                     self.logger.info(f'Waiting for match to start {i}')
                     if avail_buttons['icon'].isin(['back_button.png', 'fighting.png']).any():
                         break
+            else:
+                self.logger.error(f'Could not find chapter for floor {floor}. Target: {target_chapter}, Next: {next_chapter}')
 
     # Locate game home screen and try to start fight is chosen
     def battle_screen(self, start=False, pve=True, floor=5):
@@ -652,13 +660,13 @@ class Bot:
         df = self.get_current_icons(available=True)
         if not df.empty:
             # list of buttons
-            if (df == 'fighting.png').any(axis=None) and not (df == '0cont_button.png').any(axis=None):
+            if (df['icon'] == 'fighting.png').any() and not (df['icon'] == '0cont_button.png').any():
                 return df, 'fighting'
-            if (df == 'friend_menu.png').any(axis=None):
+            if (df['icon'] == 'friend_menu.png').any():
                 self.click_button(np.array([100, 600]))
                 return df, 'friend_menu'
             # Start pvp if homescreen
-            if (df == 'home_screen.png').any(axis=None) and (df == 'battle_icon.png').any(axis=None):
+            if (df['icon'] == 'home_screen.png').any() and (df['icon'] == 'battle_icon.png').any():
                 if pve and start:
                     # Add a 500 pixel offset for PvE button
                     self.click_button(np.array([640, 1259]))
@@ -682,7 +690,7 @@ class Bot:
         [self.swipe([0, 0], [2, 0]) for i in range(5)]  # swipe to top
         self.click(30, 150)  # stop scroll
         avail_buttons = self.get_current_icons(available=True)
-        if (avail_buttons == 'refresh_button.png').any(axis=None):
+        if (avail_buttons['icon'] == 'refresh_button.png').any():
             pos = get_button_pos(avail_buttons, 'refresh_button.png')
             return pos
 
@@ -706,27 +714,27 @@ class Bot:
     def watch_ads(self):
         avail_buttons = self.get_current_icons(available=True)
         # Watch ad if available
-        if (avail_buttons == 'quest_done.png').any(axis=None):
+        if (avail_buttons['icon'] == 'quest_done.png').any():
             pos = get_button_pos(avail_buttons, 'quest_done.png')
             self.click_button(pos)
             self.click(700, 600)  # collect second completed quest
             self.click(700, 400)  # collect second completed quest
             [self.click(150, 250) for i in range(2)]  # click dailies twice
             self.click(420, 420)  # collect ad chest
-        elif (avail_buttons == 'ad_season.png').any(axis=None):
+        elif (avail_buttons['icon'] == 'ad_season.png').any():
             pos = get_button_pos(avail_buttons, 'ad_season.png')
             self.click_button(pos)
-        elif (avail_buttons == 'ad_pve.png').any(axis=None):
+        elif (avail_buttons['icon'] == 'ad_pve.png').any():
             pos = get_button_pos(avail_buttons, 'ad_pve.png')
             self.click_button(pos)
-        elif (avail_buttons == 'battle_icon.png').any(axis=None):
+        elif (avail_buttons['icon'] == 'battle_icon.png').any():
             self.refresh_shop()
         else:
             #self.logger.info('Watched all ads!')
             return
         # Check if ad was started
         avail_buttons, status = self.battle_screen()
-        if status == 'menu' or status == 'home' or (avail_buttons == 'refresh_button.png').any(axis=None):
+        if status == 'menu' or status == 'home' or (avail_buttons['icon'] == 'refresh_button.png').any():
             self.logger.info('FINISHED AD')
         # Watch ad
         else:
