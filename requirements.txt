@@ -21,8 +21,8 @@ tqdm>=4.67.0,<5.0.0
 
 # Android ADB Control - Python 3.13 Compatible  
 pure-python-adb>=0.3.0.dev0
-scrcpy-client>=0.4.1,<1.0.0
-av>=9.2.0,<10.0.0
+#scrcpy-client>=0.4.1,<1.0.0
+#av>=9.2.0,<10.0.0
 
 # HTTP Requests
 requests>=2.31.0,<3.0.0
