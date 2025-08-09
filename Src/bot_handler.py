@@ -122,9 +122,9 @@ def bot_loop(bot, info_event):
                 continue
             elif bot.bot_stop:
                 return
-            elif require_shaman and not (output[0] == 'shaman_opponent.png').any(axis=None):
+            elif require_shaman and not (output[0]['icon'] == 'shaman_opponent.png').any():
                 bot.logger.info('Shaman not found, checking again...')
-                if any([(bot.battle_screen(start=False)[0] == 'shaman_opponent.png').any(axis=None) for i in range(1)]):
+                if any([(bot.battle_screen(start=False)[0]['icon'] == 'shaman_opponent.png').any() for i in range(1)]):
                     continue
                 bot.logger.warning('Leaving game')
                 bot.restart_RR(quick_disconnect=True)
