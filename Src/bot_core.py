@@ -79,7 +79,9 @@ class Bot:
     def __init__(self, device=None):
         self.bot_stop = False
         self.combat = self.output = self.grid_df = self.unit_series = self.merge_series = self.df_groups = self.info = self.combat_step = None
-        self.logger = logging.getLogger('__main__')
+    self.logger = logging.getLogger('__main__')
+    # Will be set by GUI; keep attribute to avoid type issues
+    self.config = None
         if device is None:
             device = port_scan.get_device()
         if not device:
@@ -90,6 +92,11 @@ class Bot:
         # Initialize ADB client
         self.adb_client = AdbClient()
         self.adb_device = None
+        # Resolve adb binary for fallbacks
+        try:
+            self.adb_bin = port_scan.find_adb()
+        except Exception:
+            self.adb_bin = 'adb'
         
         # Initialize scrcpy process for screenshots
         self.scrcpy_process = None
@@ -104,7 +111,7 @@ class Bot:
         
         if not self.adb_device:
             # Try to connect
-            self.shell(f'adb connect {self.device}')
+            self._system_adb(['connect', self.device])
             devices = self.adb_client.devices()
             for dev in devices:
                 if dev.serial == self.device:
@@ -197,8 +204,16 @@ class Bot:
             return self.adb_device.shell(cmd)
         else:
             # Fallback to system ADB
-            p = Popen(['adb', '-s', self.device, 'shell', cmd], stdout=DEVNULL, stderr=DEVNULL)
+            p = Popen([self.adb_bin, '-s', self.device, 'shell', cmd], stdout=DEVNULL, stderr=DEVNULL)
             p.wait()
+
+    def _system_adb(self, args):
+        """Run adb with provided args using resolved adb binary."""
+        try:
+            p = Popen([self.adb_bin, '-s', self.device, *args], stdout=DEVNULL, stderr=DEVNULL)
+            p.wait()
+        except Exception:
+            pass
 
     # Send ADB to click screen
     def click(self, x, y, delay_mult=1):
@@ -292,15 +307,7 @@ class Bot:
         if not self.scrcpy_executable:
             return False
         try:
-            cmd = [
-                self.scrcpy_executable,
-                '--serial', self.device,
-                '--no-display',  # No window
-                '--record', output_path.replace('.png', '.mp4'),
-                '--time-limit', '1'  # Record for 1 second
-            ]
-            # Alternative: use scrcpy screenshot feature if available
-            cmd = ['adb', '-s', self.device, 'exec-out', 'screencap', '-p']
+            cmd = [self.adb_bin, '-s', self.device, 'exec-out', 'screencap', '-p']
             with open(output_path, 'wb') as f:
                 p = subprocess.run(cmd, stdout=f, stderr=DEVNULL, timeout=10)
                 return p.returncode == 0
@@ -323,7 +330,7 @@ class Bot:
     def _try_shell_screenshot(self, output_path: str) -> bool:
         """Try taking screenshot using shell ADB command"""
         try:
-            cmd = ['adb', '-s', self.device, 'exec-out', 'screencap', '-p']
+            cmd = [self.adb_bin, '-s', self.device, 'exec-out', 'screencap', '-p']
             with open(output_path, 'wb') as f:
                 p = subprocess.run(cmd, stdout=f, stderr=DEVNULL, timeout=10)
                 return p.returncode == 0
@@ -592,16 +599,44 @@ class Bot:
             self.click(*upgrade_pos_dict[card])
         if hero_power:
             self.click(800, 1500)
-
     # Start a dungeon floor from PvE page
     def play_dungeon(self, floor=5):
         self.logger.debug(f'Starting Dungeon floor {floor}')
-        # Divide by 3 and take ceiling of floor as int
-        target_chapter = f'chapter_{int(np.ceil((floor)/3))}.png'
-        next_chapter = f'chapter_{int(np.ceil((floor+1)/3))}.png'
+        
+        # Corrected chapter calculation
+        if floor <= 3:
+            chapter_num = 1
+        elif floor <= 6:
+            chapter_num = 2
+        elif floor <= 9:
+            chapter_num = 3
+        elif floor <= 12:
+            chapter_num = 4
+        elif floor == 13:
+            chapter_num = 5
+        else:  # floor >= 14 (endless mode)
+            chapter_num = 6
+        
+        target_chapter = f'chapter_{chapter_num}.png'
+        
+        # Calculate next chapter for boundary cases
+        if floor == 3:
+            next_chapter = 'chapter_2.png'
+        elif floor == 6:
+            next_chapter = 'chapter_3.png'
+        elif floor == 9:
+            next_chapter = 'chapter_4.png'
+        elif floor == 12:
+            next_chapter = 'chapter_5.png'
+        elif floor == 13:
+            next_chapter = 'chapter_6.png'
+        else:
+            next_chapter = f'chapter_{chapter_num + 1}.png' if chapter_num < 6 else 'chapter_6.png'
+        
         self.logger.debug(f'Looking for target chapter: {target_chapter}, next chapter: {next_chapter}')
         pos = np.array([0, 0])
         avail_buttons = self.get_current_icons(available=True)
+        
         # Check if on dungeon page
         if (avail_buttons['icon'] == 'dungeon_page.png').any():
             # Swipe to the top
@@ -622,27 +657,46 @@ class Bot:
                         expanded = 1
                         self.click_button(pos + [500, 90])
                     # check button is near top of screen
-                    if pos[1] < 550 and floor % 3 != 0:
+                    # Check if this is the last floor of a chapter (3, 6, 9, 12, 13)
+                    is_last_floor_of_chapter = floor in [3, 6, 9, 12, 13]
+                    if pos[1] < 550 and not is_last_floor_of_chapter:
                         # Stop scrolling when chapter is near top
                         break
-                elif (avail_buttons['icon'] == next_chapter).any() and floor % 3 == 0:
+                elif (avail_buttons['icon'] == next_chapter).any() and floor in [3, 6, 9, 12, 13]:
                     pos = get_button_pos(avail_buttons, next_chapter)
                     self.logger.info(f'Found next chapter {next_chapter} at position {pos}')
                     # Stop scrolling if the next chapter is found and last floor of chapter is chosen
                     break
-                # Contiue to swiping to find correct chapter
+                # Continue swiping to find correct chapter
                 [self.swipe([2, 0], [0, 0]) for i in range(2)]
                 self.click(30, 600)  # stop scroll
 
             # Click play floor if found
             if not (pos == np.array([0, 0])).any():
                 self.logger.info(f'Clicking floor {floor} for chapter at position {pos}')
-                if floor % 3 == 0:
-                    self.click_button(pos + [30, -460])
-                elif floor % 3 == 1:
+                
+                # Calculate floor position within chapter
+                if floor <= 3:
+                    floor_in_chapter = floor
+                elif floor <= 6:
+                    floor_in_chapter = floor - 3
+                elif floor <= 9:
+                    floor_in_chapter = floor - 6
+                elif floor <= 12:
+                    floor_in_chapter = floor - 9
+                elif floor == 13:
+                    floor_in_chapter = 1  # Chapter 5 has only one floor
+                else:  # floor >= 14
+                    floor_in_chapter = 1  # Chapter 6 endless mode
+                
+                # Click the appropriate floor button
+                if floor_in_chapter == 1:
                     self.click_button(pos + [30, 485])
-                elif floor % 3 == 2:
+                elif floor_in_chapter == 2:
                     self.click_button(pos + [30, 885])
+                elif floor_in_chapter == 3:
+                    self.click_button(pos + [30, -460])
+                
                 self.click_button((500, 600))
                 for i in range(10):
                     time.sleep(2)
@@ -653,7 +707,6 @@ class Bot:
                         break
             else:
                 self.logger.error(f'Could not find chapter for floor {floor}. Target: {target_chapter}, Next: {next_chapter}')
-
     # Locate game home screen and try to start fight is chosen
     def battle_screen(self, start=False, pve=True, floor=5):
         # Scan screen for any key buttons

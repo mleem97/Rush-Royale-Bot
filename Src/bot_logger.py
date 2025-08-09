@@ -41,14 +41,22 @@ class TextHandler(logging.StreamHandler):
 
     def emit(self, record):
         msg = self.format(record)
-        self.textctrl.config(state="normal")
-        self.insert_ansi(msg, ''
-                         "end")
-        #self.textctrl.insert("end", "\n")
-        self.flush()
-        # scroll to the bottom
-        self.textctrl.see("end")
-        self.textctrl.config(state="disabled")
+        # Ensure UI updates happen on the Tk main thread
+        def _write():
+            try:
+                self.textctrl.config(state="normal")
+                self.insert_ansi(msg, "end")
+                self.flush()
+                self.textctrl.see("end")
+                self.textctrl.config(state="disabled")
+            except Exception:
+                # If widget is gone or closed, ignore
+                pass
+        try:
+            # textctrl is a Tk widget; use its root via 'after'
+            self.textctrl.after(0, _write)
+        except Exception:
+            _write()
 
     # Functions to color messages according to utf-8 color codes set by formatter
     def insert_ansi(self, txt, index="insert"):
@@ -75,13 +83,19 @@ class TextHandler(logging.StreamHandler):
                 for tag in tuple(opened_tags):
                     if tag.startswith('foreground'):
                         self.textctrl.tag_add(tag, opened_tags[tag], code_index)
-                        opened_tags.remove(tag)
+                        try:
+                            del opened_tags[tag]
+                        except Exception:
+                            pass
                 opened_tags[self.ansi_color_fg[code]] = code_index
             elif code in self.ansi_color_bg:  # open background color tag (and close previously opened one if any)
                 for tag in tuple(opened_tags):
                     if tag.startswith('background'):
                         self.textctrl.tag_add(tag, opened_tags[tag], code_index)
-                        opened_tags.remove(tag)
+                        try:
+                            del opened_tags[tag]
+                        except Exception:
+                            pass
                 opened_tags[self.ansi_color_bg[code]] = code_index
 
         def find_ansi(line_txt, line_nb, char_offset):
@@ -110,14 +124,14 @@ class CustomFormatter(logging.Formatter):
     red = "\x1b[31;20m"
     bold_red = "\x1b[31;1m"
     reset = "\x1b[0m"
-    format = '[%(asctime)s] %(message)s'
+    msg_tmpl = '[%(asctime)s] %(message)s'
 
     FORMATS = {
-        logging.DEBUG: blue + format + reset,
-        logging.INFO: grey + format + reset,
-        logging.WARNING: yellow + format + reset,
-        logging.ERROR: red + format + reset,
-        logging.CRITICAL: bold_red + format + reset
+    logging.DEBUG: blue + msg_tmpl + reset,
+    logging.INFO: grey + msg_tmpl + reset,
+    logging.WARNING: yellow + msg_tmpl + reset,
+    logging.ERROR: red + msg_tmpl + reset,
+    logging.CRITICAL: bold_red + msg_tmpl + reset
     }
 
     def format(self, record):

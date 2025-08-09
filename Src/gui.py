@@ -61,13 +61,13 @@ class RR_bot:
     def __exit__(self, exc_type, exc_value, traceback):
         self.logger.info('Exiting GUI')
         self.logger.handlers.clear()
-        self.thread_run.join()
-        self.thread_init.join()
-        self.root.destroy()
         try:
-            self.bot_instance.client.stop()
-        except:
+            if hasattr(self, 'thread_run'):
+                self.thread_run.join(timeout=1)
+        except Exception:
             pass
+        self.root.destroy()
+        # best-effort shutdown; ignore if attributes not present
 
     # Initilzie the thread for main bot
     def start_command(self):
@@ -79,16 +79,48 @@ class RR_bot:
         # Start main thread
         self.thread_run = threading.Thread(target=self.start_bot, args=())
         self.thread_run.start()
+        # Ensure UI pump runs on main thread
+        if not hasattr(self, '_pump_started') or not self._pump_started:
+            self._pump_started = True
+            def pump_updates():
+                try:
+                    # Only update when bot instance & infos_ready exist
+                    if hasattr(self, 'bot_instance') and hasattr(self, 'infos_ready'):
+                        bot = self.bot_instance
+                        infos_ready = self.infos_ready
+                        if self.stop_flag:
+                            if hasattr(self, 'thread_bot'):
+                                try:
+                                    self.bot_instance.bot_stop = True
+                                    self.logger.warning('Exiting main loop...')
+                                    self.thread_bot.join(timeout=1)
+                                except Exception:
+                                    pass
+                            if hasattr(self.bot_instance, 'scrcpy_process') and self.bot_instance.scrcpy_process:
+                                self.bot_instance.stop_scrcpy()
+                            self.logger.info('Bot stopped!')
+                            self.logger.critical('Safe to close gui')
+                            self.running = False
+                            return
+                        if infos_ready.is_set():
+                            self.update_text(bot.combat_step, bot.combat, bot.output, bot.grid_df, bot.unit_series,
+                                             bot.merge_series, bot.info)
+                            infos_ready.clear()
+                finally:
+                    self.root.after(250, pump_updates)
+            self.root.after(250, pump_updates)
 
     # Update config file
     def update_config(self):
         # Update config file
-        floor_var = int(self.floor.get())
-        card_level = [var.get() for var in self.mana_vars] * np.arange(1, 6)
-        card_level = card_level[card_level != 0]
+        floor_text = str(self.floor.get()).strip()
+        floor_var = int(floor_text) if floor_text else 5
+        # Build list of selected card indices (1..5)
+        selections = np.array([int(var.get()) for var in self.mana_vars], dtype=int)
+        selected_indices = (np.nonzero(selections)[0] + 1).tolist()
         self.config.read('config.ini')
         self.config['bot']['floor'] = str(floor_var)
-        self.config['bot']['mana_level'] = np.array2string(card_level, separator=',')[1:-1]
+        self.config['bot']['mana_level'] = ','.join(map(str, selected_indices))
         self.config['bot']['pve'] = str(bool(self.pve_var.get()))
         with open('config.ini', 'w') as configfile:
             self.config.write(configfile)
@@ -107,7 +139,12 @@ class RR_bot:
         # Run startup of bot instance
         self.logger.warning('Starting bot...')
         self.bot_instance = bot_handler.start_bot_class(self.logger)
-        os.system(r"type src\startup_message.txt")
+        try:
+            # Read and log startup message
+            with open(os.path.join('Src', 'startup_message.txt'), 'r', encoding='utf-8') as f:
+                self.logger.info(f.read())
+        except Exception as e:
+            self.logger.debug(f'Could not read startup message: {e}')
         self.update_units()
         infos_ready = threading.Event()
         # Pass gui info to bot
@@ -118,22 +155,10 @@ class RR_bot:
         # Start bot thread
         thread_bot = threading.Thread(target=bot_handler.bot_loop, args=([bot, infos_ready]))
         thread_bot.start()
-        # Dump infos to gui whenever ready
-        while (1):
-            infos_ready.wait(timeout=5)
-            self.update_text(bot.combat_step, bot.combat, bot.output, bot.grid_df, bot.unit_series, bot.merge_series,
-                             bot.info)
-            infos_ready.clear()
-            if self.stop_flag:
-                self.bot_instance.bot_stop = True
-                self.logger.warning('Exiting main loop...')
-                thread_bot.join()
-                # Stop scrcpy process if running
-                if hasattr(self.bot_instance, 'scrcpy_process') and self.bot_instance.scrcpy_process:
-                    self.bot_instance.stop_scrcpy()
-                self.logger.info('Bot stopped!')
-                self.logger.critical('Safe to close gui')
-                return
+        # Expose for main-thread pump
+        self.infos_ready = infos_ready
+        self.thread_bot = thread_bot
+        return
 
     # Raise stop flag to threads
     def stop_bot(self):
@@ -181,15 +206,24 @@ def create_options(frame1, config):
 
     # General options
     label = Label(frame1, text="Options", justify=LEFT).grid(row=0, column=0, sticky=W)
+    # Safe default for PvE when not configured
+    user_pvp = 1
     if config.has_option('bot', 'pve'):
-        user_pvp = int(config.getboolean('bot', 'pve'))
+        try:
+            user_pvp = int(config.getboolean('bot', 'pve'))
+        except Exception:
+            user_pvp = 1
     pve_var = IntVar(value=user_pvp)
     ads_var = IntVar()
     pve_check = Checkbutton(frame1, text='PvE', variable=pve_var, justify=LEFT).grid(row=0, column=1, sticky=W)
     #ad_check = Checkbutton(frame1, text='Watch ads', variable=ads_var,justify=LEFT).grid(row=0, column=2, sticky=W)
     # Mana level targets
     mana_label = Label(frame1, text="Mana Level Targets", justify=LEFT).grid(row=2, column=0, sticky=W)
-    stored_values = np.fromstring(config['bot']['mana_level'], dtype=int, sep=',')
+    # Safe default for mana levels
+    if config.has_option('bot', 'mana_level'):
+        stored_values = np.fromstring(config['bot']['mana_level'], dtype=int, sep=',')
+    else:
+        stored_values = np.array([], dtype=int)
     mana_vars = [IntVar(value=int(i in stored_values)) for i in range(1, 6)]
     mana_buttons = [
         Checkbutton(frame1, text=f'Card {i+1}', variable=mana_vars[i], justify=LEFT).grid(row=2, column=i + 1)
