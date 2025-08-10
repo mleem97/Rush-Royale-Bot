@@ -4,7 +4,30 @@ Legacy Tkinter interface with modern Python features
 """
 from __future__ import annotations
 
-from tkinter import *
+from tkinter import (
+    Tk,
+    Frame,
+    Label,
+    Button,
+    Text,
+    Entry,
+    Checkbutton,
+    IntVar,
+    WORD,
+    NORMAL,
+    DISABLED,
+    END,
+    LEFT,
+    RIGHT,
+    TOP,
+    BOTTOM,
+    W,
+    E,
+    S,
+    NW,
+    SW,
+    SE,
+)
 import os
 import numpy as np
 import threading
@@ -15,6 +38,13 @@ from typing import Optional, Dict, Any, List, Tuple
 # internal
 import bot_handler
 import bot_logger
+try:
+    from latency import LT
+except Exception:
+    class _DummyLT:
+        def rolling_stats(self):
+            return {'count': 0, 'avg_ms': 0.0, 'p50_ms': 0.0, 'p90_ms': 0.0, 'p99_ms': 0.0}
+    LT = _DummyLT()
 
 
 # GUI Class
@@ -25,6 +55,9 @@ class RR_bot:
         self.stop_flag = False
         self.running = False
         self.info_ready = threading.Event()
+    self.thread_run: threading.Thread | None = None
+    self.thread_init: threading.Thread | None = None
+    self.bot_instance: Any | None = None
         # Read config file
         self.config = configparser.ConfigParser()
         self.config.read('config.ini')
@@ -35,38 +68,49 @@ class RR_bot:
         self.ads_var, self.pve_var, self.mana_vars, self.floor = create_options(self.frames[0], self.config)
         # Setup frame 2 (combat info)
         self.grid_dump, self.unit_dump, self.merge_dump = create_combat_info(self.frames[1])
-        ## rest need to be cleaned up
-        # Log frame
+        # Log frame (frame[3])
         bg = '#575559'
         fg = '#ffffff'
         logger_feed = Text(self.frames[3], height=30, width=38, bg=bg, fg=fg, wrap=WORD, font=('Consolas', 9))
         logger_feed.grid(row=0, sticky=S)
         # Setup & Connect logger to text widget
         self.logger = bot_logger.create_log_feed(logger_feed)
-        start_button = Button(self.frames[2], text="Start Bot", command=self.start_command)
+
+        # Controls frame (frames[2])
+        start_button = Button(self.frames[2], text='Start Bot', command=self.start_command)
         stop_button = Button(self.frames[2], text='Stop Bot', command=self.stop_bot, padx=20)
         leave_dungeon = Button(self.frames[2], text='Quit Floor', command=self.leave_game, bg='#ff0000', fg='#000000')
+        # Live reaction time label (updates every 100ms)
+        self.latency_label = Label(self.frames[2], text='RT: -- ms', font=('Consolas', 10))
+        self.latency_label.grid(row=0, column=0, padx=5, sticky=W)
         start_button.grid(row=0, column=1, padx=10)
         stop_button.grid(row=0, column=2, padx=5)
         leave_dungeon.grid(row=0, column=3, padx=5)
 
+        # Layout frames
         self.frames[0].pack(padx=0, pady=0, side=TOP, anchor=NW)
         self.frames[1].pack(padx=10, pady=10, side=RIGHT, anchor=SE)
         self.frames[2].pack(padx=10, pady=10, side=BOTTOM, anchor=SW)
         self.frames[3].pack(padx=10, pady=10, side=LEFT, anchor=SW)
         self.logger.debug('GUI started!')
+        # Start periodic latency updates
+        self._schedule_latency_update()
         self.root.mainloop()
 
     # Clear loggers, collect threads, and close window
     def __exit__(self, exc_type, exc_value, traceback):
         self.logger.info('Exiting GUI')
         self.logger.handlers.clear()
-        self.thread_run.join()
-        self.thread_init.join()
+        if self.thread_run:
+            self.thread_run.join()
+        if self.thread_init:
+            self.thread_init.join()
         self.root.destroy()
         try:
-            self.bot_instance.client.stop()
-        except:
+            client = getattr(self.bot_instance, 'client', None)
+            if client is not None and hasattr(client, 'stop'):
+                client.stop()
+        except Exception:
             pass
 
     # Initilzie the thread for main bot
@@ -83,9 +127,9 @@ class RR_bot:
     # Update config file
     def update_config(self):
         # Update config file
-        floor_var = int(self.floor.get())
-        card_level = [var.get() for var in self.mana_vars] * np.arange(1, 6)
-        card_level = card_level[card_level != 0]
+    floor_var = int(self.floor.get())
+    card_level = np.array([var.get() for var in self.mana_vars]) * np.arange(1, 6)
+    card_level = card_level[card_level != 0]
         self.config.read('config.ini')
         self.config['bot']['floor'] = str(floor_var)
         self.config['bot']['mana_level'] = np.array2string(card_level, separator=',')[1:-1]
@@ -112,8 +156,8 @@ class RR_bot:
         infos_ready = threading.Event()
         # Pass gui info to bot
         self.bot_instance.bot_stop = False
-        self.bot_instance.logger = self.logger
-        self.bot_instance.config = self.config
+    setattr(self.bot_instance, 'logger', self.logger)
+    setattr(self.bot_instance, 'config', self.config)
         bot = self.bot_instance
         # Start bot thread
         thread_bot = threading.Thread(target=bot_handler.bot_loop, args=([bot, infos_ready]))
@@ -150,6 +194,21 @@ class RR_bot:
         else:
             self.logger.warning('Bot has not been started yet!')
 
+    # Periodically refresh the reaction time label
+    def _schedule_latency_update(self):
+        try:
+            stats = LT.rolling_stats()
+            if stats.get('count', 0) and stats['count'] > 0:
+                text = f"RT avg {stats['avg_ms']:.0f} ms  p50 {stats['p50_ms']:.0f}  p90 {stats['p90_ms']:.0f}"
+            else:
+                text = 'RT: -- ms'
+            self.latency_label.config(text=text)
+        except Exception:
+            # Keep label as-is on errors
+            pass
+        # Update roughly every 100 ms
+        self.root.after(100, self._schedule_latency_update)
+
     # Update text widgets with latest info
     def update_text(self, i, combat, output, grid_df, unit_series, merge_series, info):
         # info + general info
@@ -181,6 +240,7 @@ def create_options(frame1, config):
 
     # General options
     label = Label(frame1, text="Options", justify=LEFT).grid(row=0, column=0, sticky=W)
+    user_pvp = 0
     if config.has_option('bot', 'pve'):
         user_pvp = int(config.getboolean('bot', 'pve'))
     pve_var = IntVar(value=user_pvp)

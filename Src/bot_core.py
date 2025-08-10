@@ -70,6 +70,7 @@ import cv2
 # internal
 import bot_perception
 import port_scan
+import ocr_utils
 
 SLEEP_DELAY = 0.1
 
@@ -382,36 +383,8 @@ class Bot:
             return pd.DataFrame(columns=['icon', 'available', 'pos [X,Y]'])
             
         img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_BGR2GRAY)
-        # Light blur to reduce noise and improve template match stability
-        img_gray_blur = cv2.GaussianBlur(img_gray, (3, 3), 0)
         self.logger.debug(f'Screenshot shape: {img_gray.shape}')
         
-        def match_template_multi_scale(src_gray, tmpl_gray, base_thresh, is_chapter=False):
-            """Return (found:boolean, (x,y):tuple, max_val:float). Tries multiple scales when needed."""
-            best = (False, (0, 0), 0.0)
-            # per-icon scaling tries
-            scales = [1.0]
-            if is_chapter:
-                scales = [0.9, 1.0, 1.1]
-            for sc in scales:
-                if sc != 1.0:
-                    new_w = max(1, int(tmpl_gray.shape[1] * sc))
-                    new_h = max(1, int(tmpl_gray.shape[0] * sc))
-                    tmpl = cv2.resize(tmpl_gray, (new_w, new_h), interpolation=cv2.INTER_AREA)
-                else:
-                    tmpl = tmpl_gray
-                if src_gray.shape[0] < tmpl.shape[0] or src_gray.shape[1] < tmpl.shape[1]:
-                    continue
-                res = cv2.matchTemplate(src_gray, tmpl, cv2.TM_CCOEFF_NORMED)
-                min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-                # Keep best regardless of threshold, decide later
-                if max_val > best[2]:
-                    best = (max_val >= base_thresh, (max_loc[0], max_loc[1]), float(max_val))
-            # Fallback: slightly relax if near-threshold for chapters
-            if is_chapter and not best[0] and best[2] >= (base_thresh - 0.05):
-                return (True, best[1], best[2])
-            return best
-
         # Check every target in dir
         icon_count = 0
         for target in os.listdir("icons"):
@@ -423,27 +396,21 @@ class Bot:
             if template is None:
                 self.logger.debug(f'Could not load template: {imgSrc}')
                 continue
-            # Slight blur for template too
-            template_blur = cv2.GaussianBlur(template, (3, 3), 0)
-            # Per-icon threshold tuning
-            is_chapter = ('chapter_' in target)
+                
+            # Compare images
+            res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
             threshold = 0.8
-            if is_chapter:
-                threshold = 0.75
-            elif target in ['dungeon_page.png']:
-                threshold = 0.78
-
-            # Compare images using robust best-location extraction
-            found, (best_x, best_y), max_val = match_template_multi_scale(img_gray_blur, template_blur, threshold, is_chapter=is_chapter)
-            icon_found = found
+            max_val = res.max()
+            loc = np.where(res >= threshold)
+            icon_found = len(loc[0]) > 0
             
             # Debug for key icons
             if target in ['home_screen.png', 'battle_icon.png'] or 'chapter_' in target:
                 self.logger.debug(f'Icon {target}: max_val={max_val:.3f}, found={icon_found}')
             
             if icon_found:
-                y = int(best_y)
-                x = int(best_x)
+                y = loc[0][0]
+                x = loc[1][0]
                 icon_count += 1
             current_icons.append([target, icon_found, (x, y)])
             
@@ -671,12 +638,31 @@ class Bot:
             # Click play floor if found
             if not (pos == np.array([0, 0])).any():
                 self.logger.info(f'Clicking floor {floor} for chapter at position {pos}')
-                if floor % 3 == 0:
-                    self.click_button(pos + [30, -460])
-                elif floor % 3 == 1:
-                    self.click_button(pos + [30, 485])
-                elif floor % 3 == 2:
-                    self.click_button(pos + [30, 885])
+                # Prefer OCR-based selection if available to avoid wrong slot clicks
+                slot_offsets = {1: np.array([30, -460]), 2: np.array([30, 485]), 3: np.array([30, 885])}
+                chosen_offset = None
+                try:
+                    # Refresh screen once to ensure text is visible (after expansion)
+                    self.getScreen()
+                    floors = ocr_utils.read_floor_from_chapter(self.screenRGB, (int(pos[0]), int(pos[1])))
+                    for slot, (val, conf) in floors.items():
+                        if val == floor and conf >= 0.55 and slot in slot_offsets:
+                            chosen_offset = slot_offsets[slot]
+                            self.logger.debug(f'OCR selected slot {slot} (conf={conf:.2f}) for floor {floor}')
+                            break
+                except Exception as e:
+                    self.logger.debug(f'OCR floor read failed, falling back: {e}')
+
+                if chosen_offset is None:
+                    # Fallback to modulo-based offset selection
+                    if floor % 3 == 0:
+                        chosen_offset = slot_offsets[1]
+                    elif floor % 3 == 1:
+                        chosen_offset = slot_offsets[2]
+                    else:
+                        chosen_offset = slot_offsets[3]
+
+                self.click_button(pos + chosen_offset)
                 self.click_button((500, 600))
                 for i in range(10):
                     time.sleep(2)
