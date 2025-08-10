@@ -59,11 +59,18 @@ class LatencyTracker:
         self.enabled = os.getenv('LATENCY_ENABLED', '1') not in ('0', 'false', 'False')
         # rolling stats
         self._roll = deque(maxlen=int(os.getenv('LATENCY_ROLLING_N', '200')))
+
+        self._flush_count = 0
+        self._summary_every = int(os.getenv('LATENCY_SUMMARY_EVERY', '50'))
+        self._summary_path = os.getenv('LATENCY_SUMMARY_PATH', 'latency_summary.txt')
+        # store last screenshot->action latency for quick access
+        self._last_s2a_ms: float = 0.0
         self._roll_think = deque(maxlen=int(os.getenv('LATENCY_ROLLING_N_THINK', '200')))
         self._flush_count = 0
         self._summary_every = int(os.getenv('LATENCY_SUMMARY_EVERY', '50'))
         self._summary_path = os.getenv('LATENCY_SUMMARY_PATH', 'latency_summary.txt')
         self._last_think_ms = 0.0
+
 
     def _ensure_header(self) -> None:
         if not os.path.exists(self._csv_path):
@@ -126,6 +133,9 @@ class LatencyTracker:
         # update rolling stats with primary KPI (screenshot_to_action_ms)
         if screenshot_to_action_ms is not None:
             self._roll.append(float(screenshot_to_action_ms))
+        # keep last thinking time regardless of rolling window
+        if screenshot_to_action_ms is not None:
+            self._last_s2a_ms = float(screenshot_to_action_ms)
         self._flush_count += 1
         if self._summary_every > 0 and self._flush_count % self._summary_every == 0:
             self._write_summary()
@@ -146,6 +156,11 @@ class LatencyTracker:
         if v is None:
             return ''
         return f'{v:.3f}'
+
+    # --- Helpers for UI/monitoring ---
+    def last_thinking_ms(self) -> float:
+        """Return milliseconds between screenshot capture end and action issue for last flush."""
+        return float(self._last_s2a_ms)
 
     # --- Extras ---
     def set_enabled(self, enabled: bool) -> None:

@@ -55,9 +55,10 @@ class RR_bot:
         self.stop_flag = False
         self.running = False
         self.info_ready = threading.Event()
-        self.thread_run = None
-        self.thread_init = None
-        self.bot_instance = None
+        self.thread_run: threading.Thread | None = None
+        self.thread_init: threading.Thread | None = None
+        self.bot_instance: Any | None = None
+
         # Read config file
         self.config = configparser.ConfigParser()
         self.config.read('config.ini')
@@ -206,10 +207,13 @@ class RR_bot:
     def _schedule_latency_update(self):
         try:
             stats = LT.rolling_stats()
+            last = LT.last_thinking_ms()
             if stats.get('count', 0) and stats['count'] > 0:
-                text = f"RT avg {stats['avg_ms']:.0f} ms  p50 {stats['p50_ms']:.0f}  p90 {stats['p90_ms']:.0f}"
+                text = (
+                    f"RT avg {stats['avg_ms']:.0f} ms  p50 {stats['p50_ms']:.0f}  p90 {stats['p90_ms']:.0f}  last {last:.0f}"
+                )
             else:
-                text = 'RT: -- ms'
+                text = f'RT: -- ms  last {last:.0f}'
             self.latency_label.config(text=text)
         except Exception:
             # Keep label as-is on errors

@@ -72,7 +72,8 @@ import bot_perception
 import port_scan
 import ocr_utils
 
-SLEEP_DELAY = 0.1
+# default delay between sequential actions (seconds)
+SLEEP_DELAY = 0.05
 
 
 class Bot:
@@ -407,7 +408,14 @@ class Bot:
             
         img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_BGR2GRAY)
         self.logger.debug(f'Screenshot shape: {img_gray.shape}')
-        
+
+        # OCR fallback for chapter headers
+        try:
+            ocr_chapters = ocr_utils.find_chapter_headers(img_rgb)
+        except Exception as e:
+            ocr_chapters = {}
+            self.logger.debug(f'Chapter OCR failed: {e}')
+
         # Check every target in dir
         icon_count = 0
         for target in os.listdir("icons"):
@@ -426,12 +434,26 @@ class Bot:
             max_val = res.max()
             loc = np.where(res >= threshold)
             icon_found = len(loc[0]) > 0
-            
-            # Removed verbose per-icon visibility debug logging
-            
+
             if icon_found:
                 y = loc[0][0]
                 x = loc[1][0]
+            elif target.startswith('chapter_'):
+                # Fallback to OCR if chapter icon not found
+                try:
+                    num = int(target.split('_')[1].split('.')[0])
+                    if num in ocr_chapters:
+                        x, y = ocr_chapters[num]
+                        icon_found = True
+                        self.logger.debug(f'OCR detected {target} at position {(x, y)}')
+                except Exception:
+                    pass
+
+            # Debug for key icons
+            if target in ['home_screen.png', 'battle_icon.png'] or 'chapter_' in target:
+                self.logger.debug(f'Icon {target}: max_val={max_val:.3f}, found={icon_found}')
+
+            if icon_found:
                 icon_count += 1
             current_icons.append([target, icon_found, (x, y)])
             
