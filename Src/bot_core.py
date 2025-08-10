@@ -94,6 +94,7 @@ class Bot:
             self.unit_series
         ) = self.merge_series = self.df_groups = self.info = self.combat_step = None
         self.logger = logging.getLogger("__main__")
+        logging.getLogger("ocr_utils").setLevel(logging.DEBUG)
         if device is None:
             device = port_scan.get_device()
         if not device:
@@ -702,7 +703,20 @@ class Bot:
     # Start a dungeon floor from PvE page
     def play_dungeon(self, floor=5):
         self.logger.debug(f"Starting Dungeon floor {floor}")
-        chapter_num = int(np.ceil(floor / 3))
+        # Explicit mapping of floors to chapters
+        floor_map = {
+            1: range(1, 4),
+            2: range(4, 7),
+            3: range(7, 10),
+            4: range(10, 13),
+            5: [13],
+            6: [14],
+        }
+        chapter_num = 1
+        for chap, floors in floor_map.items():
+            if floor in floors:
+                chapter_num = chap
+                break
         self.logger.debug(f"Looking for chapter {chapter_num}")
         pos = np.array([0, 0])
         avail_buttons = self.get_current_icons(available=True)
@@ -711,7 +725,13 @@ class Bot:
             # Swipe to the top
             [self.swipe([0, 0], [2, 0]) for _ in range(14)]
             self.click(30, 600, 5)  # stop scroll and scan screen for buttons
-            expanded = 0
+            self.getScreen()
+            # Log visible floors for debugging
+            visible = ocr_utils.find_chapter_headers(self.screenRGB)
+            for chap, xy in visible.items():
+                floors_here = ocr_utils.read_floor_from_chapter(self.screenRGB, xy)
+                self.logger.debug(f"Visible chapter {chap} floors: {floors_here}")
+
             for i in range(12):
                 self.getScreen()
                 chapters = ocr_utils.find_chapter_headers(self.screenRGB)
@@ -719,9 +739,12 @@ class Bot:
                 if chapter_num in chapters:
                     pos = np.array(chapters[chapter_num])
                     self.logger.info(f"Found chapter {chapter_num} at {pos}")
-                    if not expanded:
-                        expanded = 1
-                        self.click_button(pos + [500, 90])
+                    # Expand chapter only if a collapse icon is detected
+                    icons = self.get_current_icons(available=True)
+                    chapter_icon = f"chapter_{chapter_num}.png"
+                    if (icons["icon"] == chapter_icon).any():
+                        self.logger.debug(f"Chapter {chapter_num} collapsed, expanding")
+                        self.click_button(pos)
                         self.getScreen()
                     if pos[1] < 550 and floor % 3 != 0:
                         break
@@ -760,7 +783,10 @@ class Bot:
                         chosen_offset = slot_offsets[3]
 
                 self.click_button(pos + chosen_offset)
-                self.click_button((500, 600))
+                # Play selected floor then choose random partner
+                self.click_button((500, 600))  # Play
+                time.sleep(0.5)
+                self.click_button((500, 800))  # Random
                 for i in range(10):
                     time.sleep(2)
                     avail_buttons = self.get_current_icons(available=True)
