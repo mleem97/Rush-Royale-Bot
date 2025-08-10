@@ -237,6 +237,29 @@ class Bot:
         else:
             self.shell(f'input keyevent {key}')
 
+    # Wait until a given icon is no longer detected on screen
+    def wait_until_icon_absent(self, icon_filename: str, timeout: float = 60.0, poll: float = 0.5) -> bool:
+        """Poll the screen until the provided icon is not detected anymore.
+        Returns True if the icon disappeared within timeout, False otherwise.
+        If the icon never appears, returns True immediately (no waiting needed).
+        """
+        start = time.time()
+        seen_once = False
+        while (time.time() - start) < timeout and not self.bot_stop:
+            df = self.get_current_icons(available=True)
+            present = (not df.empty) and (df['icon'] == icon_filename).any()
+            if present:
+                seen_once = True
+            elif seen_once:
+                self.logger.info(f"{icon_filename} cleared after {time.time() - start:.1f}s")
+                return True
+            time.sleep(poll)
+        if not seen_once:
+            # Icon was never seen; nothing to wait for
+            return True
+        self.logger.warning(f"Timeout waiting for {icon_filename} to disappear")
+        return False
+
     # Force restart the game through ADB, or spam 10 disconnects to abandon match
     def restart_RR(self, quick_disconnect=False):
         if quick_disconnect:
@@ -404,9 +427,7 @@ class Bot:
             loc = np.where(res >= threshold)
             icon_found = len(loc[0]) > 0
             
-            # Debug for key icons
-            if target in ['home_screen.png', 'battle_icon.png'] or 'chapter_' in target:
-                self.logger.debug(f'Icon {target}: max_val={max_val:.3f}, found={icon_found}')
+            # Removed verbose per-icon visibility debug logging
             
             if icon_found:
                 y = loc[0][0]
@@ -675,9 +696,9 @@ class Bot:
                 self.logger.error(f'Could not find chapter for floor {floor}. Target: {target_chapter}, Next: {next_chapter}')
 
     # Locate game home screen and try to start fight is chosen
-    def battle_screen(self, start=False, pve=True, floor=5):
+    def battle_screen(self, start=False, pve=True, floor=5, new=True):
         # Scan screen for any key buttons
-        df = self.get_current_icons(available=True)
+        df = self.get_current_icons(new=new, available=True)
         if not df.empty:
             # list of buttons
             if (df['icon'] == 'fighting.png').any() and not (df['icon'] == '0cont_button.png').any():
@@ -693,6 +714,11 @@ class Bot:
                     self.play_dungeon(floor=floor)
                 elif start:
                     self.click_button(np.array([140, 1259]))
+                    # After pressing PvP, wait for loading indicator to disappear
+                    try:
+                        self.wait_until_icon_absent('pvp_loading.png', timeout=120.0, poll=1.0)
+                    except Exception:
+                        pass
                 time.sleep(1)
                 return df, 'home'
             # Check first button is clickable

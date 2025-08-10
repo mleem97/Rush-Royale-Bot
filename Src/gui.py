@@ -55,9 +55,9 @@ class RR_bot:
         self.stop_flag = False
         self.running = False
         self.info_ready = threading.Event()
-    self.thread_run: threading.Thread | None = None
-    self.thread_init: threading.Thread | None = None
-    self.bot_instance: Any | None = None
+        self.thread_run = None
+        self.thread_init = None
+        self.bot_instance = None
         # Read config file
         self.config = configparser.ConfigParser()
         self.config.read('config.ini')
@@ -127,9 +127,9 @@ class RR_bot:
     # Update config file
     def update_config(self):
         # Update config file
-    floor_var = int(self.floor.get())
-    card_level = np.array([var.get() for var in self.mana_vars]) * np.arange(1, 6)
-    card_level = card_level[card_level != 0]
+        floor_var = int(self.floor.get())
+        card_level = np.array([var.get() for var in self.mana_vars]) * np.arange(1, 6)
+        card_level = card_level[card_level != 0]
         self.config.read('config.ini')
         self.config['bot']['floor'] = str(floor_var)
         self.config['bot']['mana_level'] = np.array2string(card_level, separator=',')[1:-1]
@@ -156,17 +156,24 @@ class RR_bot:
         infos_ready = threading.Event()
         # Pass gui info to bot
         self.bot_instance.bot_stop = False
-    setattr(self.bot_instance, 'logger', self.logger)
-    setattr(self.bot_instance, 'config', self.config)
+        setattr(self.bot_instance, 'logger', self.logger)
+        setattr(self.bot_instance, 'config', self.config)
         bot = self.bot_instance
         # Start bot thread
         thread_bot = threading.Thread(target=bot_handler.bot_loop, args=([bot, infos_ready]))
         thread_bot.start()
         # Dump infos to gui whenever ready
-        while (1):
+        while True:
             infos_ready.wait(timeout=5)
-            self.update_text(bot.combat_step, bot.combat, bot.output, bot.grid_df, bot.unit_series, bot.merge_series,
-                             bot.info)
+            self.update_text(
+                bot.combat_step,
+                bot.combat,
+                bot.output,
+                bot.grid_df,
+                bot.unit_series,
+                bot.merge_series,
+                bot.info,
+            )
             infos_ready.clear()
             if self.stop_flag:
                 self.bot_instance.bot_stop = True
@@ -188,8 +195,9 @@ class RR_bot:
     # Leave current co-up game
     def leave_game(self):
         # check if bot_instance exists
-        if hasattr(self, 'bot_instance'):
-            thread_bot = threading.Thread(target=self.bot_instance.restart_RR, args=([True]))
+        bot = getattr(self, 'bot_instance', None)
+        if bot is not None and hasattr(bot, 'restart_RR'):
+            thread_bot = threading.Thread(target=bot.restart_RR, args=(True,))
             thread_bot.start()
         else:
             self.logger.warning('Bot has not been started yet!')

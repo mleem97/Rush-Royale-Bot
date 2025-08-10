@@ -55,13 +55,15 @@ class LatencyTracker:
         self._csv_path = csv_path
         self._local = threading.local()
         self._ensure_header()
-    # enable/disable via env
-    self.enabled = os.getenv('LATENCY_ENABLED', '1') not in ('0', 'false', 'False')
-    # rolling stats
-    self._roll = deque(maxlen=int(os.getenv('LATENCY_ROLLING_N', '200')))
-    self._flush_count = 0
-    self._summary_every = int(os.getenv('LATENCY_SUMMARY_EVERY', '50'))
-    self._summary_path = os.getenv('LATENCY_SUMMARY_PATH', 'latency_summary.txt')
+        # enable/disable via env
+        self.enabled = os.getenv('LATENCY_ENABLED', '1') not in ('0', 'false', 'False')
+        # rolling stats
+        self._roll = deque(maxlen=int(os.getenv('LATENCY_ROLLING_N', '200')))
+        self._roll_think = deque(maxlen=int(os.getenv('LATENCY_ROLLING_N_THINK', '200')))
+        self._flush_count = 0
+        self._summary_every = int(os.getenv('LATENCY_SUMMARY_EVERY', '50'))
+        self._summary_path = os.getenv('LATENCY_SUMMARY_PATH', 'latency_summary.txt')
+        self._last_think_ms = 0.0
 
     def _ensure_header(self) -> None:
         if not os.path.exists(self._csv_path):
@@ -154,6 +156,39 @@ class LatencyTracker:
         if not self._roll:
             return {'count': 0, 'avg_ms': 0.0, 'p50_ms': 0.0, 'p90_ms': 0.0, 'p99_ms': 0.0}
         data = sorted(self._roll)
+        n = len(data)
+        def q(p: float) -> float:
+            if n == 0:
+                return 0.0
+            idx = min(n - 1, max(0, int(p * (n - 1))))
+            return data[idx]
+        avg = sum(data) / n
+        return {
+            'count': float(n),
+            'avg_ms': float(avg),
+            'p50_ms': float(q(0.50)),
+            'p90_ms': float(q(0.90)),
+            'p99_ms': float(q(0.99)),
+        }
+
+    # Record a think-time sample (ms) into a separate rolling stats buffer
+    def record_think_ms(self, ms: float) -> None:
+        if not self.enabled:
+            return
+        try:
+            self._last_think_ms = float(ms)
+            # keep it lightweight; don't write to CSV, only rolling
+            self._roll_think.append(float(ms))
+        except Exception:
+            pass
+
+    def last_think_ms(self) -> float:
+        return getattr(self, '_last_think_ms', 0.0)
+
+    def rolling_think_stats(self) -> Dict[str, float]:
+        if not self._roll_think:
+            return {'count': 0, 'avg_ms': 0.0, 'p50_ms': 0.0, 'p90_ms': 0.0, 'p99_ms': 0.0}
+        data = sorted(self._roll_think)
         n = len(data)
         def q(p: float) -> float:
             if n == 0:

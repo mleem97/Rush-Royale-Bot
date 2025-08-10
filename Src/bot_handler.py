@@ -108,10 +108,15 @@ def bot_loop(bot, info_event):
     time.sleep(5)
     # Main loop
     bot.logger.debug(f'Bot mainloop started')
+    # Timing controls
+    MENU_INTERVAL = 0.250  # 250 ms in menu
+    FIGHT_INTERVAL = 0.125  # 125 ms in fight
+    MAX_THINK = 0.249  # 249 ms max thinking time per tick
     # Wait for game to load
     while (not bot.bot_stop):
-        # Fetch screen and check state
-        output = bot.battle_screen(start=False)
+        tick_start = time.perf_counter()
+        # Fetch screen and check state (reuse screen within a tick)
+        output = bot.battle_screen(start=False, new=True)
         if output[1] == 'fighting':
             watch_ad = True
             wait = 0
@@ -129,8 +134,17 @@ def bot_loop(bot, info_event):
                 bot.logger.warning('Leaving game')
                 bot.restart_RR(quick_disconnect=True)
             # Combat Section
+            # Measure thinking time for combat decisions
+            think_t0 = time.perf_counter()
             grid_df, bot.unit_series, bot.merge_series, bot.df_groups, bot.info = combat_loop(
                 bot, grid_df, user_level, user_target)
+            think_elapsed = time.perf_counter() - think_t0
+            try:
+                from latency import LT
+                if hasattr(LT, 'record_think_ms'):
+                    LT.record_think_ms(think_elapsed * 1000.0)
+            except Exception:
+                pass
             bot.grid_df = grid_df.copy()
             bot.combat = combat
             bot.output = output[1]
@@ -162,12 +176,28 @@ def bot_loop(bot, info_event):
                     bot.logger.debug('Forced new screenshot capture')
                 else:
                     bot.logger.warning(f'Screenshot file missing: {screenshot_path}')
-            output = bot.battle_screen(start=True, pve=user_pve, floor=user_floor)
+            think_t0 = time.perf_counter()
+            output = bot.battle_screen(start=True, pve=user_pve, floor=user_floor, new=True)
+            think_elapsed = time.perf_counter() - think_t0
+            try:
+                from latency import LT
+                if hasattr(LT, 'record_think_ms'):
+                    LT.record_think_ms(think_elapsed * 1000.0)
+            except Exception:
+                pass
             wait += 1
             if wait > 40:
                 bot.logger.info('RESTARTING')
-                bot.restart_RR(),
+                bot.restart_RR()
                 wait = 0
+
+        # Enforce cadence (screenshot interval target) and cap loop time
+        elapsed = time.perf_counter() - tick_start
+        interval = FIGHT_INTERVAL if output[1] == 'fighting' else MENU_INTERVAL
+        remain = interval - elapsed
+        if remain > 0:
+            # Sleep the remaining time to maintain target FPS
+            time.sleep(remain)
 
 
 def check_adb_connection(logger):
