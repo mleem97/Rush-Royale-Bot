@@ -136,6 +136,6 @@ def find_chapter_headers(screen_bgr: np.ndarray) -> Dict[int, Tuple[int, int]]:
                 x = int(data['left'][i])
                 y = int(data['top'][i])
                 results[num] = (x, y)
-            except Exception:
+            except (ValueError, TypeError):
                 continue
     return results
