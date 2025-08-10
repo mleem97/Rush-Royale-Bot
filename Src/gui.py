@@ -58,6 +58,7 @@ class RR_bot:
         self.thread_run: threading.Thread | None = None
         self.thread_init: threading.Thread | None = None
         self.bot_instance: Any | None = None
+
         # Read config file
         self.config = configparser.ConfigParser()
         self.config.read('config.ini')
@@ -163,10 +164,17 @@ class RR_bot:
         thread_bot = threading.Thread(target=bot_handler.bot_loop, args=([bot, infos_ready]))
         thread_bot.start()
         # Dump infos to gui whenever ready
-        while (1):
+        while True:
             infos_ready.wait(timeout=5)
-            self.update_text(bot.combat_step, bot.combat, bot.output, bot.grid_df, bot.unit_series, bot.merge_series,
-                             bot.info)
+            self.update_text(
+                bot.combat_step,
+                bot.combat,
+                bot.output,
+                bot.grid_df,
+                bot.unit_series,
+                bot.merge_series,
+                bot.info,
+            )
             infos_ready.clear()
             if self.stop_flag:
                 self.bot_instance.bot_stop = True
@@ -188,8 +196,9 @@ class RR_bot:
     # Leave current co-up game
     def leave_game(self):
         # check if bot_instance exists
-        if hasattr(self, 'bot_instance'):
-            thread_bot = threading.Thread(target=self.bot_instance.restart_RR, args=([True]))
+        bot = getattr(self, 'bot_instance', None)
+        if bot is not None and hasattr(bot, 'restart_RR'):
+            thread_bot = threading.Thread(target=bot.restart_RR, args=(True,))
             thread_bot.start()
         else:
             self.logger.warning('Bot has not been started yet!')
