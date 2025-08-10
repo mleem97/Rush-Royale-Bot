@@ -55,9 +55,9 @@ class RR_bot:
         self.stop_flag = False
         self.running = False
         self.info_ready = threading.Event()
-    self.thread_run: threading.Thread | None = None
-    self.thread_init: threading.Thread | None = None
-    self.bot_instance: Any | None = None
+        self.thread_run: threading.Thread | None = None
+        self.thread_init: threading.Thread | None = None
+        self.bot_instance: Any | None = None
         # Read config file
         self.config = configparser.ConfigParser()
         self.config.read('config.ini')
@@ -127,9 +127,9 @@ class RR_bot:
     # Update config file
     def update_config(self):
         # Update config file
-    floor_var = int(self.floor.get())
-    card_level = np.array([var.get() for var in self.mana_vars]) * np.arange(1, 6)
-    card_level = card_level[card_level != 0]
+        floor_var = int(self.floor.get())
+        card_level = np.array([var.get() for var in self.mana_vars]) * np.arange(1, 6)
+        card_level = card_level[card_level != 0]
         self.config.read('config.ini')
         self.config['bot']['floor'] = str(floor_var)
         self.config['bot']['mana_level'] = np.array2string(card_level, separator=',')[1:-1]
@@ -156,8 +156,8 @@ class RR_bot:
         infos_ready = threading.Event()
         # Pass gui info to bot
         self.bot_instance.bot_stop = False
-    setattr(self.bot_instance, 'logger', self.logger)
-    setattr(self.bot_instance, 'config', self.config)
+        setattr(self.bot_instance, 'logger', self.logger)
+        setattr(self.bot_instance, 'config', self.config)
         bot = self.bot_instance
         # Start bot thread
         thread_bot = threading.Thread(target=bot_handler.bot_loop, args=([bot, infos_ready]))
@@ -198,10 +198,13 @@ class RR_bot:
     def _schedule_latency_update(self):
         try:
             stats = LT.rolling_stats()
+            last = LT.last_thinking_ms()
             if stats.get('count', 0) and stats['count'] > 0:
-                text = f"RT avg {stats['avg_ms']:.0f} ms  p50 {stats['p50_ms']:.0f}  p90 {stats['p90_ms']:.0f}"
+                text = (
+                    f"RT avg {stats['avg_ms']:.0f} ms  p50 {stats['p50_ms']:.0f}  p90 {stats['p90_ms']:.0f}  last {last:.0f}"
+                )
             else:
-                text = 'RT: -- ms'
+                text = f'RT: -- ms  last {last:.0f}'
             self.latency_label.config(text=text)
         except Exception:
             # Keep label as-is on errors

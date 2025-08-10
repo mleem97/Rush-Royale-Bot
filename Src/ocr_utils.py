@@ -115,3 +115,27 @@ def read_floor_from_chapter(screen_bgr: np.ndarray, chapter_header_xy: Tuple[int
                 val, conf = val2, conf2
         results[slot] = (val, conf)
     return results
+
+
+def find_chapter_headers(screen_bgr: np.ndarray) -> Dict[int, Tuple[int, int]]:
+    """Locate positions of 'Chapter N' headers on the given screen using OCR.
+    Returns mapping {chapter_number: (x, y)} for the top-left of the word 'Chapter'.
+    """
+    if not _TESS:
+        return {}
+    try:
+        data = pytesseract.image_to_data(screen_bgr, output_type=pytesseract.Output.DICT)
+    except Exception:
+        return {}
+    results: Dict[int, Tuple[int, int]] = {}
+    words = [w.strip().lower() for w in data.get('text', [])]
+    for i, w in enumerate(words):
+        if w == 'chapter' and i + 1 < len(words):
+            try:
+                num = int(words[i + 1])
+                x = int(data['left'][i])
+                y = int(data['top'][i])
+                results[num] = (x, y)
+            except Exception:
+                continue
+    return results
