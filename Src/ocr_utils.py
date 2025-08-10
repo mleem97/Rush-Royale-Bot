@@ -125,7 +125,9 @@ def find_chapter_headers(screen_bgr: np.ndarray) -> Dict[int, Tuple[int, int]]:
         return {}
     try:
         data = pytesseract.image_to_data(screen_bgr, output_type=pytesseract.Output.DICT)
-    except Exception:
+    except Exception as e:
+        if isinstance(e, (KeyboardInterrupt, SystemExit)):
+            raise
         return {}
     results: Dict[int, Tuple[int, int]] = {}
     words = [w.strip().lower() for w in data.get('text', [])]
