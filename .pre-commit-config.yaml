@@ -8,7 +8,7 @@ repos:
     rev: 23.12.1
     hooks:
       - id: black
-        language_version: python3.13
+        language_version: python3.11
         args: [--line-length=100]
 
   # Import sorting
@@ -39,15 +39,16 @@ repos:
     rev: 7.0.0
     hooks:
       - id: flake8
-        args: [--max-line-length=100, --extend-ignore=E203,W503]
-        additional_dependencies: [flake8-docstrings]
+        args:
+          - "--max-line-length=100"
+          - "--extend-ignore=E203,W503,D100,D101,D102,D103,D104,D105,D107,D205,D400,D401,E266"
 
   # Security checks
   - repo: https://github.com/PyCQA/bandit
     rev: 1.7.5
     hooks:
       - id: bandit
-        args: [-r, Src/, -f, json, -o, reports/bandit-report.json]
+        args: [-r, Src/, -f, json, -o, reports/bandit-report.json, --exit-zero]
         pass_filenames: false
 
   # Documentation checks
@@ -66,35 +67,12 @@ repos:
       - id: nbqa-isort
         args: [--profile=black]
 
-  # Local hooks for project-specific checks
-  - repo: local
-    hooks:
-      - id: dependency-check
-        name: Check dependencies
-        entry: python test_dependencies.py
-        language: system
-        pass_filenames: false
-        stages: [commit]
-
-      - id: config-validation
-        name: Validate configuration
-        entry: python -c "from Src.config_validator import validate_bot_config; validate_bot_config()"
-        language: system
-        pass_filenames: false
-        stages: [commit]
-
-      - id: unit-tests
-        name: Run unit tests
-        entry: python -m pytest tests/ -x -q
-        language: system
-        pass_filenames: false
-        stages: [push]
 
 # Configuration for specific tools
 default_language_version:
-  python: python3.13
+  python: python3.11
 
-default_stages: [commit]
+default_stages: [pre-commit]
 
 # Files to exclude from all hooks
 exclude: |

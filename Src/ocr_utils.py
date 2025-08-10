@@ -5,17 +5,20 @@ high-contrast game UI text.
 """
 from __future__ import annotations
 
-from typing import Optional, Tuple, Dict
-import numpy as np
+from typing import Dict, Optional, Tuple
+
 import cv2
+import numpy as np
 
 try:
-    import pytesseract  # type: ignore
-    import shutil
     import os
+    import shutil
+
+    import pytesseract  # type: ignore
+
     # Try to locate tesseract.exe
     _TESS = True
-    _tess_path = os.getenv('TESSERACT_PATH')
+    _tess_path = os.getenv("TESSERACT_PATH")
     if _tess_path and os.path.exists(_tess_path):
         pytesseract.pytesseract.tesseract_cmd = _tess_path
     else:
@@ -31,7 +34,7 @@ try:
                 found = True
                 break
         if not found:
-            which = shutil.which('tesseract.exe') or shutil.which('tesseract')
+            which = shutil.which("tesseract.exe") or shutil.which("tesseract")
             if which:
                 pytesseract.pytesseract.tesseract_cmd = which
 except Exception:
@@ -47,8 +50,7 @@ def _prep_digits(img_bgr: np.ndarray) -> np.ndarray:
     # De-noise but keep edges
     gray = cv2.bilateralFilter(gray, d=5, sigmaColor=40, sigmaSpace=40)
     # Adaptive threshold
-    th = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                               cv2.THRESH_BINARY, 31, 5)
+    th = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 5)
     # Morph to unify characters
     kernel = np.ones((2, 2), np.uint8)
     th = cv2.morphologyEx(th, cv2.MORPH_OPEN, kernel, iterations=1)
@@ -73,18 +75,20 @@ def ocr_digits(img_bgr: np.ndarray, psm: int = 7) -> Tuple[Optional[int], float]
         txt = pytesseract.image_to_string(proc, config=cfg).strip()
         # Optional: confidences via image_to_data
         data = pytesseract.image_to_data(proc, config=cfg, output_type=pytesseract.Output.DICT)
-        confs = [float(c) for c in data.get('conf', []) if c not in ('-1', None)]
+        confs = [float(c) for c in data.get("conf", []) if c not in ("-1", None)]
         conf = (sum(confs) / len(confs)) / 100.0 if confs else 0.0
         # Keep only digits
-        digits = ''.join(ch for ch in txt if ch.isdigit())
-        if digits == '':
+        digits = "".join(ch for ch in txt if ch.isdigit())
+        if digits == "":
             return None, conf
         return int(digits), conf
     except Exception:
         return None, 0.0
 
 
-def read_floor_from_chapter(screen_bgr: np.ndarray, chapter_header_xy: Tuple[int, int]) -> Dict[int, Tuple[Optional[int], float]]:
+def read_floor_from_chapter(
+    screen_bgr: np.ndarray, chapter_header_xy: Tuple[int, int]
+) -> Dict[int, Tuple[Optional[int], float]]:
     """Given the chapter header position (x,y), sample 3 ROIs where floors 1..3 are shown.
     Returns mapping {slot_index: (value, confidence)}. slot_index in {1,2,3} top->bottom.
     """
@@ -94,9 +98,9 @@ def read_floor_from_chapter(screen_bgr: np.ndarray, chapter_header_xy: Tuple[int
     # ROIs tuned for 1600x900; adjust with relative offsets around chapter card
     # These offsets might need minor calibration on your device
     rois = {
-        1: (x + 10, y - 510, 120, 60),   # top floor label area
-        2: (x + 10, y + 470, 120, 60),   # middle floor label area
-        3: (x + 10, y + 870, 120, 60),   # bottom floor label area
+        1: (x + 10, y - 510, 120, 60),  # top floor label area
+        2: (x + 10, y + 470, 120, 60),  # middle floor label area
+        3: (x + 10, y + 870, 120, 60),  # bottom floor label area
     }
 
     results: Dict[int, Tuple[Optional[int], float]] = {}
@@ -130,13 +134,13 @@ def find_chapter_headers(screen_bgr: np.ndarray) -> Dict[int, Tuple[int, int]]:
             raise
         return {}
     results: Dict[int, Tuple[int, int]] = {}
-    words = [w.strip().lower() for w in data.get('text', [])]
+    words = [w.strip().lower() for w in data.get("text", [])]
     for i, w in enumerate(words):
-        if w == 'chapter' and i + 1 < len(words):
+        if w == "chapter" and i + 1 < len(words):
             try:
                 num = int(words[i + 1])
-                x = int(data['left'][i])
-                y = int(data['top'][i])
+                x = int(data["left"][i])
+                y = int(data["top"][i])
                 results[num] = (x, y)
             except (ValueError, TypeError):
                 continue
