@@ -16,3 +16,4 @@ config.ini
 .github/prompts
 *instructions.md
 *.prompt.md
+reports/bandit-report.json
