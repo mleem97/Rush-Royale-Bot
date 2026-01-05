@@ -136,7 +136,7 @@ class RushBot:
     def leave_game(self):
         # check if bot_instance exists
         if hasattr(self, 'bot_instance'):
-            thread_bot = threading.Thread(target=self.bot_instance.restart_RR, args=([True]))
+            thread_bot = threading.Thread(target=self.bot_instance.restart_game, args=([True]))
             thread_bot.start()
         else:
             self.logger.warning('Bot has not been started yet!')
@@ -172,6 +172,7 @@ def create_options(frame1, config):
 
     # General options
     label = Label(frame1, text="Options", justify=LEFT).grid(row=0, column=0, sticky=W)
+    user_pvp = 0  # Default: PvP mode
     if config.has_option('bot', 'pve'):
         user_pvp = int(config.getboolean('bot', 'pve'))
     pve_var = IntVar(value=user_pvp)

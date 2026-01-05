@@ -108,7 +108,7 @@ def bot_loop(bot, info_event):
             wait = 0
             combat += 1
             if combat > max_loops:
-                bot.restart_RR()
+                bot.restart_game()
                 combat = 0
                 continue
             elif bot.bot_stop:
@@ -118,7 +118,7 @@ def bot_loop(bot, info_event):
                 if any([(bot.battle_screen(start=False)[0] == 'shaman_opponent.png').any(axis=None) for i in range(1)]):
                     continue
                 bot.logger.warning('Leaving game')
-                bot.restart_RR(quick_disconnect=True)
+                bot.restart_game(quick_disconnect=True)
             # Combat Section
             grid_df, bot.unit_series, bot.merge_series, bot.df_groups, bot.info = combat_loop(
                 bot, grid_df, user_level, user_target)
@@ -140,7 +140,7 @@ def bot_loop(bot, info_event):
             wait += 1
             if wait > 40:
                 bot.logger.info('RESTARTING')
-                bot.restart_RR(),
+                bot.restart_game(),
                 wait = 0
 
 

@@ -10,7 +10,7 @@ screens
 bot_feed_emulator-5554.png
 Src/old_functions.py
 bot_feed.png
-RR_bot.log
+RB_bot.log
 build
 dist
 config.ini
