@@ -1,19 +1,62 @@
 """
 Rush Royale Bot Perception - Python 3.13 Compatible
 Computer vision and machine learning for unit recognition
+
+Modernized to use ModelRegistry for model management.
 """
 from __future__ import annotations
 
 import os
+import warnings
+import logging
+import configparser
 import numpy as np
 import pandas as pd
 import cv2
 from sklearn.linear_model import LogisticRegression
-import pickle
 from typing import Optional, Dict, Any, List, Tuple, Union
 from pathlib import Path
 
-# internal
+# Try to import modern ML infrastructure
+try:
+    from Src.ml.model_registry import ModelRegistry
+    REGISTRY_AVAILABLE = True
+except ImportError:
+    REGISTRY_AVAILABLE = False
+
+# Fallback imports for legacy support
+try:
+    import joblib
+    JOBLIB_AVAILABLE = True
+except ImportError:
+    import pickle
+    JOBLIB_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
+
+# Global model cache to avoid repeated loading
+_model_cache: Dict[str, Any] = {}
+_config_cache: Optional[configparser.ConfigParser] = None
+
+
+def _load_config() -> configparser.ConfigParser:
+    """Load configuration from config.ini."""
+    global _config_cache
+    if _config_cache is None:
+        _config_cache = configparser.ConfigParser()
+        config_path = Path(__file__).parent.parent / "config.ini"
+        if config_path.exists():
+            _config_cache.read(config_path)
+    return _config_cache
+
+
+def _get_threshold(key: str, default: float) -> float:
+    """Get threshold value from config."""
+    config = _load_config()
+    try:
+        return config.getfloat('detection', key)
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        return default
 
 ####
 #### Unit type recognition
@@ -45,13 +88,15 @@ def get_color(filename, crop=False):
 # Match unit based on color
 def match_unit(filename, ref_colors, ref_units):
     unit_colors = get_color(filename, crop=True)
+    mse_threshold = _get_threshold('mse_threshold', 2000)
+    
     # Find closest match (mean squared error)
     for color in unit_colors:
         mse = np.sum((ref_colors - color)**2, axis=1)
-        # Dryad sometimes needs 2000 to match
-        if mse[mse.argmin()] <= 2000:
+        # Configurable threshold (default 2000 for Dryad compatibility)
+        if mse[mse.argmin()] <= mse_threshold:
             return ref_units[mse.argmin()], round(mse[mse.argmin()])
-    return ['empty.png', 2001]
+    return ['empty.png', int(mse_threshold) + 1]
 
 
 # Get status of current grid
@@ -82,14 +127,94 @@ def grid_status(names, prev_grid=None):
     return grid_df
 
 
-def match_rank(filename):
+def match_rank(filename: str) -> Tuple[int, float]:
+    """
+    Detect unit rank from image using trained model.
+    
+    Uses ModelRegistry for modern model loading with fallback to legacy pickle.
+    Model is cached after first load for performance.
+    
+    Args:
+        filename: Path to unit image file
+        
+    Returns:
+        Tuple of (predicted_rank, probability)
+    """
+    global _model_cache
+    
     img = cv2.imread(filename, 0)
+    if img is None:
+        logger.warning(f"Could not read image: {filename}")
+        return 0, 0.0
+    
     edges = cv2.Canny(img, 50, 100)
-    with open('rank_model.pkl', 'rb') as f:
-        logreg = pickle.load(f)
-        classes = logreg.classes_
+    
+    # Try to load model from cache
+    if 'rank_model' not in _model_cache:
+        _model_cache['rank_model'] = _load_rank_model()
+    
+    logreg = _model_cache['rank_model']
+    if logreg is None:
+        logger.error("No rank model available")
+        return 0, 0.0
+    
     prob = logreg.predict_proba(edges.reshape(1, -1))
-    return prob.argmax(), round(prob.max(), 3)
+    return int(prob.argmax()), round(float(prob.max()), 3)
+
+
+def _load_rank_model() -> Optional[Any]:
+    """
+    Load rank classification model with modern registry or legacy fallback.
+    
+    Priority:
+    1. ModelRegistry (models/rank/rank_latest.joblib)
+    2. Legacy pickle (rank_model.pkl)
+    
+    Returns:
+        Loaded model or None if not found
+    """
+    # Try ModelRegistry first
+    if REGISTRY_AVAILABLE:
+        try:
+            registry = ModelRegistry()
+            model = registry.load_model("rank_classifier")
+            logger.info("Loaded rank model from ModelRegistry")
+            return model
+        except FileNotFoundError:
+            logger.debug("No rank model in registry, trying legacy")
+        except Exception as e:
+            logger.warning(f"Registry load failed: {e}")
+    
+    # Try legacy pickle with version warning suppression
+    legacy_path = Path("rank_model.pkl")
+    if legacy_path.exists():
+        try:
+            # Suppress the sklearn version warning
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    'ignore', 
+                    category=UserWarning,
+                    message='.*unpickle.*'
+                )
+                if JOBLIB_AVAILABLE:
+                    import joblib
+                    model = joblib.load(legacy_path)
+                else:
+                    import pickle
+                    with open(legacy_path, 'rb') as f:
+                        model = pickle.load(f)
+                
+                logger.info("Loaded rank model from legacy pickle")
+                logger.warning(
+                    "Using legacy rank_model.pkl - consider migrating to ModelRegistry. "
+                    "Run 'python -m Src.ml.migrate_models' to migrate."
+                )
+                return model
+        except Exception as e:
+            logger.error(f"Failed to load legacy model: {e}")
+    
+    logger.error("No rank model found! Run training first.")
+    return None
 
 
 # Fill find highest rank knight_statue adjacent to key_target

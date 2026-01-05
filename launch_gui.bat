@@ -25,9 +25,25 @@ if not exist "Src\gui.py" (
     exit /b 1
 )
 
-:: Launch the bot GUI
+:: Launch the bot GUI - Try modern first, fallback to legacy
 echo Launching bot GUI...
+echo.
+
+:: Try Modern GUI first (requires CustomTkinter)
+echo Attempting to launch GUI...
+python -c "import customtkinter" >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+    echo Using GUI with Tkinter
+    python -m Src.gui_modern
+    if %ERRORLEVEL% EQU 0 goto :success
+    echo Loading GUI failed, trying legacy...
+)
+
+:: Fallback to Legacy GUI
+echo Using Legacy GUI
 python Src\gui.py
+
+:success
 
 :: Keep window open if there's an error
 if %ERRORLEVEL% NEQ 0 (

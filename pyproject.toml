@@ -1,0 +1,227 @@
+[build-system]
+requires = ["hatchling>=1.21.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rush-royale-bot"
+version = "2.0.0"
+description = "Automated Rush Royale bot with computer vision and reinforcement learning capabilities"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.13"
+authors = [
+    {name = "Rush Royale Bot Team"}
+]
+keywords = [
+    "rush-royale",
+    "bot",
+    "automation",
+    "reinforcement-learning",
+    "computer-vision",
+    "android",
+    "adb"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Games/Entertainment",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+]
+
+dependencies = [
+    # Core Data & ML
+    "numpy>=2.0.0,<3.0.0",
+    "pandas>=2.1.0,<3.0.0",
+    "scikit-learn>=1.4.0,<2.0.0",
+    
+    # Computer Vision & Image Processing
+    "opencv-python>=4.9.0,<5.0.0",
+    "Pillow>=10.2.0,<12.0.0",
+    
+    # OCR for language-neutral detection
+    "easyocr>=1.7.0,<2.0.0",
+    
+    # GUI & Visualization
+    "matplotlib>=3.8.0,<4.0.0",
+    "customtkinter>=5.2.0,<6.0.0",
+    
+    # Icons (requires Python 3.12+)
+    "lucide-py>=0.2.0;python_version>='3.12'",
+    
+    # SVG/Image Processing for Icons
+    "cairosvg>=2.7.0,<3.0.0",
+    
+    # System & Utilities
+    "psutil>=5.9.0,<7.0.0",
+    "tqdm>=4.66.0,<5.0.0",
+    
+    # Android ADB Control
+    "pure-python-adb>=0.3.0",
+    
+    # HTTP Requests
+    "requests>=2.31.0,<3.0.0",
+    
+    # Configuration
+    "configparser>=5.3.0,<6.0.0",
+    
+    # Version parsing for dependency checks
+    "packaging>=23.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.23.0",
+    
+    # Code Quality
+    "black>=24.0.0",
+    "isort>=5.13.0",
+    "flake8>=7.0.0",
+    "mypy>=1.8.0",
+    "bandit>=1.7.0",
+    
+    # Pre-commit
+    "pre-commit>=3.6.0",
+    
+    # Type stubs
+    "types-requests>=2.31.0",
+    "pandas-stubs>=2.0.0",
+]
+
+jupyter = [
+    "ipykernel>=6.28.0",
+    "ipywidgets>=8.1.0",
+    "jupyter>=1.0.0",
+]
+
+ml = [
+    # Future RL dependencies
+    "torch>=2.2.0",
+    "stable-baselines3>=2.2.0",
+    "gymnasium>=0.29.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/mleem97/Rush-Royale-Bot"
+Repository = "https://github.com/mleem97/Rush-Royale-Bot.git"
+Issues = "https://github.com/mleem97/Rush-Royale-Bot/issues"
+
+[project.scripts]
+rr-bot = "Src.gui:RR_bot"
+rr-bot-modern = "Src.gui_modern:main"
+rr-validate = "Src.config_validator:main"
+rr-deps = "test_dependencies:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["Src"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/Src",
+    "/all_units",
+    "/icons",
+    "/config.ini",
+    "/requirements.txt",
+]
+exclude = [
+    "*.pyc",
+    "__pycache__",
+    ".git",
+    ".venv*",
+    "bot_feed_*.png",
+    "machine_learning/",
+]
+
+# Black configuration
+[tool.black]
+line-length = 100
+target-version = ["py313"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.git
+    | \.venv313
+    | __pycache__
+    | machine_learning
+    | \.scrcpy
+)/
+'''
+
+# isort configuration
+[tool.isort]
+profile = "black"
+line_length = 100
+skip_gitignore = true
+known_first_party = ["Src"]
+
+# pytest configuration
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = [
+    "-ra",
+    "-q",
+    "--strict-markers",
+]
+markers = [
+    "slow: marks tests as slow",
+    "integration: marks tests requiring real device connection",
+    "ml: marks tests related to machine learning models",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["Src"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+# mypy configuration
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Gradually enable
+ignore_missing_imports = true
+exclude = [
+    "machine_learning/",
+    "\\.venv313/",
+]
+
+[[tool.mypy.overrides]]
+module = "cv2.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "ppadb.*"
+ignore_missing_imports = true
+
+# Bandit security configuration
+[tool.bandit]
+exclude_dirs = ["tests", ".venv313", "machine_learning"]
+skips = ["B101"]  # Skip assert warnings in tests

@@ -75,13 +75,13 @@ class TextHandler(logging.StreamHandler):
                 for tag in tuple(opened_tags):
                     if tag.startswith('foreground'):
                         self.textctrl.tag_add(tag, opened_tags[tag], code_index)
-                        opened_tags.remove(tag)
+                        del opened_tags[tag]
                 opened_tags[self.ansi_color_fg[code]] = code_index
             elif code in self.ansi_color_bg:  # open background color tag (and close previously opened one if any)
                 for tag in tuple(opened_tags):
                     if tag.startswith('background'):
                         self.textctrl.tag_add(tag, opened_tags[tag], code_index)
-                        opened_tags.remove(tag)
+                        del opened_tags[tag]
                 opened_tags[self.ansi_color_bg[code]] = code_index
 
         def find_ansi(line_txt, line_nb, char_offset):

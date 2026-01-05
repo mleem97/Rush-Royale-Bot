@@ -1,11 +1,12 @@
 # Pre-commit hooks for Rush Royale Bot
 # Install with: pre-commit install
 # Run on all files: pre-commit run --all-files
+# Updated: January 2026
 
 repos:
   # Python code formatting
   - repo: https://github.com/psf/black
-    rev: 23.12.1
+    rev: 24.10.0
     hooks:
       - id: black
         language_version: python3.13
@@ -20,7 +21,7 @@ repos:
 
   # General file formatting
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v5.0.0
     hooks:
       - id: trailing-whitespace
         exclude: \.md$
@@ -36,7 +37,7 @@ repos:
 
   # Python linting
   - repo: https://github.com/pycqa/flake8
-    rev: 7.0.0
+    rev: 7.1.1
     hooks:
       - id: flake8
         args: [--max-line-length=100, --extend-ignore=E203,W503]
@@ -44,7 +45,7 @@ repos:
 
   # Security checks
   - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.5
+    rev: 1.8.0
     hooks:
       - id: bandit
         args: [-r, Src/, -f, json, -o, reports/bandit-report.json]
@@ -52,14 +53,14 @@ repos:
 
   # Documentation checks
   - repo: https://github.com/pycqa/doc8
-    rev: v1.1.1
+    rev: v1.1.2
     hooks:
       - id: doc8
         args: [--max-line-length=100]
 
   # Jupyter notebook cleaning
   - repo: https://github.com/nbQA-dev/nbQA
-    rev: 1.7.1
+    rev: 1.9.0
     hooks:
       - id: nbqa-black
         args: [--line-length=100]

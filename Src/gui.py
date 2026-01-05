@@ -12,9 +12,14 @@ import logging
 import configparser
 from typing import Optional, Dict, Any, List, Tuple
 
-# internal
-import bot_handler
-import bot_logger
+# Handle imports - support both package and direct execution
+try:
+    from . import bot_handler
+    from . import bot_logger
+except ImportError:
+    # Direct execution fallback
+    import bot_handler
+    import bot_logger
 
 
 # GUI Class

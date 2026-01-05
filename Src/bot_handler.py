@@ -14,10 +14,28 @@ from pathlib import Path
 
 # Image processing
 import cv2
-# internal
-import port_scan
-import bot_core
-import bot_perception
+
+# Handle imports - support both package and direct execution
+try:
+    from . import port_scan
+    from . import bot_core
+    from . import bot_perception
+    # Try to import modern bot
+    try:
+        from .bot_core_modern import BotModern
+        MODERN_BOT_AVAILABLE = True
+    except ImportError:
+        MODERN_BOT_AVAILABLE = False
+except ImportError:
+    # Direct execution fallback
+    import port_scan
+    import bot_core
+    import bot_perception
+    try:
+        from bot_core_modern import BotModern
+        MODERN_BOT_AVAILABLE = True
+    except ImportError:
+        MODERN_BOT_AVAILABLE = False
 
 import zipfile
 import functools
@@ -65,11 +83,28 @@ def select_units(units):
     return len(os.listdir("units")) > 4
 
 
-def start_bot_class(logger):
-    # auto-install ADB if needed (removed scrcpy dependency)
-    # ADB is included with pure-python-adb, no manual installation needed
+def start_bot_class(logger, use_modern: bool = True):
+    """
+    Initialize and return a Bot instance.
+    
+    Args:
+        logger: Logger instance
+        use_modern: If True (default), use BotModern class (new modular architecture)
+        
+    Returns:
+        Bot instance (Bot or BotModern)
+    """
     logger.info('Using pure-python-adb for Android device control')
-    bot = bot_core.Bot()
+    
+    if use_modern and MODERN_BOT_AVAILABLE:
+        logger.info('Using modern modular Bot architecture')
+        bot = BotModern(logger=logger)
+    else:
+        if use_modern and not MODERN_BOT_AVAILABLE:
+            logger.warning('Modern bot not available, falling back to legacy')
+        logger.info('Using legacy Bot architecture')
+        bot = bot_core.Bot()
+    
     return bot
 
 
