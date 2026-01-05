@@ -1,69 +1,25 @@
-"""
-Rush Royale Bot Core - Python 3.13 Compatible
-Enhanced error handling and modern Python features
-"""
-from __future__ import annotations
-
 import os
+import sys
 import time
 import numpy as np
 import pandas as pd
 import logging
-import subprocess
-import shutil
-from subprocess import Popen, DEVNULL, PIPE
-from typing import Optional, Dict, Any, Tuple
+from subprocess import Popen, DEVNULL
 from pathlib import Path
 
-# Android ADB - Updated for pure-python-adb + scrcpy hybrid
+# Füge Projekt-Root zum Pfad hinzu für lokale scrcpy-Imports
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+# Android ADB - lokaler scrcpy Client
+from scrcpy import Client, const
+
+# Optional: Verbesserter scrcpy Wrapper
 try:
-    from ppadb.client import Client as AdbClient
-    from ppadb.device import Device
-    ADB_AVAILABLE = True
-    
-    # Try to import scrcpy for enhanced screenshot capability
-    try:
-        import scrcpy
-        SCRCPY_AVAILABLE = True
-    except ImportError:
-        SCRCPY_AVAILABLE = False
-    
-    # Create constants for touch actions (replacing scrcpy const)
-    class TouchConstants:
-        ACTION_DOWN = 0
-        ACTION_UP = 1
-        KEYCODE_BACK = 4
-    
-    const = TouchConstants()
+    from Src.scrcpy_client import ScrcpyClientWrapper, get_scrcpy_client
+    SCRCPY_WRAPPER_AVAILABLE = True
 except ImportError:
-    # Fallback for missing dependencies
-    class AdbClient:
-        def __init__(self, host='127.0.0.1', port=5037):
-            self.host = host
-            self.port = port
-        def devices(self):
-            return []
-    
-    class Device:
-        def __init__(self):
-            self.serial = None
-        def shell(self, command):
-            pass
-        def input_tap(self, x, y):
-            pass
-        def input_swipe(self, x1, y1, x2, y2, duration=1000):
-            pass
-    
-    class TouchConstants:
-        ACTION_DOWN = 0
-        ACTION_UP = 1
-        KEYCODE_BACK = 4
-    
-    ADB_AVAILABLE = False
-    SCRCPY_AVAILABLE = False
-    
-    const = TouchConstants()
-    ADB_AVAILABLE = False
+    SCRCPY_WRAPPER_AVAILABLE = False
 
 # Image processing
 import cv2
@@ -76,137 +32,74 @@ SLEEP_DELAY = 0.1
 
 class Bot:
 
-    def __init__(self, device=None):
+    def __init__(self, device=None, use_wrapper: bool = False):
+        """
+        Initialisiert den Bot.
+        
+        Args:
+            device: ADB Device Serial (z.B. 'emulator-5554')
+            use_wrapper: Wenn True, nutze den verbesserten ScrcpyClientWrapper
+        """
         self.bot_stop = False
         self.combat = self.output = self.grid_df = self.unit_series = self.merge_series = self.df_groups = self.info = self.combat_step = None
         self.logger = logging.getLogger('__main__')
+        self.use_wrapper = use_wrapper and SCRCPY_WRAPPER_AVAILABLE
+        
         if device is None:
             device = port_scan.get_device()
         if not device:
             raise Exception("No device found!")
         self.device = device
         self.bot_id = self.device.split(':')[-1]
-        
-        # Initialize ADB client
-        self.adb_client = AdbClient()
-        self.adb_device = None
-        
-        # Initialize scrcpy process for screenshots
-        self.scrcpy_process = None
-        self.scrcpy_executable = self.find_scrcpy_executable()
-        
-        # Connect to device
-        devices = self.adb_client.devices()
-        for dev in devices:
-            if dev.serial == self.device:
-                self.adb_device = dev
-                break
-        
-        if not self.adb_device:
-            # Try to connect
-            self.shell(f'adb connect {self.device}')
-            devices = self.adb_client.devices()
-            for dev in devices:
-                if dev.serial == self.device:
-                    self.adb_device = dev
-                    break
-        
-        if not self.adb_device:
-            raise Exception(f"Could not connect to device {self.device}")
-            
-        # Launch application through ADB shell
-        self.adb_device.shell('monkey -p com.my.defense 1')
-        
+        self.shell(f'.scrcpy\\adb connect {self.device}')
+        # Try to launch application through ADB shell
+        self.shell('monkey -p com.my.defense 1')
         # Check if 'bot_feed.png' exists
         if not os.path.isfile(f'bot_feed_{self.bot_id}.png'):
             self.getScreen()
         self.screenRGB = cv2.imread(f'bot_feed_{self.bot_id}.png')
         
-        self.logger.info('Connected to Android device via ADB')
+        # Initialisiere scrcpy Client
+        if self.use_wrapper:
+            self.logger.info('Nutze ScrcpyClientWrapper für verbesserte Performance')
+            self.scrcpy_wrapper = get_scrcpy_client(
+                device=self.device,
+                max_width=800,
+                bitrate=2_000_000,
+                auto_start=True
+            )
+            self.client = self.scrcpy_wrapper._client  # Für Rückwärtskompatibilität
+        else:
+            self.client = Client(device=self.device)
+            # Start scrcpy client
+            self.client.start(threaded=True)
+            self.scrcpy_wrapper = None
+            
+        self.logger.info('Connecting to Bluestacks')
         time.sleep(0.5)
+        
+        # Turn off video stream (spammy) - nur bei direktem Client
+        if not self.use_wrapper:
+            self.client.alive = False
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.bot_stop = True
         self.logger.info('Exiting bot')
-        # Stop scrcpy process if running
-        if self.scrcpy_process:
-            self.stop_scrcpy()
-
-    def find_scrcpy_executable(self) -> Optional[str]:
-        """Find scrcpy executable in common locations"""
-        possible_paths = [
-            'scrcpy.exe',  # In PATH
-            r'C:\Program Files\scrcpy\scrcpy.exe',
-            r'C:\Program Files (x86)\scrcpy\scrcpy.exe',
-            r'.\scrcpy\scrcpy.exe',  # Local directory
-            r'.\bin\scrcpy.exe',
-        ]
-        
-        for path in possible_paths:
-            if shutil.which(path) or os.path.exists(path):
-                self.logger.info(f'Found scrcpy at: {path}')
-                return path
-        
-        self.logger.warning('scrcpy executable not found - will use ADB screencap fallback')
-        return None
-
-    def start_scrcpy(self) -> bool:
-        """Start scrcpy process for screen mirroring"""
-        if not self.scrcpy_executable:
-            return False
-            
-        try:
-            # Start scrcpy in window mode with no controls (view only)
-            cmd = [
-                self.scrcpy_executable,
-                '--serial', self.device,
-                '--no-control',  # View only
-                '--window-title', f'RR Bot {self.device}',
-                '--window-width', '800',
-                '--window-height', '450'
-            ]
-            
-            self.scrcpy_process = Popen(cmd, stdout=DEVNULL, stderr=DEVNULL)
-            self.logger.info('Started scrcpy process for screen mirroring')
-            time.sleep(2)  # Give scrcpy time to start
-            return True
-            
-        except Exception as e:
-            self.logger.error(f'Failed to start scrcpy: {e}')
-            self.scrcpy_process = None
-            return False
-
-    def stop_scrcpy(self):
-        """Stop scrcpy process"""
-        if self.scrcpy_process:
-            try:
-                self.scrcpy_process.terminate()
-                self.scrcpy_process.wait(timeout=5)
-                self.logger.info('Stopped scrcpy process')
-            except subprocess.TimeoutExpired:
-                self.scrcpy_process.kill()
-                self.logger.warning('Force killed scrcpy process')
-            except Exception as e:
-                self.logger.error(f'Error stopping scrcpy: {e}')
-            finally:
-                self.scrcpy_process = None
+        if self.use_wrapper and self.scrcpy_wrapper:
+            self.scrcpy_wrapper.stop()
+        elif self.client:
+            self.client.stop()
 
     # Function to send ADB shell command
     def shell(self, cmd):
-        if self.adb_device:
-            return self.adb_device.shell(cmd)
-        else:
-            # Fallback to system ADB
-            p = Popen(['adb', '-s', self.device, 'shell', cmd], stdout=DEVNULL, stderr=DEVNULL)
-            p.wait()
+        p = Popen([".scrcpy\\adb", '-s', self.device, 'shell', cmd], stdout=DEVNULL, stderr=DEVNULL)
+        p.wait()
 
     # Send ADB to click screen
     def click(self, x, y, delay_mult=1):
-        if self.adb_device:
-            self.adb_device.input_tap(x, y)
-        else:
-            # Fallback to shell command
-            self.shell(f'input tap {x} {y}')
+        self.client.control.touch(x, y, const.ACTION_DOWN)
+        time.sleep(SLEEP_DELAY / 2 * delay_mult)
+        self.client.control.touch(x, y, const.ACTION_UP)
         time.sleep(SLEEP_DELAY * delay_mult)
 
     # Click button coords offset and extra delay
@@ -220,115 +113,36 @@ class Bot:
         boxes, box_size = get_grid()
         # Offset from box edge
         offset = 60
-        start_pos = boxes[start[0], start[1]] + offset
-        end_pos = boxes[end[0], end[1]] + offset
-        
-        if self.adb_device:
-            self.adb_device.input_swipe(start_pos[0], start_pos[1], end_pos[0], end_pos[1], 300)
-        else:
-            # Fallback to shell command
-            self.shell(f'input swipe {start_pos[0]} {start_pos[1]} {end_pos[0]} {end_pos[1]} 300')
+        self.client.control.swipe(*boxes[start[0], start[1]] + offset, *boxes[end[0], end[1]] + offset, 20, 1 / 60)
 
-    # Send key command
+    # Send key command, see py-scrcpy consts
     def key_input(self, key):
-        if self.adb_device:
-            self.adb_device.input_keyevent(key)
-        else:
-            self.shell(f'input keyevent {key}')
+        self.client.control.keycode(key)
 
-    # Force restart the game through ADB, or spam 10 disconnects to abandon match
+    # Force restart the game through ADC, or spam 10 disconnects to abandon match
     def restart_RR(self, quick_disconnect=False):
         if quick_disconnect:
             for i in range(15):
-                if self.adb_device:
-                    self.adb_device.shell('monkey -p com.my.defense 1')
-                else:
-                    self.shell('monkey -p com.my.defense 1')  # disconnects really quick for unknown reasons
+                self.shell('monkey -p com.my.defense 1')  # disconnects really quick for unknown reasons
             return
         # Force kill game through ADB shell
-        if self.adb_device:
-            self.adb_device.shell('am force-stop com.my.defense')
-        else:
-            self.shell('am force-stop com.my.defense')
+        self.shell('am force-stop com.my.defense')
         time.sleep(2)
         # Launch application through ADB shell
-        if self.adb_device:
-            self.adb_device.shell('monkey -p com.my.defense 1')
-        else:
-            self.shell('monkey -p com.my.defense 1')
+        self.shell('monkey -p com.my.defense 1')
         time.sleep(10)  # wait for app to load
 
     # Take screenshot of device screen and load pixel values
     def getScreen(self):
         bot_id = self.device.split(':')[-1]
-        screenshot_path = f'bot_feed_{bot_id}.png'
-        
-        # Method 1: Try scrcpy executable screenshot (fastest, highest quality)
-        if self.scrcpy_executable and self._try_scrcpy_screenshot(screenshot_path):
-            self.logger.debug('Screenshot taken via scrcpy executable')
-        # Method 2: Try pure-python-adb (reliable)
-        elif self._try_adb_screenshot(screenshot_path):
-            self.logger.debug('Screenshot taken via pure-python-adb')
-        # Method 3: Fallback to shell ADB (last resort)
-        elif self._try_shell_screenshot(screenshot_path):
-            self.logger.debug('Screenshot taken via ADB shell')
+        p = Popen(['.scrcpy\\adb', 'exec-out', 'screencap', '-p', '>', f'bot_feed_{bot_id}.png'], shell=True)
+        p.wait()
+        # Store screenshot in class variable if valid
+        new_img = cv2.imread(f'bot_feed_{bot_id}.png')
+        if new_img is not None:
+            self.screenRGB = new_img
         else:
-            self.logger.error('All screenshot methods failed!')
-            return
-        
-        # Load screenshot and validate
-        try:
-            new_img = cv2.imread(screenshot_path)
-            if new_img is not None and new_img.shape[0] > 0 and new_img.shape[1] > 0:
-                self.screenRGB = new_img
-                self.logger.debug(f'Screenshot loaded successfully: {new_img.shape}')
-            else:
-                self.logger.warning(f'Invalid screenshot file: {screenshot_path}')
-        except Exception as e:
-            self.logger.error(f'Failed to load screenshot: {e}')
-
-    def _try_scrcpy_screenshot(self, output_path: str) -> bool:
-        """Try taking screenshot using scrcpy executable"""
-        if not self.scrcpy_executable:
-            return False
-        try:
-            cmd = [
-                self.scrcpy_executable,
-                '--serial', self.device,
-                '--no-display',  # No window
-                '--record', output_path.replace('.png', '.mp4'),
-                '--time-limit', '1'  # Record for 1 second
-            ]
-            # Alternative: use scrcpy screenshot feature if available
-            cmd = ['adb', '-s', self.device, 'exec-out', 'screencap', '-p']
-            with open(output_path, 'wb') as f:
-                p = subprocess.run(cmd, stdout=f, stderr=DEVNULL, timeout=10)
-                return p.returncode == 0
-        except Exception:
-            return False
-
-    def _try_adb_screenshot(self, output_path: str) -> bool:
-        """Try taking screenshot using pure-python-adb"""
-        try:
-            if self.adb_device:
-                screencap = self.adb_device.screencap()
-                if screencap and len(screencap) > 1000:  # Reasonable size check
-                    with open(output_path, 'wb') as f:
-                        f.write(screencap)
-                    return True
-        except Exception as e:
-            self.logger.debug(f'ADB screencap failed: {e}')
-        return False
-
-    def _try_shell_screenshot(self, output_path: str) -> bool:
-        """Try taking screenshot using shell ADB command"""
-        try:
-            cmd = ['adb', '-s', self.device, 'exec-out', 'screencap', '-p']
-            with open(output_path, 'wb') as f:
-                p = subprocess.run(cmd, stdout=f, stderr=DEVNULL, timeout=10)
-                return p.returncode == 0
-        except Exception:
-            return False
+            self.logger.warning('Failed to get screen')
 
     # Crop latest screenshot taken
     def crop_img(self, x, y, dx, dy, name='icon.png'):
@@ -377,77 +191,23 @@ class Bot:
         if new:
             self.getScreen()
         img_rgb = self.screenRGB
-        if img_rgb is None:
-            self.logger.warning('Screenshot is None - cannot detect icons')
-            return pd.DataFrame(columns=['icon', 'available', 'pos [X,Y]'])
-            
         img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_BGR2GRAY)
-        # Light blur to reduce noise and improve template match stability
-        img_gray_blur = cv2.GaussianBlur(img_gray, (3, 3), 0)
-        self.logger.debug(f'Screenshot shape: {img_gray.shape}')
-        
-        def match_template_multi_scale(src_gray, tmpl_gray, base_thresh, is_chapter=False):
-            """Return (found:boolean, (x,y):tuple, max_val:float). Tries multiple scales when needed."""
-            best = (False, (0, 0), 0.0)
-            # per-icon scaling tries
-            scales = [1.0]
-            if is_chapter:
-                scales = [0.9, 1.0, 1.1]
-            for sc in scales:
-                if sc != 1.0:
-                    new_w = max(1, int(tmpl_gray.shape[1] * sc))
-                    new_h = max(1, int(tmpl_gray.shape[0] * sc))
-                    tmpl = cv2.resize(tmpl_gray, (new_w, new_h), interpolation=cv2.INTER_AREA)
-                else:
-                    tmpl = tmpl_gray
-                if src_gray.shape[0] < tmpl.shape[0] or src_gray.shape[1] < tmpl.shape[1]:
-                    continue
-                res = cv2.matchTemplate(src_gray, tmpl, cv2.TM_CCOEFF_NORMED)
-                min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-                # Keep best regardless of threshold, decide later
-                if max_val > best[2]:
-                    best = (max_val >= base_thresh, (max_loc[0], max_loc[1]), float(max_val))
-            # Fallback: slightly relax if near-threshold for chapters
-            if is_chapter and not best[0] and best[2] >= (base_thresh - 0.05):
-                return (True, best[1], best[2])
-            return best
-
         # Check every target in dir
-        icon_count = 0
         for target in os.listdir("icons"):
             x = 0  # reset position
             y = 0
             # Load icon
             imgSrc = f'icons/{target}'
             template = cv2.imread(imgSrc, 0)
-            if template is None:
-                self.logger.debug(f'Could not load template: {imgSrc}')
-                continue
-            # Slight blur for template too
-            template_blur = cv2.GaussianBlur(template, (3, 3), 0)
-            # Per-icon threshold tuning
-            is_chapter = ('chapter_' in target)
+            # Compare images
+            res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
             threshold = 0.8
-            if is_chapter:
-                threshold = 0.75
-            elif target in ['dungeon_page.png']:
-                threshold = 0.78
-
-            # Compare images using robust best-location extraction
-            found, (best_x, best_y), max_val = match_template_multi_scale(img_gray_blur, template_blur, threshold, is_chapter=is_chapter)
-            icon_found = found
-            
-            # Debug for key icons
-            if target in ['home_screen.png', 'battle_icon.png'] or 'chapter_' in target:
-                self.logger.debug(f'Icon {target}: max_val={max_val:.3f}, found={icon_found}')
-            
+            loc = np.where(res >= threshold)
+            icon_found = len(loc[0]) > 0
             if icon_found:
-                y = int(best_y)
-                x = int(best_x)
-                icon_count += 1
+                y = loc[0][0]
+                x = loc[1][0]
             current_icons.append([target, icon_found, (x, y)])
-            
-        self.logger.debug(f'Total icons found: {icon_count}/{len(current_icons)}')
         icon_df = pd.DataFrame(current_icons, columns=['icon', 'available', 'pos [X,Y]'])
         # filter out only available buttons
         if available:
@@ -633,11 +393,10 @@ class Bot:
         # Divide by 3 and take ceiling of floor as int
         target_chapter = f'chapter_{int(np.ceil((floor)/3))}.png'
         next_chapter = f'chapter_{int(np.ceil((floor+1)/3))}.png'
-        self.logger.debug(f'Looking for target chapter: {target_chapter}, next chapter: {next_chapter}')
         pos = np.array([0, 0])
         avail_buttons = self.get_current_icons(available=True)
         # Check if on dungeon page
-        if (avail_buttons['icon'] == 'dungeon_page.png').any():
+        if (avail_buttons == 'dungeon_page.png').any(axis=None):
             # Swipe to the top
             [self.swipe([0, 0], [2, 0]) for i in range(14)]
             self.click(30, 600, 5)  # stop scroll and scan screen for buttons
@@ -646,12 +405,9 @@ class Bot:
             for i in range(10):
                 # Scan screen for buttons
                 avail_buttons = self.get_current_icons(available=True)
-                available_chapters = [icon for icon in avail_buttons['icon'] if 'chapter_' in icon]
-                self.logger.debug(f'Iteration {i}: Available chapters: {available_chapters}')
                 # Look for correct chapter
-                if (avail_buttons['icon'] == target_chapter).any():
+                if (avail_buttons == target_chapter).any(axis=None):
                     pos = get_button_pos(avail_buttons, target_chapter)
-                    self.logger.info(f'Found target chapter {target_chapter} at position {pos}')
                     if not expanded:
                         expanded = 1
                         self.click_button(pos + [500, 90])
@@ -659,9 +415,8 @@ class Bot:
                     if pos[1] < 550 and floor % 3 != 0:
                         # Stop scrolling when chapter is near top
                         break
-                elif (avail_buttons['icon'] == next_chapter).any() and floor % 3 == 0:
+                elif (avail_buttons == next_chapter).any(axis=None) and floor % 3 == 0:
                     pos = get_button_pos(avail_buttons, next_chapter)
-                    self.logger.info(f'Found next chapter {next_chapter} at position {pos}')
                     # Stop scrolling if the next chapter is found and last floor of chapter is chosen
                     break
                 # Contiue to swiping to find correct chapter
@@ -670,7 +425,6 @@ class Bot:
 
             # Click play floor if found
             if not (pos == np.array([0, 0])).any():
-                self.logger.info(f'Clicking floor {floor} for chapter at position {pos}')
                 if floor % 3 == 0:
                     self.click_button(pos + [30, -460])
                 elif floor % 3 == 1:
@@ -685,8 +439,6 @@ class Bot:
                     self.logger.info(f'Waiting for match to start {i}')
                     if avail_buttons['icon'].isin(['back_button.png', 'fighting.png']).any():
                         break
-            else:
-                self.logger.error(f'Could not find chapter for floor {floor}. Target: {target_chapter}, Next: {next_chapter}')
 
     # Locate game home screen and try to start fight is chosen
     def battle_screen(self, start=False, pve=True, floor=5):
@@ -694,13 +446,13 @@ class Bot:
         df = self.get_current_icons(available=True)
         if not df.empty:
             # list of buttons
-            if (df['icon'] == 'fighting.png').any() and not (df['icon'] == '0cont_button.png').any():
+            if (df == 'fighting.png').any(axis=None) and not (df == '0cont_button.png').any(axis=None):
                 return df, 'fighting'
-            if (df['icon'] == 'friend_menu.png').any():
+            if (df == 'friend_menu.png').any(axis=None):
                 self.click_button(np.array([100, 600]))
                 return df, 'friend_menu'
             # Start pvp if homescreen
-            if (df['icon'] == 'home_screen.png').any() and (df['icon'] == 'battle_icon.png').any():
+            if (df == 'home_screen.png').any(axis=None) and (df == 'battle_icon.png').any(axis=None):
                 if pve and start:
                     # Add a 500 pixel offset for PvE button
                     self.click_button(np.array([640, 1259]))
@@ -715,7 +467,7 @@ class Bot:
                 button_pos = df_click['pos [X,Y]'].tolist()[0]
                 self.click_button(button_pos)
                 return df, 'menu'
-        self.key_input(const.KEYCODE_BACK)  # Force back
+        self.shell(f'input keyevent {const.KEYCODE_BACK}')  #Force back
         return df, 'lost'
 
     # Navigate and locate store refresh button from battle screen
@@ -724,7 +476,7 @@ class Bot:
         [self.swipe([0, 0], [2, 0]) for i in range(5)]  # swipe to top
         self.click(30, 150)  # stop scroll
         avail_buttons = self.get_current_icons(available=True)
-        if (avail_buttons['icon'] == 'refresh_button.png').any():
+        if (avail_buttons == 'refresh_button.png').any(axis=None):
             pos = get_button_pos(avail_buttons, 'refresh_button.png')
             return pos
 
@@ -748,27 +500,27 @@ class Bot:
     def watch_ads(self):
         avail_buttons = self.get_current_icons(available=True)
         # Watch ad if available
-        if (avail_buttons['icon'] == 'quest_done.png').any():
+        if (avail_buttons == 'quest_done.png').any(axis=None):
             pos = get_button_pos(avail_buttons, 'quest_done.png')
             self.click_button(pos)
             self.click(700, 600)  # collect second completed quest
             self.click(700, 400)  # collect second completed quest
             [self.click(150, 250) for i in range(2)]  # click dailies twice
             self.click(420, 420)  # collect ad chest
-        elif (avail_buttons['icon'] == 'ad_season.png').any():
+        elif (avail_buttons == 'ad_season.png').any(axis=None):
             pos = get_button_pos(avail_buttons, 'ad_season.png')
             self.click_button(pos)
-        elif (avail_buttons['icon'] == 'ad_pve.png').any():
+        elif (avail_buttons == 'ad_pve.png').any(axis=None):
             pos = get_button_pos(avail_buttons, 'ad_pve.png')
             self.click_button(pos)
-        elif (avail_buttons['icon'] == 'battle_icon.png').any():
+        elif (avail_buttons == 'battle_icon.png').any(axis=None):
             self.refresh_shop()
         else:
             #self.logger.info('Watched all ads!')
             return
         # Check if ad was started
         avail_buttons, status = self.battle_screen()
-        if status == 'menu' or status == 'home' or (avail_buttons['icon'] == 'refresh_button.png').any():
+        if status == 'menu' or status == 'home' or (avail_buttons == 'refresh_button.png').any(axis=None):
             self.logger.info('FINISHED AD')
         # Watch ad
         else:
@@ -783,7 +535,7 @@ class Bot:
                 self.click(870, 30)  # skip forward/click X
                 self.click(870, 100)  # click X playstore popup
                 if i > 5:
-                    self.key_input(const.KEYCODE_BACK)  # Force back
+                    self.shell(f'input keyevent {const.KEYCODE_BACK}')  #Force back
                 self.logger.info(f'AD TIME {i} {status}')
             # Restart game if can't escape ad
             self.restart_RR()

@@ -1,13 +1,6 @@
-"""
-Rush Royale Bot Logger - Python 3.13 Compatible
-Enhanced logging with modern Python features and type hints
-"""
-from __future__ import annotations
-
 import logging
 from tkinter import *
 import re
-from typing import Optional, Dict, Any, List, Union
 
 
 # Logger classes
@@ -128,7 +121,7 @@ class CustomFormatter(logging.Formatter):
 
 # function used by bot gui to create color coded logs
 def create_log_feed(log_feed):
-    logging.basicConfig(filename='RR_bot.log', level=logging.DEBUG)
+    logging.basicConfig(filename='RB_bot.log', level=logging.DEBUG)
     logger = logging.getLogger(__name__)
     logger.handlers.clear()
     guiHandler = TextHandler(log_feed)

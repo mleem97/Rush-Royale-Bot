@@ -1,119 +1,203 @@
 @echo off
-:: Rush Royale Bot Installation - Python 3.13 Compatible
-:: Enhanced installation script with better error handling
+setlocal enabledelayedexpansion
+title Rush Royale Bot - Installation
 
-echo Installing Rush Royale Bot for Python 3.13...
-echo ================================================
+echo ============================================
+echo   Rush Royale Bot - Installation
+echo ============================================
+echo.
 
-:: Check for Python installation
-where python >nul 2>&1
-if %ERRORLEVEL% EQU 0 (
-    echo Found Python installation
-    python --version
-    
-    :: Check Python version (basic check)
-    python -c "import sys; exit(0 if sys.version_info >= (3, 10) else 1)" >nul 2>&1
-    if %ERRORLEVEL% NEQ 0 (
-        echo WARNING: Python 3.10+ recommended for best compatibility
+:: Suche alle installierten Python-Versionen
+set "PYTHON_COUNT=0"
+set "PYTHON_LIST="
+
+:: Hilfsfunktion zum Hinzufügen einer Python-Version
+:: Wird unten aufgerufen
+
+:: 1. Suche WindowsStore/WindowsApps Versionen (python3.XX.exe)
+for %%p in (
+    "%LOCALAPPDATA%\Microsoft\WindowsApps\python3.14.exe"
+    "%LOCALAPPDATA%\Microsoft\WindowsApps\python3.13.exe"
+    "%LOCALAPPDATA%\Microsoft\WindowsApps\python3.12.exe"
+    "%LOCALAPPDATA%\Microsoft\WindowsApps\python3.11.exe"
+    "%LOCALAPPDATA%\Microsoft\WindowsApps\python3.10.exe"
+) do (
+    if exist "%%~p" (
+        set /a PYTHON_COUNT+=1
+        set "PYTHON_!PYTHON_COUNT!=%%~p"
+        for /f "tokens=*" %%v in ('"%%~p" --version 2^>^&1') do (
+            set "PYTHON_VER_!PYTHON_COUNT!=%%v"
+        )
     )
-) else (
-    echo ERROR: Python not found in PATH
-    echo Please install Python 3.13 from https://python.org
+)
+
+:: 2. Suche Standard python.exe in PATH (falls nicht WindowsApps)
+for /f "tokens=*" %%i in ('where python 2^>nul') do (
+    :: Überspringe WindowsApps (haben wir schon oben)
+    echo %%i | findstr /i "WindowsApps" >nul
+    if errorlevel 1 (
+        set "ALREADY_FOUND=0"
+        for /l %%n in (1,1,!PYTHON_COUNT!) do (
+            if "!PYTHON_%%n!"=="%%i" set "ALREADY_FOUND=1"
+        )
+        if "!ALREADY_FOUND!"=="0" (
+            set /a PYTHON_COUNT+=1
+            set "PYTHON_!PYTHON_COUNT!=%%i"
+            for /f "tokens=*" %%v in ('"%%i" --version 2^>^&1') do (
+                set "PYTHON_VER_!PYTHON_COUNT!=%%v"
+            )
+        )
+    )
+)
+
+:: 3. Suche in typischen Installationsordnern
+for %%p in (
+    "%LOCALAPPDATA%\Programs\Python\Python314\python.exe"
+    "%LOCALAPPDATA%\Programs\Python\Python313\python.exe"
+    "%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
+    "%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
+    "%LOCALAPPDATA%\Programs\Python\Python310\python.exe"
+    "%LOCALAPPDATA%\Programs\Python\Python39\python.exe"
+    "C:\Python314\python.exe"
+    "C:\Python313\python.exe"
+    "C:\Python312\python.exe"
+    "C:\Python311\python.exe"
+    "C:\Python310\python.exe"
+    "C:\Python39\python.exe"
+    "%ProgramFiles%\Python314\python.exe"
+    "%ProgramFiles%\Python313\python.exe"
+    "%ProgramFiles%\Python312\python.exe"
+    "%ProgramFiles%\Python311\python.exe"
+    "%ProgramFiles%\Python310\python.exe"
+    "%USERPROFILE%\scoop\apps\python\current\python.exe"
+    "%USERPROFILE%\scoop\apps\python314\current\python.exe"
+    "%USERPROFILE%\scoop\apps\python313\current\python.exe"
+    "%USERPROFILE%\scoop\apps\python311\current\python.exe"
+    "C:\tools\python3\python.exe"
+    "C:\tools\python314\python.exe"
+    "C:\tools\python313\python.exe"
+    "C:\tools\python311\python.exe"
+) do (
+    if exist "%%~p" (
+        set "ALREADY_FOUND=0"
+        for /l %%n in (1,1,!PYTHON_COUNT!) do (
+            if "!PYTHON_%%n!"=="%%~p" set "ALREADY_FOUND=1"
+        )
+        if "!ALREADY_FOUND!"=="0" (
+            set /a PYTHON_COUNT+=1
+            set "PYTHON_!PYTHON_COUNT!=%%~p"
+            for /f "tokens=*" %%v in ('"%%~p" --version 2^>^&1') do (
+                set "PYTHON_VER_!PYTHON_COUNT!=%%v"
+            )
+        )
+    )
+)
+
+:: 4. Versuche Python Launcher (py) falls vorhanden
+where py >nul 2>&1
+if not errorlevel 1 (
+    for /f "tokens=1,2,*" %%a in ('py -0p 2^>nul') do (
+        set "PY_PATH=%%c"
+        if not "!PY_PATH!"=="" (
+            set "ALREADY_FOUND=0"
+            for /l %%n in (1,1,!PYTHON_COUNT!) do (
+                if "!PYTHON_%%n!"=="!PY_PATH!" set "ALREADY_FOUND=1"
+            )
+            if "!ALREADY_FOUND!"=="0" (
+                set /a PYTHON_COUNT+=1
+                set "PYTHON_!PYTHON_COUNT!=!PY_PATH!"
+                for /f "tokens=*" %%v in ('"!PY_PATH!" --version 2^>^&1') do (
+                    set "PYTHON_VER_!PYTHON_COUNT!=%%v"
+                )
+            )
+        )
+    )
+)
+
+:: Keine Python-Installation gefunden
+if %PYTHON_COUNT%==0 (
+    echo FEHLER: Keine Python-Installation gefunden!
+    echo.
+    echo Bitte installiere Python 3.10 oder neuer von:
+    echo https://www.python.org/downloads/
+    echo.
     pause
     exit /b 1
 )
 
-:: Ensure scrcpy exists in .scrcpy (download if missing)
+:: Nur eine Version gefunden - automatisch nutzen
+if %PYTHON_COUNT%==1 (
+    set "SELECTED_PYTHON=!PYTHON_1!"
+    echo Gefunden: !PYTHON_VER_1!
+    echo Pfad: !SELECTED_PYTHON!
+    echo.
+    goto :install
+)
+
+:: Mehrere Versionen gefunden - Auswahl anzeigen
+echo Mehrere Python-Versionen gefunden:
 echo.
-echo Checking scrcpy in .scrcpy ...
-set "SCRCPY_VERSION=3.3.1"
-set "SCRCPY_ZIP=scrcpy-win64-v%SCRCPY_VERSION%.zip"
-set "SCRCPY_DIR=scrcpy-win64-v%SCRCPY_VERSION%"
-set "SCRCPY_URL=https://github.com/Genymobile/scrcpy/releases/download/v%SCRCPY_VERSION%/scrcpy-win64-v%SCRCPY_VERSION%.zip"
-
-if exist ".scrcpy\adb.exe" (
-    echo Found scrcpy: .scrcpy\adb.exe
-) else (
-    echo scrcpy not found. Downloading %SCRCPY_ZIP% ...
-    where powershell >nul 2>&1
-    if %ERRORLEVEL% NEQ 0 (
-        echo ERROR: PowerShell is required to download and extract scrcpy.
-        echo Please install scrcpy manually: %SCRCPY_URL%
-        pause
-        exit /b 1
-    )
-
-    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-        "$ErrorActionPreference='Stop'; " ^
-        "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; " ^
-        "Invoke-WebRequest -Uri '%SCRCPY_URL%' -OutFile '%SCRCPY_ZIP%';"
-    if not exist "%SCRCPY_ZIP%" (
-        echo ERROR: Download failed: %SCRCPY_ZIP%
-        pause
-        exit /b 1
-    )
-
-    echo Extracting %SCRCPY_ZIP% ...
-    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-        "$ErrorActionPreference='Stop'; " ^
-        "Expand-Archive -Path '%SCRCPY_ZIP%' -DestinationPath '.' -Force;"
-    if not exist "%SCRCPY_DIR%" (
-        echo ERROR: Extracted folder not found: %SCRCPY_DIR%
-        echo Please extract the zip manually and rename the folder to .scrcpy
-        pause
-        exit /b 1
-    )
-
-    if exist ".scrcpy" (
-        echo Removing existing .scrcpy ...
-        rmdir /s /q ".scrcpy"
-    )
-
-    echo Renaming %SCRCPY_DIR% to .scrcpy ...
-    ren "%SCRCPY_DIR%" ".scrcpy"
-    if exist "%SCRCPY_ZIP%" del /f /q "%SCRCPY_ZIP%"
-
-    if exist ".scrcpy\adb.exe" (
-        echo scrcpy installed successfully in .scrcpy
-    ) else (
-        echo ERROR: .scrcpy\adb.exe not found after installation.
-        echo Please verify contents of the .scrcpy directory.
-        pause
-        exit /b 1
-    )
+for /l %%n in (1,1,%PYTHON_COUNT%) do (
+    echo   [%%n] !PYTHON_VER_%%n!
+    echo       !PYTHON_%%n!
+    echo.
 )
 
-:: Create virtual environment
-echo Creating virtual environment...
-if exist .bot_env (
-    echo Removing existing virtual environment...
-    rmdir /s /q .bot_env
-)
-python -m venv .bot_env
+:: Benutzerauswahl
+:select_python
+set /p "SELECTION=Waehle Python-Version [1-%PYTHON_COUNT%]: "
 
-:: Activate virtual environment
-echo Activating virtual environment...
+:: Validiere Eingabe
+set "VALID=0"
+for /l %%n in (1,1,%PYTHON_COUNT%) do (
+    if "%SELECTION%"=="%%n" set "VALID=1"
+)
+if "%VALID%"=="0" (
+    echo Ungueltige Auswahl. Bitte eine Zahl von 1 bis %PYTHON_COUNT% eingeben.
+    goto :select_python
+)
+
+set "SELECTED_PYTHON=!PYTHON_%SELECTION%!"
+echo.
+echo Ausgewaehlt: !PYTHON_VER_%SELECTION%!
+echo.
+
+:install
+:: Speichere ausgewählte Python-Version für launch_gui.bat
+echo %SELECTED_PYTHON%> .python_path
+
+:: Erstelle virtuelle Umgebung
+echo Erstelle virtuelle Umgebung...
+"%SELECTED_PYTHON%" -m venv .bot_env
+if errorlevel 1 (
+    echo FEHLER: Konnte virtuelle Umgebung nicht erstellen!
+    pause
+    exit /b 1
+)
+
+:: Aktiviere Umgebung
+echo Aktiviere Umgebung...
 call .bot_env\Scripts\activate.bat
 
-:: Upgrade pip and setuptools
-echo Upgrading pip and setuptools...
-python -m pip install --upgrade pip setuptools wheel
+:: Upgrade pip
+echo Aktualisiere pip...
+python -m pip install --upgrade pip
 
-:: Install requirements with better error handling
-echo Installing dependencies (this may take a few minutes)...
-pip install -r requirements.txt --timeout 300 --retries 3
-
-if %ERRORLEVEL% EQU 0 (
+:: Installiere Abhängigkeiten
+echo.
+echo Installiere Abhaengigkeiten...
+pip install -r requirements.txt
+if errorlevel 1 (
     echo.
-    echo ✅ Installation completed successfully!
-    echo To run the bot GUI: launch_gui.bat
-    echo To run the notebook: jupyter notebook RR_bot.ipynb
-) else (
-    echo.
-    echo ❌ Installation failed!
-    echo Try running: pip install -r requirements.txt --no-deps
-    echo Or check requirements.txt for compatibility issues
+    echo WARNUNG: Einige Pakete konnten nicht installiert werden.
+    echo Pruefe die Fehlermeldungen oben.
 )
 
+echo.
+echo ============================================
+echo   Installation abgeschlossen!
+echo ============================================
+echo.
+echo Starte den Bot mit: launch_gui.bat
 echo.
 pause

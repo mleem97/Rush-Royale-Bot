@@ -1,79 +1,23 @@
-"""
-Rush Royale Bot Port Scanner - Python 3.13 Compatible
-Enhanced networking and device detection
-"""
-from __future__ import annotations
-
 import socket
+# import thread module
+from _thread import *
 import threading
 import time
 import os
 from subprocess import check_output, Popen, DEVNULL
-from pathlib import Path
-import shutil
-from typing import Optional, Dict, Any, List, Set
-from concurrent.futures import ThreadPoolExecutor
-
-
-# Connects to a target IP and port, if port is open try to connect adb
-def find_adb() -> str:
-    """Locate adb.exe robustly across PATH, env vars, and local folders.
-    Returns absolute path to adb executable or raises FileNotFoundError.
-    """
-    # 1) Explicit env var
-    env_adb = os.getenv("ADB_PATH")
-    if env_adb:
-        p = Path(env_adb)
-        if p.exists():
-            return str(p)
-
-    # 2) PATH
-    which = shutil.which("adb.exe") or shutil.which("adb")
-    if which:
-        return which
-
-    # 3) Common local/install locations
-    repo_root = Path(__file__).resolve().parents[1]
-    candidates = [
-        repo_root / ".scrcpy" / "adb.exe",
-        repo_root / "scrcpy" / "adb.exe",
-        Path(os.getenv("ANDROID_HOME", "")) / "platform-tools" / "adb.exe",
-        Path(os.getenv("ANDROID_SDK_ROOT", "")) / "platform-tools" / "adb.exe",
-        Path(os.getenv("LOCALAPPDATA", "")) / "Android" / "Sdk" / "platform-tools" / "adb.exe",
-        Path("C:/Program Files/scrcpy/adb.exe"),
-    ]
-    for c in candidates:
-        if c and c.exists():
-            return str(c)
-
-    raise FileNotFoundError(
-        "ADB nicht gefunden. Installiere ADB (platform-tools) oder setze ADB_PATH/füge adb.exe in .scrcpy/."
-    )
 
 
 # Connects to a target IP and port, if port is open try to connect adb
 def connect_port(ip, port, batch, open_ports):
-    adb = None
-    try:
-        adb = find_adb()
-    except FileNotFoundError:
-        # If adb is not available, scanning still proceeds to discover open ports
-        pass
-    result = 1  # default: not connected
     for tar_port in range(port, port + batch):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         result = s.connect_ex((ip, tar_port))
         if result == 0:
             open_ports[tar_port] = 'open'
             # Make it Popen and kill shell after couple seconds
-            if adb:
-                p = Popen([adb, 'connect', f'{ip}:{tar_port}'], stdout=DEVNULL, stderr=DEVNULL)
-            else:
-                p = None
+            p = Popen(f'.scrcpy\\adb connect {ip}:{tar_port}', shell=True)
             time.sleep(3)  # Give real client 3 seconds to connect
-            if p:
-                p.terminate()
-        s.close()
+            p.terminate()
     return result == 0
 
 
@@ -99,38 +43,38 @@ def scan_ports(target_ip, port_start, port_end, batch=3):
     # Get open ports
     port_list = list(open_ports.keys())
     print(f"Ports Open: {port_list}")
-    device = get_adb_device()
-    return device
+    deivce = get_adb_device()
+    return deivce
 
 
 # Check if adb device is already connected
 def get_adb_device():
-    adb = find_adb()
-    devList = check_output([adb, 'devices'])
-    lines = devList.decode('utf-8', errors='ignore').splitlines()
+    devList = check_output('.scrcpy\\adb devices', shell=True)
+    # Decode bytes to string properly
+    devListStr = devList.decode('utf-8', errors='ignore')
+    devListArr = devListStr.strip().split('\n')
     # Check for online status
     deivce = None
-    for client in lines[1:]:
+    for client in devListArr[1:]:
         client = client.strip()
         if not client:
             continue
-        parts = client.split()
-        client_ip = parts[0] if parts else ''
-        if 'device' in client and 'offline' not in client:
-            deivce = client_ip
-            print(f"Found ADB device! {deivce}")
-        elif client_ip and client_ip not in ("List", "of", "devices", "attached"):
-            Popen([adb, 'disconnect', client_ip], stdout=DEVNULL, stderr=DEVNULL)
+        parts = client.split('\t')
+        if len(parts) >= 2:
+            client_ip = parts[0].strip()
+            status = parts[1].strip()
+            if status == 'device':
+                deivce = client_ip
+                print("Found ADB device! {}".format(deivce))
+            else:
+                Popen(f'.scrcpy\\adb disconnect {client_ip}', shell=True, stderr=DEVNULL)
     return deivce
 
 
 def get_device():
-    adb = find_adb()
-    p = Popen([adb, 'kill-server'], stdout=DEVNULL, stderr=DEVNULL)
+    p = Popen([".scrcpy\\adb", 'kill-server'])
     p.wait()
-    p = Popen([adb, 'start-server'], stdout=DEVNULL, stderr=DEVNULL)
-    p.wait()
-    p = Popen([adb, 'devices'], stdout=DEVNULL, stderr=DEVNULL)
+    p = Popen('.scrcpy\\adb devices', shell=True, stdout=DEVNULL)
     p.wait()
     # Check if adb got connected
     device = get_adb_device()

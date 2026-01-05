@@ -1,154 +1,55 @@
-# RushBot 🎮🤖
+# Rush-Royale-Bot
+Python based bot for Rush Royale
 
-| <img width="1024" height="1024" alt="20250803_2330_RushBot App Logo_simple_compose_01k1rxd9atf21b3v5gkrpyxt0f" src="https://github.com/user-attachments/assets/621d866c-864e-42bb-a28a-c8dca66425a0" /> | RushBot is an advanced Python 3.13-based automation bot for Rush Royale that combines computer vision, machine learning, and Android device control. Using OpenCV for real-time game state recognition and scikit-learn for strategic decision-making, the bot can autonomously play Rush Royale on Android devices or emulators. Built with a robust architecture featuring ADB integration for device communication, advanced screenshot processing, and comprehensive analytics tracking, RushBot represents the evolution of Rush Royale automation - building upon the foundational work of AxelBjork, mleem97, and Frikadellental's previous implementations while pushing the boundaries with modern AI techniques and reliable cross-platform compatibility. |
-|------|-------------|
+Use with Bluestacks on PC
 
-## 🔗 Project History & Related Work
+## Farm unlimited gold!
+* Can run 24/7 and allow you to easily upgrade all availble units with gold to spare.
+* Optimized to farm dungeon floor 5 
 
-This project builds upon the foundation of several Rush Royale bot implementations:
-- **Original Project**: [AxelBjork/Rush-Royale-Bot](https://github.com/AxelBjork/Rush-Royale-Bot) - The pioneering work that started it all
-- **Fixed Version**: [mleem97/Rush-Royale-Bot](https://github.com/mleem97/Rush-Royale-Bot) - Improved stability and bug fixes
-- **AI Redesign**: [Frikadellental/Rush-Royale-AI](https://github.com/Frikadellental/Rush-Royale-AI) - Complete redesign with modern AI approaches
+## Functionality 
+* Can send low latency commands to game via Scrpy ADB
+* Jupyter notebook for interacting, adding new units
+* Automatically refreshes store, watches ads, completes quests, collects ad chest
+* Unit type detection with openCV: ORB detector
+* Rank detection with sklearn LogisticRegression (Very accurate)
 
-This repository represents the next evolution, focusing on advanced reinforcement learning techniques and autonomous gameplay.
+![output](https://user-images.githubusercontent.com/71280183/171181226-d680e7ca-729f-4c3d-8fc6-573736371dfb.png)
 
-## 🚀 Features
+![new_gui](https://user-images.githubusercontent.com/71280183/183141310-841b100a-2ddb-4f59-a6d9-4c7789ba72db.png)
 
-- **Computer Vision Integration**: Advanced OpenCV-based image recognition for game state analysis
-- **Android Device Control**: Direct communication with Android devices via ADB
-- **Machine Learning Analytics**: Scikit-learn powered pattern recognition and decision making
-- **Real-time Screenshot Processing**: Fast image capture and analysis pipeline
-- **Data-Driven Insights**: Comprehensive gameplay analytics and performance tracking
-- **Cross-Platform Compatibility**: Works with Android emulators (physical devices are not tested yet)
-- **Development Tools**: Jupyter notebook integration for analysis and debugging
 
-## 🏗️ Architecture
 
-### Computer Vision Pipeline
-- **OpenCV Integration**: Advanced image processing for game state recognition
-- **Template Matching**: Precise identification of game elements and UI components
-- **Color Analysis**: Strategic decision making based on visual game information
-- **Screenshot Processing**: Optimized real-time image capture and analysis
+## Setup Guide
 
-### Machine Learning Components
-- **Scikit-learn Models**: Pattern recognition for optimal gameplay strategies  
-- **Data Analytics**: Performance tracking and strategic improvement recommendations
-- **Feature Extraction**: Automated identification of key game state indicators
+**Python**
 
-### Device Communication
-- **ADB Integration**: Direct Android device control and automation
-- **Cross-Platform Support**: Compatible with emulators and physical devices
-- **Reliable Input Simulation**: Precise touch and gesture automation
+Install Latest Python 3.9 (Windows installer 64-bit)
 
-## 📋 Requirements
+https://www.python.org/downloads/ (windows 64-bit installer)[https://www.python.org/ftp/python/3.9.13/python-3.9.13-amd64.exe]
 
-- Python 3.13+
-- OpenCV 4.10+
-- NumPy 1.24+
-- Pandas 2.0+
-- Scikit-learn 1.5+
-- Pure Python ADB
-- Pillow 10.0+
-- Matplotlib 3.7+
+Select add Python to path, check `python --version`  works and gives Python 3.9.13
 
-## 🛠️ Installation
+Download and extract this repo
 
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/rushbot.git
-cd rushbot
-```
+**Bluestacks**
 
-2. Create a virtual environment:
-```bash
-python -m venv rushbot_env
-source rushbot_env/bin/activate  # On Windows: rushbot_env\Scripts\activate
-```
+Install Latest Bluestacks 5
 
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+Settings:
 
-## 🎯 Usage
+(Display) Resolution: 1600 x 900
 
-### Training the Bot
-```bash
-python main.py --mode train --device emulator-5554
-```
+(Graphics) Graphics engine mode: Compatibility (this can help if you have issues with scrcpy)
 
-### Running the Bot
-```bash
-python main.py --mode play --device 
-```
+(Advanced) Android Debug Bridge: Enabled - Note the port number here
 
-### Analysis Mode
-```bash
-python analyze.py --log-file gameplay_data.json
-```
+Setup google account, download rush royale, ect.
 
-## 📊 Performance Metrics
+**Bot**
 
-The bot tracks various performance indicators:
-- Win rate progression over time
-- Average game completion time
-- Decision accuracy and response time
-- Screenshot processing efficiency
-- ADB command success rates
-- Pattern recognition confidence scores
+run install.bat to create repo and install dependencies
 
-## 🔧 Configuration
+run lanch_gui.bat
 
-Customize bot behavior through `config.ini`:
-```ini
-[DEVICE]
-device_id = emulator-5554
-screenshot_method = adb
-resolution = 1920x1080
-
-[GAMEPLAY]
-action_delay = 0.5
-confidence_threshold = 0.8
-max_game_duration = 300
-
-[ANALYSIS]
-save_screenshots = true
-log_level = INFO
-data_retention_days = 30
-```
-
-## 📈 Development Progress
-
-The bot development includes:
-1. **Setup Phase**: Device connection and screenshot capture implementation
-2. **Vision Development**: Template matching and game state recognition
-3. **Automation**: Touch input simulation and game interaction
-4. **Analytics Integration**: Performance tracking and data analysis
-5. **Optimization**: Speed improvements and reliability enhancements
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## ⚠️ Disclaimer
-
-This bot is created for educational and research purposes. Please ensure compliance with Rush Royale's Terms of Service when using automated tools.
-
-## 🙏 Acknowledgments
-
-- **AxelBjork** for the original Rush Royale bot implementation
-- **mleem97** for improving and fixing the original codebase
-- **Frikadellental** for the AI-focused redesign and modern approach
-- Rush Royale developers for creating an engaging strategic game
-- OpenAI and DeepMind for pioneering reinforcement learning techniques
-- The open-source community for providing essential ML libraries
+(temp) units and other settings have to be configured in bot_handler.py, this will be moved to the config.ini file.

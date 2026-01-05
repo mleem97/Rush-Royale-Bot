@@ -4,6 +4,7 @@ units/
 .bot_env
 .vscode
 .scrcpy
+.python_path
 machine_learning
 screens
 bot_feed_emulator-5554.png
@@ -13,6 +14,3 @@ RR_bot.log
 build
 dist
 config.ini
-.github/prompts
-*instructions.md
-*.prompt.md
