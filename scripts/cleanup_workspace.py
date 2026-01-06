@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 from pathlib import Path
+
 import shutil
 
 import argparse
-
-from __future__ import annotations
 
 
 def _delete_path(path: Path, dry_run: bool) -> None:
