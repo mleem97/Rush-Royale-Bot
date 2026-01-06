@@ -1,2 +1,53 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Default text files use LF
+* text=auto eol=lf
+
+# Scripts
+*.sh   text eol=lf
+*.bash text eol=lf
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+*.ps1  text eol=crlf
+
+# Config & docs
+*.json text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.md   text eol=lf
+*.txt  text eol=lf
+*.ini  text eol=lf
+*.cfg  text eol=lf
+
+# Data / notebooks
+*.csv   text eol=lf
+*.ipynb text eol=lf
+
+# Source
+*.py   text eol=lf
+*.c    text eol=lf
+*.cpp  text eol=lf
+*.h    text eol=lf
+*.hpp  text eol=lf
+*.cs   text eol=lf
+*.java text eol=lf
+*.ts   text eol=lf
+*.js   text eol=lf
+*.css  text eol=lf
+*.html text eol=lf
+
+# Binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.zip  binary
+*.tar  binary
+*.gz   binary
+*.tgz  binary
+*.mp4  binary
+*.exe  binary
+*.pkl  binary
+*.pth  binary
+*.whl  binary

@@ -7,14 +7,14 @@ echo   Rush Royale Bot - Installation
 echo ============================================
 echo.
 
-:: Suche alle installierten Python-Versionen
+:: Search for all installed Python versions
 set "PYTHON_COUNT=0"
 set "PYTHON_LIST="
 
-:: Hilfsfunktion zum Hinzufügen einer Python-Version
-:: Wird unten aufgerufen
+:: Helper function to add a Python version
+:: Called below
 
-:: 1. Suche WindowsStore/WindowsApps Versionen (python3.XX.exe)
+:: 1. Search WindowsStore/WindowsApps versions (python3.XX.exe)
 for %%p in (
     "%LOCALAPPDATA%\Microsoft\WindowsApps\python3.14.exe"
     "%LOCALAPPDATA%\Microsoft\WindowsApps\python3.13.exe"
@@ -23,17 +23,23 @@ for %%p in (
     "%LOCALAPPDATA%\Microsoft\WindowsApps\python3.10.exe"
 ) do (
     if exist "%%~p" (
-        set /a PYTHON_COUNT+=1
-        set "PYTHON_!PYTHON_COUNT!=%%~p"
-        for /f "tokens=*" %%v in ('"%%~p" --version 2^>^&1') do (
-            set "PYTHON_VER_!PYTHON_COUNT!=%%v"
+        :: Check for 0KB WindowsApps alias
+        for %%F in ("%%~p") do set "SIZE=%%~zF"
+        if !SIZE! EQU 0 (
+            echo   -^> Skipping 0KB WindowsApp alias: %%~p
+        ) else (
+            set /a PYTHON_COUNT+=1
+            set "PYTHON_!PYTHON_COUNT!=%%~p"
+            for /f "tokens=*" %%v in ('"%%~p" --version 2^>^&1') do (
+                set "PYTHON_VER_!PYTHON_COUNT!=%%v"
+            )
         )
     )
 )
 
-:: 2. Suche Standard python.exe in PATH (falls nicht WindowsApps)
+:: 2. Search for standard python.exe in PATH (if not WindowsApps)
 for /f "tokens=*" %%i in ('where python 2^>nul') do (
-    :: Überspringe WindowsApps (haben wir schon oben)
+    :: Skip WindowsApps (already checked above)
     echo %%i | findstr /i "WindowsApps" >nul
     if errorlevel 1 (
         set "ALREADY_FOUND=0"
@@ -50,7 +56,7 @@ for /f "tokens=*" %%i in ('where python 2^>nul') do (
     )
 )
 
-:: 3. Suche in typischen Installationsordnern
+:: 3. Search in typical installation directories
 for %%p in (
     "%LOCALAPPDATA%\Programs\Python\Python314\python.exe"
     "%LOCALAPPDATA%\Programs\Python\Python313\python.exe"
@@ -93,7 +99,7 @@ for %%p in (
     )
 )
 
-:: 4. Versuche Python Launcher (py) falls vorhanden
+:: 4. Try Python Launcher (py) if available
 where py >nul 2>&1
 if not errorlevel 1 (
     for /f "tokens=1,2,*" %%a in ('py -0p 2^>nul') do (
@@ -114,28 +120,28 @@ if not errorlevel 1 (
     )
 )
 
-:: Keine Python-Installation gefunden
+:: No Python installation found
 if %PYTHON_COUNT%==0 (
-    echo FEHLER: Keine Python-Installation gefunden!
+    echo ERROR: No Python installation found!
     echo.
-    echo Bitte installiere Python 3.10 oder neuer von:
+    echo Please install Python 3.10 or newer from:
     echo https://www.python.org/downloads/
     echo.
     pause
     exit /b 1
 )
 
-:: Nur eine Version gefunden - automatisch nutzen
+:: Only one version found - use automatically
 if %PYTHON_COUNT%==1 (
     set "SELECTED_PYTHON=!PYTHON_1!"
-    echo Gefunden: !PYTHON_VER_1!
-    echo Pfad: !SELECTED_PYTHON!
+    echo Found: !PYTHON_VER_1!
+    echo Path: !SELECTED_PYTHON!
     echo.
     goto :install
 )
 
-:: Mehrere Versionen gefunden - Auswahl anzeigen
-echo Mehrere Python-Versionen gefunden:
+:: Multiple versions found - show selection
+echo Multiple Python versions found:
 echo.
 for /l %%n in (1,1,%PYTHON_COUNT%) do (
     echo   [%%n] !PYTHON_VER_%%n!
@@ -143,61 +149,123 @@ for /l %%n in (1,1,%PYTHON_COUNT%) do (
     echo.
 )
 
-:: Benutzerauswahl
+:: User selection
 :select_python
-set /p "SELECTION=Waehle Python-Version [1-%PYTHON_COUNT%]: "
+set /p "SELECTION=Choose Python version [1-%PYTHON_COUNT%]: "
 
-:: Validiere Eingabe
+:: Validate input
 set "VALID=0"
 for /l %%n in (1,1,%PYTHON_COUNT%) do (
     if "%SELECTION%"=="%%n" set "VALID=1"
 )
 if "%VALID%"=="0" (
-    echo Ungueltige Auswahl. Bitte eine Zahl von 1 bis %PYTHON_COUNT% eingeben.
+    echo Invalid selection. Please enter a number from 1 to %PYTHON_COUNT%.
     goto :select_python
 )
 
 set "SELECTED_PYTHON=!PYTHON_%SELECTION%!"
 echo.
-echo Ausgewaehlt: !PYTHON_VER_%SELECTION%!
+echo Selected: !PYTHON_VER_%SELECTION%!
 echo.
 
 :install
-:: Speichere ausgewählte Python-Version für launch_gui.bat
-echo %SELECTED_PYTHON%> .python_path
-
-:: Erstelle virtuelle Umgebung
-echo Erstelle virtuelle Umgebung...
-"%SELECTED_PYTHON%" -m venv .bot_env
-if errorlevel 1 (
-    echo FEHLER: Konnte virtuelle Umgebung nicht erstellen!
+:: Check if requirements.txt exists
+if not exist "requirements.txt" (
+    echo ERROR: requirements.txt not found!
+    echo Please make sure you extracted all files.
+    echo.
     pause
     exit /b 1
 )
 
-:: Aktiviere Umgebung
-echo Aktiviere Umgebung...
+:: Save selected Python version for launch_gui.bat
+echo %SELECTED_PYTHON%> .python_path
+
+:: Create or update virtual environment
+if exist ".bot_env" (
+    echo.
+    echo Virtual environment already exists.
+    set /p "REINSTALL=Do you want to recreate it? (Y/N): "
+    if /i "!REINSTALL!"=="Y" (
+        echo Removing old environment...
+        rmdir /s /q ".bot_env"
+        echo Creating new virtual environment...
+        "%SELECTED_PYTHON%" -m venv .bot_env
+        if errorlevel 1 (
+            echo ERROR: Could not create virtual environment!
+            pause
+            exit /b 1
+        )
+    ) else (
+        echo Using existing environment...
+    )
+) else (
+    echo Creating virtual environment...
+    "%SELECTED_PYTHON%" -m venv .bot_env
+    if errorlevel 1 (
+        echo ERROR: Could not create virtual environment!
+        pause
+        exit /b 1
+    )
+)
+
+:: Activate environment
+echo Activating environment...
 call .bot_env\Scripts\activate.bat
 
 :: Upgrade pip
-echo Aktualisiere pip...
+echo Upgrading pip...
 python -m pip install --upgrade pip
 
-:: Installiere Abhängigkeiten
+:: Install dependencies
 echo.
-echo Installiere Abhaengigkeiten...
+echo Installing dependencies...
 pip install -r requirements.txt
 if errorlevel 1 (
     echo.
-    echo WARNUNG: Einige Pakete konnten nicht installiert werden.
-    echo Pruefe die Fehlermeldungen oben.
+    echo WARNING: Some packages could not be installed.
+    echo Please check the error messages above.
+)
+
+:: Create launch_gui.bat if not present
+if not exist "launch_gui.bat" (
+    echo.
+    echo Creating launcher script ^(launch_gui.bat^)...
+    (
+        echo @echo off
+        echo setlocal enabledelayedexpansion
+        echo title Rush Royale Bot
+        echo.
+        echo :: Read Python path
+        echo set /p PYTHON_PATH=^<.python_path
+        echo.
+        echo if not exist "!PYTHON_PATH!" ^(
+        echo     echo ERROR: Python path not found.
+        echo     echo Please run install.bat.
+        echo     pause
+        echo     exit /b 1
+        echo ^)
+        echo.
+        echo if not exist ".bot_env\Scripts\python.exe" ^(
+        echo     echo ERROR: Virtual environment not found.
+        echo     echo Please run install.bat.
+        echo     pause
+        echo     exit /b 1
+        echo ^)
+        echo.
+        echo echo Starting Bot...
+        echo ".bot_env\Scripts\python.exe" "Src\bot_handler.py"
+        echo.
+        echo if errorlevel 1 pause
+    ) > launch_gui.bat
+    echo   -^> launch_gui.bat created
 )
 
 echo.
 echo ============================================
-echo   Installation abgeschlossen!
+echo   Installation completed!
 echo ============================================
 echo.
-echo Starte den Bot mit: launch_gui.bat
+echo Start the bot with: launch_gui.bat
 echo.
 pause

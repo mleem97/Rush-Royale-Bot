@@ -1,39 +1,63 @@
 @echo off
 setlocal enabledelayedexpansion
-title Rush Royale Bot
+title Rush Royale Bot - Launcher
+
+:: 1. Ensure we're in the correct directory (important for shortcuts!)
+cd /d "%~dp0"
 
 echo ============================================
-echo   Rush Royale Bot
+echo    Rush Royale Bot
 echo ============================================
 echo.
 
-:: Prüfe ob virtuelle Umgebung existiert
-if not exist ".bot_env\Scripts\activate.bat" (
-    echo Virtuelle Umgebung nicht gefunden!
-    echo Bitte zuerst install.bat ausfuehren.
+:: 2. Define path to Python executable within venv
+set "VENV_PYTHON=.bot_env\Scripts\python.exe"
+set "MAIN_SCRIPT=Src\gui.py"
+
+:: 3. Check if virtual environment exists (Better check on exe instead of activate.bat)
+if not exist "!VENV_PYTHON!" (
+    color 0C
+    echo [ERROR] Virtual environment not found!
+    echo Path searched: !VENV_PYTHON!
+    echo.
+    echo Please run 'install.bat' first.
     echo.
     pause
     exit /b 1
 )
 
-:: Prüfe ob Python-Pfad gespeichert wurde
-if exist ".python_path" (
-    set /p SAVED_PYTHON=<.python_path
-    echo Gespeicherte Python-Version: !SAVED_PYTHON!
+:: 4. Check if main script exists
+if not exist "!MAIN_SCRIPT!" (
+    color 0C
+    echo [ERROR] File '!MAIN_SCRIPT!' not found!
+    echo Are you sure you're in the correct directory?
+    echo Current directory: %CD%
     echo.
+    pause
+    exit /b 1
 )
 
-:: Aktiviere Umgebung
-echo Aktiviere Umgebung...
-call .bot_env\Scripts\activate.bat
+:: 5. Start
+echo Starting Bot GUI...
+title Rush Royale Bot - Running...
 
-:: Starte GUI
-echo Starte Bot GUI...
-echo.
-python Src\gui.py
+:: We call Python directly from venv.
+:: This is more stable than trusting 'activate.bat'.
+"!VENV_PYTHON!" "!MAIN_SCRIPT!"
 
-if errorlevel 1 (
+:: 6. Error handling after termination
+set "EXIT_CODE=!errorlevel!"
+if !EXIT_CODE! NEQ 0 (
+    color 0C
+    title Rush Royale Bot - Crashed
     echo.
-    echo Bot wurde mit Fehler beendet.
+    echo ============================================
+    echo  BOT TERMINATED WITH ERROR (Code: !EXIT_CODE!)
+    echo ============================================
+    echo.
+    echo Please take a screenshot of the errors above.
     pause
+) else (
+    echo.
+    echo Bot terminated normally.
 )

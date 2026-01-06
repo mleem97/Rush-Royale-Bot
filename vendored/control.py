@@ -1,9 +1,13 @@
 import functools
+
 import socket
+
 import struct
+
 from time import sleep
 
 import scrcpy
+
 from scrcpy import const
 
 

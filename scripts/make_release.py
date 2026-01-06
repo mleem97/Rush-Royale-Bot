@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import fnmatch
 import os
-from pathlib import Path
 import time
 import zipfile
+
+from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DIST_DIR = REPO_ROOT / "dist"

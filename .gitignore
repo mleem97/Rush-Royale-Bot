@@ -1,20 +1,56 @@
+# --- Python ---
 __pycache__/
+*.py[cod]
+*$py.class
+
+# --- Local / generated data ---
 OCR_inputs/
+machine_learning/inputs/
+machine_learning/raw_input/
+screens/
+screenshots/
 units/
-.bot_env
-.vscode
-.scrcpy
+*.bak
+*.tmp
+*.swp
+
+# --- Virtual env ---
+.bot_env/
+.venv/
+venv/
+ENV/
+
+# --- IDE ---
+.vscode/
+.vs/
+
+# --- Bundled tools / local paths ---
+.scrcpy/
 .python_path
-machine_learning
-screens
-bot_feed_emulator-5554.png
-Src/old_functions.py
-bot_feed.png
-RB_bot.log
-build
-dist
+
+# --- Build artifacts ---
+build/
+dist/
+
+# --- Test / type-check caches ---
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+.coverage
+htmlcov/
+.tox/
+
+# --- Local runtime outputs ---
+*.log
+bot_feed*.png
+ordner.txt
+.backups/
+.logs/
+
+# --- Local config ---
 config.ini
-.vs
-.python_path
-bot_feed_emulator-5554.png
+
+# --- One-off files ---
+Src/old_functions.py
 requirements.py
