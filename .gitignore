@@ -16,6 +16,7 @@ units/
 
 # --- Virtual env ---
 .bot_env/
+bot_env/
 .venv/
 venv/
 ENV/
@@ -31,6 +32,8 @@ ENV/
 # --- Build artifacts ---
 build/
 dist/
+bin/
+obj/
 
 # --- Test / type-check caches ---
 .pytest_cache/

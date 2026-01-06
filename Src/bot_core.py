@@ -6,29 +6,22 @@ Core bot class and ADB/scrcpy handling.
 from __future__ import annotations
 
 import configparser
-
 import logging
-
 import os
-
 import time
 
 from pathlib import Path
-
-from subprocess import DEVNULL, Popen
-
+from subprocess import DEVNULL
+from subprocess import Popen
 from types import SimpleNamespace
-
-from typing import Any, Optional, Protocol
+from typing import Any
+from typing import Protocol
 
 import cv2
-
 import numpy as np
-
 import pandas as pd
 
 import bot_perception
-
 import port_scan
 
 try:
@@ -41,13 +34,15 @@ except ImportError:
 
 
 class _AdbDevice(Protocol):
-    def shell(self, cmd: str) -> Any: ...
-
-    def screenshot(self) -> Any: ...
+    # adbutils' AdbDevice has multiple overloads for .shell(); keep this permissive
+    # to avoid stub incompatibilities in type checkers.
+    shell: Any
+    screenshot: Any
 
 
 try:
-    from scrcpy import Client, const
+    from scrcpy import Client
+    from scrcpy import const
 
     SCRCPY_AVAILABLE = True
 except ImportError:
@@ -66,7 +61,7 @@ SLEEP_DELAY = 0.1
 
 
 class Bot:
-    def __init__(self, device: Optional[str] = None):
+    def __init__(self, device: str | None = None):
         self.bot_stop = False
         self.combat = 0
         self.output = None
@@ -78,7 +73,7 @@ class Bot:
         self.combat_step = 0
         self.screenRGB = None
 
-        self.config: Optional[configparser.ConfigParser] = None
+        self.config: configparser.ConfigParser | None = None
 
         self.logger = logging.getLogger("__main__")
 
@@ -370,6 +365,9 @@ class Bot:
         if new:
             self.getScreen()
 
+        if self.screenRGB is None:
+            return [0, 0]
+
         imgSrc = f"icons/{target}.png"
         if not os.path.exists(imgSrc):
             return [0, 0]
@@ -377,6 +375,8 @@ class Bot:
         img_rgb = self.screenRGB
         img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_BGR2GRAY)
         template = cv2.imread(imgSrc, 0)
+        if template is None:
+            return [0, 0]
 
         res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
         threshold = 0.8
@@ -758,7 +758,7 @@ class Bot:
 
         # Find target chapter
         found_chapter = False
-        for scroll_attempt in range(10):
+        for _scroll_attempt in range(10):
             avail_buttons = self.get_current_icons(
                 available=True,
                 new=True,
@@ -790,7 +790,7 @@ class Bot:
         found_floor = False
         play_button_offset = np.array([330, 1030]) - np.array([120, 790])
 
-        for scroll_attempt in range(5):
+        for _scroll_attempt in range(5):
             avail_buttons = self.get_current_icons(
                 available=True, new=True, icon_list=[target_floor_icon_name]
             )
@@ -836,7 +836,7 @@ class Bot:
 
         # Wait for co-op screen and click random partner (pve_random.png)
         self.logger.info("Waiting for co-op partner selection...")
-        for attempt in range(15):
+        for _attempt in range(15):
             avail_buttons = self.get_current_icons(
                 available=True, new=True, icon_list=["pve_random.png"]
             )
