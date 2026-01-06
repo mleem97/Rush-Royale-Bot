@@ -2,8 +2,8 @@
 Rush Royale Bot - Scrcpy Client Module
 Python 3.11+ Compatible
 
-Stellt die Verbindung zum Android-Gerät über scrcpy her.
-Ermöglicht Screenshot-Capture und Touch-Input.
+Establishes connection to Android device via scrcpy.
+Enables screenshot capture and touch input.
 """
 from __future__ import annotations
 
@@ -16,11 +16,11 @@ from pathlib import Path
 from typing import Optional, Callable, Any
 import numpy as np
 
-# Füge den scrcpy-Ordner zum Pfad hinzu
+# Add scrcpy folder to path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-# Import des lokalen scrcpy Clients
+# Import local scrcpy client
 try:
     from scrcpy import Client
     from scrcpy import const as scrcpy_const
@@ -29,19 +29,19 @@ except ImportError as e:
     SCRCPY_AVAILABLE = False
     Client = None
     scrcpy_const = None
-    print(f"Warning: scrcpy nicht verfügbar: {e}")
+    print(f"Warning: scrcpy not available: {e}")
 
 logger = logging.getLogger(__name__)
 
 
 class ScrcpyClientWrapper:
     """
-    Wrapper-Klasse für den scrcpy Client.
+    Wrapper class for scrcpy Client.
     
-    Stellt eine einfache Schnittstelle für:
-    - Screenshot-Capture
-    - Touch-Events
-    - Key-Events
+    Provides a simple interface for:
+    - Screenshot capture
+    - Touch events
+    - Key events
     """
     
     # Events
@@ -60,19 +60,19 @@ class ScrcpyClientWrapper:
         stay_awake: bool = True,
     ):
         """
-        Initialisiert den scrcpy Client.
+        Initialize scrcpy client.
         
         Args:
-            device: ADB Device Serial (z.B. 'emulator-5554')
-            max_width: Maximale Breite des Video-Streams
-            bitrate: Video-Bitrate in bps
-            max_fps: Maximale Framerate
-            flip: Bild horizontal spiegeln
-            block_frame: Blockiert bis Frame verfügbar
-            stay_awake: Hält das Gerät wach
+            device: ADB Device Serial (e.g. 'emulator-5554')
+            max_width: Maximum width of video stream
+            bitrate: Video bitrate in bps
+            max_fps: Maximum framerate
+            flip: Flip image horizontally
+            block_frame: Block until frame available
+            stay_awake: Keep device awake
         """
         if not SCRCPY_AVAILABLE:
-            raise RuntimeError("scrcpy Client nicht verfügbar. Bitte Abhängigkeiten installieren.")
+            raise RuntimeError("scrcpy Client not available. Please install dependencies.")
         
         self.device = device
         self.max_width = max_width
@@ -88,48 +88,48 @@ class ScrcpyClientWrapper:
         self._connected = False
         self._frame_listeners: list[Callable] = []
         
-        logger.info(f"ScrcpyClientWrapper initialisiert für Gerät: {device or 'auto'}")
+        logger.info(f"ScrcpyClientWrapper initialized for device: {device or 'auto'}")
     
     def _on_frame(self, frame: np.ndarray) -> None:
-        """Callback wenn ein neuer Frame empfangen wird."""
+        """Callback when a new frame is received."""
         with self._frame_lock:
             self._last_frame = frame
         
-        # Benachrichtige alle Listener
+        # Notify all listeners
         for listener in self._frame_listeners:
             try:
                 listener(frame)
             except Exception as e:
-                logger.error(f"Frame-Listener Fehler: {e}")
+                logger.error(f"Frame listener error: {e}")
     
     def _on_init(self) -> None:
-        """Callback wenn die Verbindung hergestellt wurde."""
+        """Callback when connection is established."""
         self._connected = True
-        logger.info("scrcpy Verbindung hergestellt")
+        logger.info("scrcpy connection established")
     
     def _on_disconnect(self) -> None:
-        """Callback wenn die Verbindung getrennt wurde."""
+        """Callback when connection is disconnected."""
         self._connected = False
-        logger.warning("scrcpy Verbindung getrennt")
+        logger.warning("scrcpy connection disconnected")
     
     def add_frame_listener(self, callback: Callable[[np.ndarray], None]) -> None:
-        """Fügt einen Frame-Listener hinzu."""
+        """Add a frame listener."""
         self._frame_listeners.append(callback)
     
     def remove_frame_listener(self, callback: Callable) -> None:
-        """Entfernt einen Frame-Listener."""
+        """Remove a frame listener."""
         if callback in self._frame_listeners:
             self._frame_listeners.remove(callback)
     
     def start(self, threaded: bool = True) -> bool:
         """
-        Startet den scrcpy Client.
+        Start scrcpy client.
         
         Args:
-            threaded: Ob der Client in einem eigenen Thread laufen soll
+            threaded: Whether client should run in separate thread
             
         Returns:
-            True wenn erfolgreich gestartet
+            True if successfully started
         """
         try:
             self._client = Client(
@@ -142,49 +142,49 @@ class ScrcpyClientWrapper:
                 stay_awake=self.stay_awake,
             )
             
-            # Event-Handler registrieren
+            # Register event handlers
             self._client.add_listener(Client.EVENT_FRAME, self._on_frame)
             self._client.add_listener(Client.EVENT_INIT, self._on_init)
             self._client.add_listener(Client.EVENT_DISCONNECT, self._on_disconnect)
             
-            logger.info("Starte scrcpy Client...")
+            logger.info("Starting scrcpy client...")
             self._client.start(threaded=threaded)
             
-            # Warte kurz auf Verbindung
+            # Wait briefly for connection
             timeout = 5.0
             start_time = time.time()
             while not self._connected and (time.time() - start_time) < timeout:
                 time.sleep(0.1)
             
             if self._connected:
-                logger.info("scrcpy Client erfolgreich gestartet")
+                logger.info("scrcpy client started successfully")
                 return True
             else:
-                logger.warning("scrcpy Client Timeout - keine Verbindung")
+                logger.warning("scrcpy client timeout - no connection")
                 return False
                 
         except Exception as e:
-            logger.error(f"Fehler beim Starten des scrcpy Clients: {e}")
+            logger.error(f"Error starting scrcpy client: {e}")
             return False
     
     def stop(self) -> None:
-        """Stoppt den scrcpy Client."""
+        """Stop scrcpy client."""
         if self._client:
             try:
                 self._client.stop()
-                logger.info("scrcpy Client gestoppt")
+                logger.info("scrcpy client stopped")
             except Exception as e:
-                logger.error(f"Fehler beim Stoppen: {e}")
+                logger.error(f"Error stopping: {e}")
             finally:
                 self._client = None
                 self._connected = False
     
     def get_frame(self) -> Optional[np.ndarray]:
         """
-        Gibt den letzten empfangenen Frame zurück.
+        Return the last received frame.
         
         Returns:
-            numpy array mit dem Bild (RGB) oder None
+            numpy array with image (RGB) or None
         """
         with self._frame_lock:
             if self._last_frame is not None:
@@ -192,43 +192,43 @@ class ScrcpyClientWrapper:
         return None
     
     def get_screenshot(self) -> Optional[np.ndarray]:
-        """Alias für get_frame() - für Kompatibilität."""
+        """Alias for get_frame() - for compatibility."""
         return self.get_frame()
     
     @property
     def is_connected(self) -> bool:
-        """Gibt zurück ob der Client verbunden ist."""
+        """Return whether client is connected."""
         return self._connected
     
     @property
     def resolution(self) -> Optional[tuple[int, int]]:
-        """Gibt die aktuelle Auflösung zurück (width, height)."""
+        """Return current resolution (width, height)."""
         frame = self.get_frame()
         if frame is not None:
             return (frame.shape[1], frame.shape[0])
         return None
     
-    # Touch/Input Methoden
+    # Touch/Input methods
     def touch(self, x: int, y: int, action: int = 0) -> None:
         """
-        Sendet ein Touch-Event.
+        Send a touch event.
         
         Args:
-            x: X-Koordinate
-            y: Y-Koordinate
-            action: 0=DOWN, 1=UP, 2=MOVE (siehe scrcpy.const)
+            x: X-coordinate
+            y: Y-coordinate
+            action: 0=DOWN, 1=UP, 2=MOVE (see scrcpy.const)
         """
         if self._client and self._connected:
             self._client.control.touch(x, y, action)
     
     def click(self, x: int, y: int, duration: float = 0.05) -> None:
         """
-        Führt einen Klick aus (touch down + up).
+        Perform a click (touch down + up).
         
         Args:
-            x: X-Koordinate
-            y: Y-Koordinate
-            duration: Verzögerung zwischen down und up in Sekunden
+            x: X-coordinate
+            y: Y-coordinate
+            duration: Delay between down and up in seconds
         """
         if self._client and self._connected:
             # ACTION_DOWN = 0, ACTION_UP = 1
@@ -246,13 +246,13 @@ class ScrcpyClientWrapper:
         steps: int = 10
     ) -> None:
         """
-        Führt eine Swipe-Geste aus.
+        Perform a swipe gesture.
         
         Args:
-            start_x, start_y: Startposition
-            end_x, end_y: Endposition
-            duration: Dauer der Geste
-            steps: Anzahl der Zwischenschritte
+            start_x, start_y: Start position
+            end_x, end_y: End position
+            duration: Duration of gesture
+            steps: Number of intermediate steps
         """
         if not self._client or not self._connected:
             return
@@ -260,7 +260,7 @@ class ScrcpyClientWrapper:
         # Touch down
         self._client.control.touch(start_x, start_y, 0)
         
-        # Bewegung in Schritten
+        # Movement in steps
         step_delay = duration / steps
         for i in range(1, steps + 1):
             progress = i / steps
@@ -274,29 +274,29 @@ class ScrcpyClientWrapper:
     
     def key(self, keycode: int, action: int = 0) -> None:
         """
-        Sendet ein Key-Event.
+        Send a key event.
         
         Args:
-            keycode: Android Keycode
+            keycode: Android keycode
             action: 0=DOWN, 1=UP
         """
         if self._client and self._connected:
             self._client.control.keycode(keycode, action)
     
     def back(self) -> None:
-        """Sendet die Zurück-Taste."""
+        """Send back key."""
         self.key(4)  # KEYCODE_BACK
         time.sleep(0.05)
         self.key(4, 1)
     
     def home(self) -> None:
-        """Sendet die Home-Taste."""
+        """Send home key."""
         self.key(3)  # KEYCODE_HOME
         time.sleep(0.05)
         self.key(3, 1)
 
 
-# Singleton-Instanz für einfachen Zugriff
+# Singleton instance for easy access
 _client_instance: Optional[ScrcpyClientWrapper] = None
 
 
@@ -306,15 +306,15 @@ def get_scrcpy_client(
     **kwargs
 ) -> ScrcpyClientWrapper:
     """
-    Gibt eine Singleton-Instanz des scrcpy Clients zurück.
+    Return singleton instance of scrcpy client.
     
     Args:
         device: ADB Device Serial
-        auto_start: Automatisch starten wenn nicht verbunden
-        **kwargs: Weitere Parameter für ScrcpyClientWrapper
+        auto_start: Automatically start if not connected
+        **kwargs: Additional parameters for ScrcpyClientWrapper
         
     Returns:
-        ScrcpyClientWrapper Instanz
+        ScrcpyClientWrapper instance
     """
     global _client_instance
     
@@ -328,7 +328,7 @@ def get_scrcpy_client(
 
 
 def close_scrcpy_client() -> None:
-    """Schließt die Singleton-Instanz."""
+    """Close singleton instance."""
     global _client_instance
     if _client_instance:
         _client_instance.stop()
@@ -340,19 +340,19 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     
     def on_frame(frame):
-        print(f"Frame empfangen: {frame.shape}")
+        print(f"Frame received: {frame.shape}")
     
     client = get_scrcpy_client(device="emulator-5554")
     client.add_frame_listener(on_frame)
     
-    print("Client gestartet. Drücke Ctrl+C zum Beenden...")
+    print("Client started. Press Ctrl+C to exit...")
     try:
         while True:
             time.sleep(1)
             frame = client.get_frame()
             if frame is not None:
-                print(f"Aktueller Frame: {frame.shape}")
+                print(f"Current frame: {frame.shape}")
     except KeyboardInterrupt:
-        print("Beende...")
+        print("Exiting...")
     finally:
         close_scrcpy_client()

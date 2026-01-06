@@ -1,4 +1,3 @@
-[CmdletBinding(PositionalBinding = $false)]
 param(
   [string]$Root = (Get-Location).Path,
   [string]$OutFile = 'ordner.txt',
@@ -20,10 +19,28 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Some shells/nesting can accidentally pass extra positional args.
-# Treat them as additional excluded directory names.
+# When calling this script via `pwsh -File ... -ExcludeDirs @('a','b','c')`, PowerShell may
+# only bind the first value to `-ExcludeDirs` and bind the rest positionally (e.g. into `$Root`
+# and `$OutFile`). Detect that situation and recover by moving those values back into `ExcludeDirs`.
 if ($args.Count -gt 0) {
   $ExcludeDirs = @($ExcludeDirs) + @($args)
+}
+
+function LooksLikeMisboundDir([string]$Value) {
+  if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
+  if ($Value -match '[\\/]' ) { return $false }
+  if (-not ($Value.StartsWith('.'))) { return $false }
+  return (Test-Path -LiteralPath $Value -PathType Container)
+}
+
+if (LooksLikeMisboundDir $Root) {
+  $ExcludeDirs = @($ExcludeDirs) + @($Root)
+  $Root = (Get-Location).Path
+}
+
+if (LooksLikeMisboundDir $OutFile) {
+  $ExcludeDirs = @($ExcludeDirs) + @($OutFile)
+  $OutFile = 'ordner.txt'
 }
 
 function Should-ExcludeDir([System.IO.DirectoryInfo]$Dir) {

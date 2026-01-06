@@ -10,17 +10,17 @@
     <WorkingDirectory>.</WorkingDirectory>
     <Name>Rush-Royale-Bot</Name>
     <RootNamespace>RushRoyaleBot</RootNamespace>
-    <InterpreterId>MSBuild|env|$(ProjectDir)\.bot_env</InterpreterId>
+    <InterpreterId>MSBuild|bot_env|$(MSBuildProjectFullPath)</InterpreterId>
     <InterpreterPath>$(ProjectDir)\.bot_env\Scripts\python.exe</InterpreterPath>
-    <InterpreterArguments></InterpreterArguments>
+    <InterpreterArguments>
+    </InterpreterArguments>
+    <TestFramework>Pytest</TestFramework>
   </PropertyGroup>
-
   <ItemGroup>
     <Compile Include="Src\**\*.py" />
     <Compile Include="scripts\**\*.py" />
     <Compile Include="*.py" />
   </ItemGroup>
-
   <ItemGroup>
     <Content Include="README.md" />
     <Content Include="requirements.txt" />
@@ -30,12 +30,21 @@
     <Content Include="scripts\launch_modern_gui.bat" />
     <Content Include="RR_bot.ipynb" />
   </ItemGroup>
-
   <ItemGroup>
     <Folder Include="Src" />
     <Folder Include="scripts" />
     <Folder Include="cv-images" />
   </ItemGroup>
-
+  <ItemGroup>
+    <Interpreter Include="bot_env\">
+      <Id>bot_env</Id>
+      <Version>3.13</Version>
+      <Description>bot_env (Python 3.13)</Description>
+      <InterpreterPath>Scripts\python.exe</InterpreterPath>
+      <WindowsInterpreterPath>Scripts\pythonw.exe</WindowsInterpreterPath>
+      <PathEnvironmentVariable>PYTHONPATH</PathEnvironmentVariable>
+      <Architecture>X64</Architecture>
+    </Interpreter>
+  </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
 </Project>
