@@ -1,29 +1,33 @@
 [tool.black]
-line-length = 85
+line-length = 100
 target-version = ["py313"]
-extend-exclude = """
+extend-exclude = '''
 /(\.bot_env|\.scrcpy|\.vs|\.git|scrcpy|all_units|icons|units|old_icon)/
-"""
+'''
 
 [tool.isort]
 profile = "black"
-line_length = 85
+line_length = 100
 known_first_party = ["bot_perception", "port_scan"]
 skip = [".bot_env", ".scrcpy", ".vs", ".git", "scrcpy", "all_units", "icons", "units", "old_icon"]
+# NEU: Erzwingt, dass jeder Import einzeln steht (kein "from x import a, b")
+force_single_line = true
+# NEU: Fügt Leerzeilen zwischen direkten imports und 'from' imports ein
+lines_between_types = 1
 
 [tool.ruff]
-line-length = 85
+line-length = 100
 target-version = "py313"
 src = ["Src"]
 extend-exclude = [
-	".bot_env",
-	".scrcpy",
-	".vs",
-	"scrcpy",
-	"all_units",
-	"icons",
-	"units",
-	"old_icon",
+    ".bot_env",
+    ".scrcpy",
+    ".vs",
+    "scrcpy",
+    "all_units",
+    "icons",
+    "units",
+    "old_icon",
 ]
 
 [tool.ruff.lint]
@@ -32,6 +36,9 @@ ignore = ["E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["bot_perception", "port_scan"]
+# NEU: Das Gleiche für Ruff (damit sie sich nicht widersprechen)
+force-single-line = true
+lines-between-types = 1
 
 [tool.pyright]
 venvPath = "."
