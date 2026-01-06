@@ -5,10 +5,15 @@ from tkinter import *
 
 
 
+
+
 # Logger classes
 
 
+
+
 class TextHandler(logging.StreamHandler):
+
 
 
     def __init__(self, textctrl):
@@ -47,6 +52,7 @@ class TextHandler(logging.StreamHandler):
                 col_light, background=col_light)
 
 
+
     def emit(self, record):
         msg = self.format(record)
         self.textctrl.config(state='normal')
@@ -59,6 +65,7 @@ class TextHandler(logging.StreamHandler):
         self.textctrl.config(state='disabled')
 
     # Functions to color messages according to utf-8 color codes set by formatter
+
 
     def insert_ansi(self, txt, index='insert'):
         first_line, first_char = map(int, str(self.textctrl.index(index)).split('.'))
@@ -76,20 +83,23 @@ class TextHandler(logging.StreamHandler):
         # text.tag_add(tag, start, end) when we reach a 'closing' ansi code
 
 
+
         def apply_formatting(code, code_index):
             if code == 0:  # reset all by closing all opened tag
                 for tag, start in opened_tags.items():
                     self.textctrl.tag_add(tag, start, code_index)
                 opened_tags.clear()
             elif code in 
-                self.ansi_color_fg:  # open foreground color tag (and close previously opened one if any)
+                self.ansi_color_fg:  # open foreground color tag (
+                    and close previously opened one if any)
                 for tag in tuple(opened_tags):
                     if tag.startswith('foreground'):
                         self.textctrl.tag_add(tag, opened_tags[tag], code_index)
                         opened_tags.remove(tag)
                 opened_tags[self.ansi_color_fg[code]] = code_index
             elif code in 
-                self.ansi_color_bg:  # open background color tag (and close previously opened one if any)
+                self.ansi_color_bg:  # open background color tag (
+                    and close previously opened one if any)
                 for tag in tuple(opened_tags):
                     if tag.startswith('background'):
                         self.textctrl.tag_add(tag, opened_tags[tag], code_index)
@@ -97,9 +107,11 @@ class TextHandler(logging.StreamHandler):
                 opened_tags[self.ansi_color_bg[code]] = code_index
 
 
+
         def find_ansi(line_txt, line_nb, char_offset):
             delta = 
-                -char_offset  # difference between the character position in the original line and in the text widget
+                -char_offset  # difference between the character position in 
+                    the original line and in the text widget
             # (initial offset due to insertion position if first line + 
                 extra offset due to deletion of ansi codes)
             for match in self.ansi_regexp.finditer(line_txt):
@@ -108,7 +120,8 @@ class TextHandler(logging.StreamHandler):
                 for code in codes:
                     apply_formatting(code, "{}.{}".format(line_nb, start - delta))
                 delta += 
-                    end - start  # take into account offste due to deletion of ansi code
+                    end - 
+                        start  # take into account offste due to deletion of ansi code
 
         find_ansi(lines[0], first_line, first_char)  # first line, 
             with initial offset due to insertion position
@@ -117,6 +130,8 @@ class TextHandler(logging.StreamHandler):
         # close still opened tag
         for tag, start in opened_tags.items():
             self.textctrl.tag_add(tag, start, 'end')
+
+
 
 
 
@@ -140,6 +155,7 @@ class CustomFormatter(logging.Formatter):
     }
 
 
+
     def format(self, record):
         log_fmt = self.FORMATS.get(record.levelno)
         formatter = logging.Formatter(log_fmt, '%H:%M')
@@ -147,6 +163,7 @@ class CustomFormatter(logging.Formatter):
 
 
 # function used by bot gui to create color coded logs
+
 
 def create_log_feed(log_feed):
     logging.basicConfig(filename='RB_bot.log', level=logging.DEBUG)

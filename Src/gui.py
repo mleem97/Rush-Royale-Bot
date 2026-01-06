@@ -1,9 +1,16 @@
-from tkinter import ACTIVE as ACTIVE, ALL as ALL, ANCHOR as ANCHOR, ARC as ARC, BASELINE as BASELINE, BEVEL as BEVEL, BOTH as BOTH, BOTTOM as BOTTOM, BROWSE as BROWSE, BUTT as BUTT, BaseWidget as BaseWidget, BitmapImage as BitmapImage, BooleanVar as BooleanVar, Button as Button, CASCADE as CASCADE, CENTER as CENTER, CHAR as CHAR, CHECKBUTTON as CHECKBUTTON, CHORD as CHORD, COMMAND as COMMAND, CURRENT as CURRENT, CallWrapper as CallWrapper, Canvas as Canvas, Checkbutton as Checkbutton, DISABLED as DISABLED, DOTBOX as DOTBOX, DoubleVar as DoubleVar, E as E, END as END, EW as EW, EXCEPTION as EXCEPTION, EXTENDED as EXTENDED, Entry as Entry, Event as Event, EventType as EventType, FALSE as FALSE, FIRST as FIRST, FLAT as FLAT, Frame as Frame, GROOVE as GROOVE, Grid as Grid, HIDDEN as HIDDEN, HORIZONTAL as HORIZONTAL, INSERT as INSERT, INSIDE as INSIDE, Image as Image, IntVar as IntVar, LAST as LAST, LEFT as LEFT, Label as Label, LabelFrame as LabelFrame, Listbox as Listbox, MITER as MITER, MOVETO as MOVETO, MULTIPLE as MULTIPLE, Menu as Menu, Menubutton as Menubutton, Message as Message, Misc as Misc, N as N, NE as NE, NO as NO, NONE as NONE, NORMAL as NORMAL, NS as NS, NSEW as NSEW, NUMERIC as NUMERIC, NW as NW, NoDefaultRoot as NoDefaultRoot, OFF as OFF, ON as ON, OUTSIDE as OUTSIDE, OptionMenu as OptionMenu, PAGES as PAGES, PIESLICE as PIESLICE, PROJECTING as PROJECTING, Pack as Pack, PanedWindow as PanedWindow, PhotoImage as PhotoImage, Place as Place, RADIOBUTTON as RADIOBUTTON, RAISED as RAISED, READABLE as READABLE, RIDGE as RIDGE, RIGHT as RIGHT, ROUND as ROUND, Radiobutton as Radiobutton, S as S, SCROLL as SCROLL, SE as SE, SEL as SEL, SEL_FIRST as SEL_FIRST, SEL_LAST as SEL_LAST, SEPARATOR as SEPARATOR, SINGLE as SINGLE, SOLID as SOLID, SUNKEN as SUNKEN, SW as SW, Scale as Scale, Scrollbar as Scrollbar, Spinbox as Spinbox, StringVar as StringVar, TOP as TOP, TRUE as TRUE, Tcl as Tcl, TclError as TclError, TclVersion as TclVersion, Text as Text, Tk as Tk, TkVersion as TkVersion, Toplevel as Toplevel, UNDERLINE as UNDERLINE, UNITS as UNITS, VERTICAL as VERTICAL, Variable as Variable, W as W, WORD as WORD, WRITABLE as WRITABLE, Widget as Widget, Wm as Wm, X as X, XView as XView, Y as Y, YES as YES, YView as YView, getboolean as getboolean, getdouble as getdouble, getint as getint, image_names as image_names, image_types as image_types, mainloop as mainloop
+"""
+Rush Royale Bot GUI - Python 3.13 Compatible
+Legacy Tkinter interface with modern Python features
+"""
+from __future__ import annotations
+
+from tkinter import *
 import os
 import numpy as np
 import threading
 import logging
 import configparser
+from typing import Optional, Dict, Any, List, Tuple
 
 # internal
 import bot_handler
@@ -59,10 +66,10 @@ class RushBot:
         self.root.destroy()
         try:
             self.bot_instance.client.stop()
-        except Exception:
+        except:
             pass
 
-    # Initialize the thread for main bot
+    # Initilzie the thread for main bot
     def start_command(self):
         self.stop_flag = False
         self.update_config()
@@ -77,7 +84,7 @@ class RushBot:
     def update_config(self):
         # Update config file
         floor_var = int(self.floor.get())
-        card_level = np.array([var.get() for var in self.mana_vars]) * np.arange(1, 6)
+        card_level = [var.get() for var in self.mana_vars] * np.arange(1, 6)
         card_level = card_level[card_level != 0]
         self.config.read('config.ini')
         self.config['bot']['floor'] = str(floor_var)
@@ -92,7 +99,7 @@ class RushBot:
         self.selected_units = self.config['bot']['units'].replace(' ', '').split(',')
         self.logger.info(f'Selected units: {", ".join(self.selected_units)}')
         if not bot_handler.select_units([unit + '.png' for unit in self.selected_units]):
-            valid_units = [f.replace('.png', '') for f in os.listdir("all_units")]
+            valid_units = ' '.join(os.listdir("all_units")).replace('.png', '').split(' ')
             self.logger.info(f'Invalid units in config file! Valid units: {valid_units}')
 
     # Run the bot
@@ -100,7 +107,7 @@ class RushBot:
         # Run startup of bot instance
         self.logger.warning('Starting bot...')
         self.bot_instance = bot_handler.start_bot_class(self.logger)
-        os.system(r"type Src\startup_message.txt")
+        os.system(r"type src\startup_message.txt")
         self.update_units()
         infos_ready = threading.Event()
         # Pass gui info to bot
@@ -112,7 +119,7 @@ class RushBot:
         thread_bot = threading.Thread(target=bot_handler.bot_loop, args=([bot, infos_ready]))
         thread_bot.start()
         # Dump infos to gui whenever ready
-        while True:
+        while (1):
             infos_ready.wait(timeout=5)
             self.update_text(bot.combat_step, bot.combat, bot.output, bot.grid_df, bot.unit_series, bot.merge_series,
                              bot.info)
@@ -121,7 +128,9 @@ class RushBot:
                 self.bot_instance.bot_stop = True
                 self.logger.warning('Exiting main loop...')
                 thread_bot.join()
-                self.bot_instance.client.stop()
+                # Stop scrcpy process if running
+                if hasattr(self.bot_instance, 'scrcpy_process') and self.bot_instance.scrcpy_process:
+                    self.bot_instance.stop_scrcpy()
                 self.logger.info('Bot stopped!')
                 self.logger.critical('Safe to close gui')
                 return
@@ -132,7 +141,7 @@ class RushBot:
         self.stop_flag = True
         self.logger.info('Stopping bot!')
 
-    # Leave current co-op game
+    # Leave current co-up game
     def leave_game(self):
         # check if bot_instance exists
         if hasattr(self, 'bot_instance'):
@@ -172,7 +181,6 @@ def create_options(frame1, config):
 
     # General options
     label = Label(frame1, text="Options", justify=LEFT).grid(row=0, column=0, sticky=W)
-    user_pvp = 0  # Default: PvP mode
     if config.has_option('bot', 'pve'):
         user_pvp = int(config.getboolean('bot', 'pve'))
     pve_var = IntVar(value=user_pvp)
@@ -209,13 +217,12 @@ def create_combat_info(frame2):
 
 def create_base():
     root = Tk()
-    version = getattr(bot_handler, 'VERSION', 'unknown')
-    root.title(f'RUSHBOT - V {version} by MLEEM97')
+    root.title("RR bot")
     root.geometry("800x600")
     # Set dark background
     root.configure(background='#575559')
     # Set window icon to png
-    root.iconbitmap('favicon.ico')
+    root.iconbitmap('calculon.ico')
     root.resizable(False, False)  # ai
     # Add frames
     frame1 = Frame(root)
