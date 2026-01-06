@@ -27,8 +27,15 @@ def _load_module(name: str, file_name: str):
     return module
 
 
-# Load submodules first so intra-imports resolve.
+# Load const first, then export its constants on the package module so
+# vendored modules can reference `scrcpy.SOME_CONSTANT` during import.
 const = _load_module(__name__ + ".const", "const.py")
+
+_pkg = sys.modules[__name__]
+for _name, _value in vars(const).items():
+    if _name.isupper() and not hasattr(_pkg, _name):
+        setattr(_pkg, _name, _value)
+
 control = _load_module(__name__ + ".control", "control.py")
 core = _load_module(__name__ + ".core", "core.py")
 
