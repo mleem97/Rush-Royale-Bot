@@ -1,11 +1,12 @@
 # RushBot 🎮🤖
 
-| <img width="1024" height="1024" alt="RushBot Logo" src="https://github.com/user-attachments/assets/621d866c-864e-42bb-a28a-c8dca66425a0" /> | RushBot is an advanced Python-based automation bot for Rush Royale that combines computer vision, machine learning, and Android device control. Using OpenCV for real-time game state recognition and scikit-learn for strategic decision-making, the bot can autonomously play Rush Royale on Android devices or emulators. Built with a robust architecture featuring ADB integration for device communication, advanced screenshot processing, and a vendored scrcpy client for efficient screen capture. |
-|------|-------------|
+| ![RushBot Logo](https://github.com/user-attachments/assets/621d866c-864e-42bb-a28a-c8dca66425a0) | RushBot is an advanced Python-based automation bot for Rush Royale that combines computer vision, machine learning, and Android device control. Using OpenCV for real-time game state recognition and scikit-learn for strategic decision-making, the bot can autonomously play Rush Royale on Android devices or emulators. Built with a robust architecture featuring ADB integration for device communication, advanced screenshot processing, and a vendored scrcpy client for efficient screen capture. |
+| --- | --- |
 
 ## 🔗 Project History & Related Work
 
 This project builds upon the foundation of several Rush Royale bot implementations:
+
 - **Original Project**: [AxelBjork/Rush-Royale-Bot](https://github.com/AxelBjork/Rush-Royale-Bot) - The pioneering work that started it all
 - **Fixed Version**: [mleem97/Rush-Royale-Bot](https://github.com/mleem97/Rush-Royale-Bot) - Improved stability and bug fixes
 - **AI Redesign**: [Frikadellental/Rush-Royale-AI](https://github.com/Frikadellental/Rush-Royale-AI) - Complete redesign with modern AI approaches
@@ -22,7 +23,7 @@ This project builds upon the foundation of several Rush Royale bot implementatio
 
 ## 🏗️ Project Structure
 
-```
+```text
 Rush-Royale-Bot/
 ├── Src/                      # Main source code
 │   ├── gui.py               # Tkinter GUI (RushBot class)
@@ -54,7 +55,7 @@ Rush-Royale-Bot/
 ### Python Dependencies
 
 | Package | Version | Purpose |
-|---------|---------|---------|
+| --- | --- | --- |
 | numpy | ≥1.24.1 | Array operations |
 | pandas | ≥2.3.3 | Data analysis |
 | opencv-python | ≥4.12.0 | Image processing |
@@ -70,21 +71,25 @@ Rush-Royale-Bot/
 ### Quick Start (Windows)
 
 1. **Clone the repository:**
+
    ```bash
    git clone https://github.com/mleem97/Rush-Royale-Bot.git
    cd Rush-Royale-Bot
    ```
 
 2. **Run the installer:**
+
    ```batch
    install.bat
    ```
+
    - Automatically detects installed Python versions (WindowsStore, PATH, Scoop, Chocolatey)
    - Lets you choose which Python to use
    - Creates a virtual environment in `.bot_env/`
    - Installs all dependencies
 
 3. **Start the bot:**
+
    ```batch
    launch_gui.bat
    ```
@@ -126,12 +131,15 @@ require_shaman = False        # Leave if no shaman partner
 ### Emulator Setup
 
 **BlueStacks:**
+
 - Settings → Advanced → Enable Android Debug Bridge (ADB)
 
 **LDPlayer:**
+
 - Settings → Other Settings → Enable ADB debugging
 
 **MEmu:**
+
 - Settings → Engine → Enable ADB
 
 ## 📊 How It Works
@@ -152,21 +160,24 @@ require_shaman = False        # Leave if no shaman partner
 ## 🔧 Troubleshooting
 
 ### "No device found!"
+
 - Ensure emulator is running with ADB enabled
 - Check with `adb devices` in terminal
 - Restart ADB: `.scrcpy\adb kill-server`
 
 ### Bot doesn't recognize units
+
 - Update unit icons in `all_units/` folder
 - Ensure game resolution matches expected dimensions
 
 ### Python not found
+
 - Install Python 3.10+ from [python.org](https://www.python.org/downloads/)
 - Or install via Microsoft Store: `python3.13`
 
 ## 🤝 Contributing
 
-Contributions welcome! 
+Contributions welcome!
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -181,6 +192,23 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## ⚠️ Disclaimer
 
 This bot is created for educational and research purposes. Use at your own risk. The developers are not responsible for any consequences of using this software.
+
+## ❌ Not Supported Units
+
+The following units are **not fully supported** by the bot and may cause unexpected behavior, as their unique mechanics are not implemented:
+
+- **Twins** - Icons exist (`twins1.png`, `twins2.png`) but special merge logic not implemented
+- **Treant** - Unit positioning/merging not handled
+- **Mole** - Unit mechanics not compatible with current bot logic
+
+### Unit Support Status
+
+| Rarity | Status |
+| -------- | -------- |
+| Common | ✅ Full Support |
+| Rare | ✅ Full Support |
+| Epic | ✅ Full Support |
+| Legendary | ⚠️ 31/40 supported - Twins, Treant, Mole + 6 others need implementation (see [Issues](https://github.com/mleem97/Rush-Royale-Bot/issues)) |
 
 ## 🙏 Acknowledgments
 

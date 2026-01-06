@@ -15,4 +15,6 @@ build
 dist
 config.ini
 .vs
-
+.python_path
+bot_feed_emulator-5554.png
+requirements.py

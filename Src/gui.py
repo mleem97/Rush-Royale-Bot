@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from tkinter import *
 import os
+from pathlib import Path
 import numpy as np
 import threading
 import logging
@@ -32,7 +33,7 @@ class RushBot:
         self.root = create_base()
         self.frames = self.root.winfo_children()
         # Setup frame 1 (options)
-        self.ads_var, self.pve_var, self.mana_vars, self.floor = create_options(self.frames[0], self.config)
+        self.ads_var, self.pve_var, self.unit_update_var, self.mana_vars, self.floor = create_options(self.frames[0], self.config)
         # Setup frame 2 (combat info)
         self.grid_dump, self.unit_dump, self.merge_dump = create_combat_info(self.frames[1])
         ## rest need to be cleaned up
@@ -90,6 +91,7 @@ class RushBot:
         self.config['bot']['floor'] = str(floor_var)
         self.config['bot']['mana_level'] = np.array2string(card_level, separator=',')[1:-1]
         self.config['bot']['pve'] = str(bool(self.pve_var.get()))
+        self.config['bot']['unit_update'] = str(bool(self.unit_update_var.get()))
         with open('config.ini', 'w') as configfile:
             self.config.write(configfile)
         self.logger.info("Stored settings to config!")
@@ -99,7 +101,14 @@ class RushBot:
         self.selected_units = self.config['bot']['units'].replace(' ', '').split(',')
         self.logger.info(f'Selected units: {", ".join(self.selected_units)}')
         if not bot_handler.select_units([unit + '.png' for unit in self.selected_units]):
-            valid_units = ' '.join(os.listdir("all_units")).replace('.png', '').split(' ')
+            all_units_dir = Path("all_units")
+            valid_units = sorted(
+                {
+                    p.stem
+                    for p in all_units_dir.rglob("*.png")
+                    if p.is_file() and "missing_units" not in p.parts
+                }
+            )
             self.logger.info(f'Invalid units in config file! Valid units: {valid_units}')
 
     # Run the bot
@@ -184,8 +193,13 @@ def create_options(frame1, config):
     if config.has_option('bot', 'pve'):
         user_pvp = int(config.getboolean('bot', 'pve'))
     pve_var = IntVar(value=user_pvp)
+    unit_update_default = 0
+    if config.has_option('bot', 'unit_update'):
+        unit_update_default = int(config.getboolean('bot', 'unit_update'))
+    unit_update_var = IntVar(value=unit_update_default)
     ads_var = IntVar()
     pve_check = Checkbutton(frame1, text='PvE', variable=pve_var, justify=LEFT).grid(row=0, column=1, sticky=W)
+    unit_update_check = Checkbutton(frame1, text='Unit Update', variable=unit_update_var, justify=LEFT).grid(row=0, column=2, sticky=W)
     #ad_check = Checkbutton(frame1, text='Watch ads', variable=ads_var,justify=LEFT).grid(row=0, column=2, sticky=W)
     # Mana level targets
     mana_label = Label(frame1, text="Mana Level Targets", justify=LEFT).grid(row=2, column=0, sticky=W)
@@ -201,7 +215,7 @@ def create_options(frame1, config):
     if config.has_option('bot', 'floor'):
         floor.insert(0, config['bot']['floor'])
     floor.grid(row=3, column=1)
-    return ads_var, pve_var, mana_vars, floor
+    return ads_var, pve_var, unit_update_var, mana_vars, floor
 
 
 def create_combat_info(frame2):
@@ -222,7 +236,7 @@ def create_base():
     # Set dark background
     root.configure(background='#575559')
     # Set window icon to png
-    root.iconbitmap('calculon.ico')
+    root.iconbitmap('favicon.ico')
     root.resizable(False, False)  # ai
     # Add frames
     frame1 = Frame(root)

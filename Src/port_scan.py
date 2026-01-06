@@ -1,85 +1,101 @@
+from __future__ import annotations
+
 import socket
-# import thread module
-from _thread import *
-import threading
 import time
-import os
-from subprocess import check_output, Popen, DEVNULL
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from subprocess import DEVNULL, Popen, check_output
+from typing import Optional
 
 
-# Connects to a target IP and port, if port is open try to connect adb
-def connect_port(ip, port, batch, open_ports):
-    for tar_port in range(port, port + batch):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        result = s.connect_ex((ip, tar_port))
-        if result == 0:
-            open_ports[tar_port] = 'open'
-            # Make it Popen and kill shell after couple seconds
-            p = Popen(f'.scrcpy\\adb connect {ip}:{tar_port}', shell=True)
-            time.sleep(3)  # Give real client 3 seconds to connect
-            p.terminate()
-    return result == 0
+ADB_PATH = ".scrcpy\\adb"
+SOCKET_TIMEOUT_S = 0.05
+CONNECT_WAIT_S = 1.5
+MAX_WORKERS = 96
 
 
-# Attemtps to connect to ip over every port in range
-# Returns device if found
-def scan_ports(target_ip, port_start, port_end, batch=3):
-    threads = []
-    open_ports = {}
-    port_range = range(port_start, port_end, batch)
-    socket.setdefaulttimeout(0.01)
-    print(f"Scanning {target_ip} Ports {port_start} - {port_end}")
-    # Create one thread per port
-    for port in port_range:
-        thread = threading.Thread(target=connect_port, args=(target_ip, port, batch, open_ports))
-        threads.append(thread)
-    # Attempt to connect to every port
-    for thread in threads:
-        thread.start()
-    # Join threads
-    print(f'Started {len(port_range)} threads')
-    for thread in threads:
-        thread.join()
-    # Get open ports
-    port_list = list(open_ports.keys())
-    print(f"Ports Open: {port_list}")
-    deivce = get_adb_device()
-    return deivce
+def _adb_devices() -> list[str]:
+    try:
+        out = check_output([ADB_PATH, "devices"], stderr=DEVNULL)
+    except Exception:
+        out = check_output(f"{ADB_PATH} devices", shell=True, stderr=DEVNULL)
 
-
-# Check if adb device is already connected
-def get_adb_device():
-    devList = check_output('.scrcpy\\adb devices', shell=True)
-    # Decode bytes to string properly
-    devListStr = devList.decode('utf-8', errors='ignore')
-    devListArr = devListStr.strip().split('\n')
-    # Check for online status
-    deivce = None
-    for client in devListArr[1:]:
-        client = client.strip()
-        if not client:
+    lines = out.decode("utf-8", errors="ignore").splitlines()
+    devices = []
+    for ln in lines[1:]:
+        ln = ln.strip()
+        if not ln:
             continue
-        parts = client.split('\t')
-        if len(parts) >= 2:
-            client_ip = parts[0].strip()
-            status = parts[1].strip()
-            if status == 'device':
-                deivce = client_ip
-                print("Found ADB device! {}".format(deivce))
-            else:
-                Popen(f'.scrcpy\\adb disconnect {client_ip}', shell=True, stderr=DEVNULL)
-    return deivce
+        if "\tdevice" in ln:
+            devices.append(ln.split()[0])
+        elif "\t" in ln:
+            serial = ln.split()[0]
+            Popen([ADB_PATH, "disconnect", serial], stdout=DEVNULL, stderr=DEVNULL)
+    return devices
 
 
-def get_device():
-    p = Popen([".scrcpy\\adb", 'kill-server'])
-    p.wait()
-    p = Popen('.scrcpy\\adb devices', shell=True, stdout=DEVNULL)
-    p.wait()
-    # Check if adb got connected
+def get_adb_device() -> Optional[str]:
+    devices = _adb_devices()
+    return devices[0] if devices else None
+
+
+def _port_open(ip: str, port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(SOCKET_TIMEOUT_S)
+        return sock.connect_ex((ip, port)) == 0
+
+
+def _try_adb_connect(ip: str, port: int) -> None:
+    p = Popen(
+        [ADB_PATH, "connect", f"{ip}:{port}"],
+        stdout=DEVNULL,
+        stderr=DEVNULL,
+    )
+    time.sleep(CONNECT_WAIT_S)
+    try:
+        p.terminate()
+    except Exception:
+        pass
+
+
+def scan_ports(
+    target_ip: str,
+    port_start: int,
+    port_end: int,
+    batch: int = 3,
+) -> Optional[str]:
+    if batch <= 0:
+        raise ValueError("batch must be > 0")
+
+    ports = list(range(port_start, port_end, batch))
+    print(f"Scanning {target_ip} Ports {port_start} - {port_end}")
+
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
+        futures = {ex.submit(_port_open, target_ip, p): p for p in ports}
+        for fut in as_completed(futures):
+            port = futures[fut]
+            try:
+                if fut.result():
+                    _try_adb_connect(target_ip, port)
+            except Exception:
+                continue
+
+    return get_adb_device()
+
+
+def get_device() -> Optional[str]:
+    Popen([ADB_PATH, "kill-server"], stdout=DEVNULL, stderr=DEVNULL).wait()
+    Popen([ADB_PATH, "devices"], stdout=DEVNULL, stderr=DEVNULL).wait()
+
     device = get_adb_device()
-    if not device:
-        # Find valid ADB device by scanning ports
-        device = scan_ports('127.0.0.1', 48000, 65000)
     if device:
         return device
+
+    # Try common local emulator ports first (fast path)
+    for p in (5555, 5554, 5565, 62001):
+        _try_adb_connect("127.0.0.1", p)
+        device = get_adb_device()
+        if device:
+            return device
+
+    # Fallback: bounded scan (still slower)
+    return scan_ports("127.0.0.1", 48000, 65000, batch=10)

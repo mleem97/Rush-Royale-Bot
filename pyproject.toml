@@ -1,0 +1,40 @@
+[tool.black]
+line-length = 85
+target-version = ["py313"]
+extend-exclude = """
+/(\.bot_env|\.scrcpy|\.vs|\.git|scrcpy|all_units|icons|units|old_icon)/
+"""
+
+[tool.isort]
+profile = "black"
+line_length = 85
+known_first_party = ["bot_perception", "port_scan"]
+skip = [".bot_env", ".scrcpy", ".vs", ".git", "scrcpy", "all_units", "icons", "units", "old_icon"]
+
+[tool.ruff]
+line-length = 85
+target-version = "py313"
+src = ["Src"]
+extend-exclude = [
+	".bot_env",
+	".scrcpy",
+	".vs",
+	"scrcpy",
+	"all_units",
+	"icons",
+	"units",
+	"old_icon",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["bot_perception", "port_scan"]
+
+[tool.pyright]
+venvPath = "."
+venv = ".bot_env"
+pythonVersion = "3.13"
+typeCheckingMode = "basic"

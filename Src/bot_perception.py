@@ -1,23 +1,42 @@
-"""
-Rush Royale Bot Perception - Python 3.13 Compatible
-Computer vision and machine learning for unit recognition
+"""Rush Royale Bot Perception.
+
+Computer vision and (limited) machine learning for unit recognition.
+
+ML currently covers rank recognition (LogisticRegression on Canny edges).
 """
 from __future__ import annotations
 
 import os
+import pickle
+from pathlib import Path
+from typing import Tuple
+
+import cv2
 import numpy as np
 import pandas as pd
-import cv2
 from sklearn.linear_model import LogisticRegression
-import pickle
-from typing import Optional, Dict, Any, List, Tuple, Union
-from pathlib import Path
 
 # internal
 
 ####
 #### Unit type recognition
 ###
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+OCR_INPUTS_DIR = REPO_ROOT / "OCR_inputs"
+ML_DIR = REPO_ROOT / "machine_learning"
+ML_INPUTS_DIR = ML_DIR / "inputs"
+ML_RAW_INPUT_DIR = ML_DIR / "raw_input"
+
+RANK_MODEL_PATH = REPO_ROOT / "rank_model.pkl"
+
+
+def ensure_training_dirs() -> None:
+    OCR_INPUTS_DIR.mkdir(parents=True, exist_ok=True)
+    ML_INPUTS_DIR.mkdir(parents=True, exist_ok=True)
+    ML_RAW_INPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # Get most common pixel RGB value in image
@@ -85,9 +104,8 @@ def grid_status(names, prev_grid=None):
 def match_rank(filename):
     img = cv2.imread(filename, 0)
     edges = cv2.Canny(img, 50, 100)
-    with open('rank_model.pkl', 'rb') as f:
+    with open(RANK_MODEL_PATH, 'rb') as f:
         logreg = pickle.load(f)
-        classes = logreg.classes_
     prob = logreg.predict_proba(edges.reshape(1, -1))
     return prob.argmax(), round(prob.max(), 3)
 
@@ -110,36 +128,89 @@ def position_filter(grid_df, key_target='demon_hunter.png'):
 
 ## Add to dataset
 def add_grid_to_dataset():
-    for slot in os.listdir("OCR_inputs"):
-        target = f'OCR_inputs/{slot}'
-        img = cv2.imread(target, 0)
+    """Append current `OCR_inputs/` images to the ML dataset.
+
+    Note: This uses the *current* rank model to generate labels.
+    For best results, prefer manually labeled datasets.
+    """
+
+    ensure_training_dirs()
+    if not OCR_INPUTS_DIR.exists():
+        return
+
+    # Count existing examples robustly.
+    example_count = len(list(ML_INPUTS_DIR.glob("*_input_*.png")))
+
+    for slot in os.listdir(OCR_INPUTS_DIR):
+        if not slot.lower().endswith(".png"):
+            continue
+        target = OCR_INPUTS_DIR / slot
+        img = cv2.imread(str(target), 0)
+        if img is None:
+            continue
         edges = cv2.Canny(img, 50, 100)
-        rank_guess = 0
-        unit_guess = match_unit(target)
-        if unit_guess[1] != 'empty.png':
-            rank_guess, _ = match_rank(target)
-        example_count = len(os.listdir("machine_learning/inputs"))
-        cv2.imwrite(f'machine_learning/inputs/{rank_guess}_input_{example_count}.png', edges)
-        cv2.imwrite(f'machine_learning/raw_input/{rank_guess}_raw_{example_count}.png', img)
+
+        rank_guess, _ = match_rank(str(target))
+
+        cv2.imwrite(str(ML_INPUTS_DIR / f"{rank_guess}_input_{example_count}.png"), edges)
+        cv2.imwrite(str(ML_RAW_INPUT_DIR / f"{rank_guess}_raw_{example_count}.png"), img)
+        example_count += 1
 
 
-def load_dataset(folder):
-    X_train = []
-    Y_train = []
-    for file in os.listdir(folder):
-        if file.endswith(".png"):
-            X_train.append(cv2.imread(folder + file, 0))
-            Y_train.append(file.split('_input')[0])
-    X_train = np.array(X_train)
-    data_shape = X_train.shape
-    X_train = X_train.reshape(data_shape[0], data_shape[1] * data_shape[2])
-    Y_train = np.array(Y_train, dtype=int)
-    return X_train, Y_train
+def _iter_labeled_images(folder: Path):
+    # Layout A: files like "<rank>_input_123.png" in a flat folder
+    for p in folder.glob("*_input_*.png"):
+        label = p.name.split("_input", 1)[0]
+        if label.isdigit():
+            yield p, int(label)
+
+    # Layout B: subfolders "0/", "1/", ... containing pngs
+    for sub in folder.iterdir():
+        if not sub.is_dir() or not sub.name.isdigit():
+            continue
+        label_int = int(sub.name)
+        for p in sub.glob("*.png"):
+            yield p, label_int
+
+
+def load_dataset(folder: str | Path) -> Tuple[np.ndarray, np.ndarray]:
+    folder_path = Path(folder)
+    X_train: list[np.ndarray] = []
+    y_train: list[int] = []
+
+    for path, label in _iter_labeled_images(folder_path):
+        img = cv2.imread(str(path), 0)
+        if img is None:
+            continue
+        X_train.append(img)
+        y_train.append(label)
+
+    if not X_train:
+        raise RuntimeError(f"No training images found in: {folder_path}")
+
+    X = np.array(X_train)
+    data_shape = X.shape
+    X = X.reshape(data_shape[0], data_shape[1] * data_shape[2])
+    y = np.array(y_train, dtype=int)
+    return X, y
+
+
+def train_rank_model(dataset_dir: str | Path = ML_INPUTS_DIR) -> LogisticRegression:
+    X_train, y_train = load_dataset(dataset_dir)
+    logreg = LogisticRegression(max_iter=200)
+    logreg.fit(X_train, y_train)
+    return logreg
+
+
+def save_rank_model(model: LogisticRegression, path: str | Path = RANK_MODEL_PATH) -> Path:
+    out = Path(path)
+    with out.open("wb") as f:
+        pickle.dump(model, f)
+    return out
 
 
 def quick_train_model():
-    X_train, Y_train = load_dataset("machine_learning\\inputs\\")
-    # train logistic regression model
-    logreg = LogisticRegression()
-    logreg.fit(X_train, Y_train)
-    return logreg
+    """Backward-compatible helper (trains from `machine_learning/inputs`)."""
+
+    ensure_training_dirs()
+    return train_rank_model(ML_INPUTS_DIR)
