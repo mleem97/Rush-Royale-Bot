@@ -17,7 +17,8 @@ This project builds upon the foundation of several Rush Royale bot implementatio
 - **Android Device Control**: Direct communication with Android devices/emulators via ADB
 - **Machine Learning**: Scikit-learn powered unit and rank recognition
 - **Vendored scrcpy Client**: Built-in Python scrcpy client for fast screen capture
-- **GUI Interface**: Tkinter-based control panel with real-time logging
+- **GUI Interface**: Modern CustomTkinter-based control panel with real-time logging
+- **Cross-Platform**: Runs on Windows, Linux, and macOS
 - **Multi-Python Support**: Smart installer detects and lets you choose Python versions (3.10-3.14)
 - **PvE/PvP Support**: Configurable game modes with dungeon floor selection
 
@@ -50,7 +51,16 @@ Rush-Royale-Bot/
 
 - **Python**: 3.10, 3.11, 3.12, 3.13, or 3.14
 - **Android Emulator**: BlueStacks, LDPlayer, MEmu, or similar with ADB enabled
-- **Windows**: Currently Windows-only (batch files)
+- **Operating System**: Windows, Linux, or macOS
+
+### System Dependencies (Linux/macOS)
+
+| Dependency | Linux (apt) | macOS (brew) |
+| --- | --- | --- |
+| ADB | `sudo apt install android-tools-adb` | `brew install android-platform-tools` |
+| scrcpy | `sudo apt install scrcpy` | `brew install scrcpy` |
+
+> **Note**: On Windows, ADB and scrcpy are bundled in the `.scrcpy/` folder.
 
 ### Python Dependencies
 
@@ -65,10 +75,12 @@ Rush-Royale-Bot/
 | requests | ≥2.32.0 | HTTP downloads |
 | tqdm | ≥4.67.1 | Progress bars |
 | Pillow | ≥12.1.0 | Image handling |
+| customtkinter | ≥5.2.0 | Modern GUI framework |
+| darkdetect | ≥0.8.0 | System theme detection |
 
 ## 🛠️ Installation
 
-### Quick Start (Windows)
+### Windows (Quick Start)
 
 1. **Clone the repository:**
 
@@ -92,6 +104,33 @@ Rush-Royale-Bot/
 
    ```batch
    launch_gui.bat
+   ```
+
+### Linux / macOS
+
+1. **Install system dependencies:**
+
+   ```bash
+   # Ubuntu/Debian
+   sudo apt install python3 python3-pip python3-venv android-tools-adb scrcpy
+
+   # macOS
+   brew install python3 android-platform-tools scrcpy
+   ```
+
+2. **Clone and install:**
+
+   ```bash
+   git clone https://github.com/mleem97/Rush-Royale-Bot.git
+   cd Rush-Royale-Bot
+   chmod +x install.sh launch.sh
+   ./install.sh
+   ```
+
+3. **Start the bot:**
+
+   ```bash
+   ./launch.sh
    ```
 
 ### Manual Installation

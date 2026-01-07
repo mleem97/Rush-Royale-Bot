@@ -28,15 +28,9 @@ import bot_perception
 
 
 def _resolve_unit_template_path(unit_filename: str) -> Path | None:
-    """Resolve a unit template path.
-
-    Preferred location: `cv-images/all_units/`.
-    Legacy fallback: `all_units/`.
-    """
+    """Resolve a unit template path from `cv-images/all_units/`."""
 
     all_units_dir = Path("cv-images") / "all_units"
-    if not all_units_dir.exists():
-        all_units_dir = Path("all_units")
     direct = all_units_dir / unit_filename
     if direct.exists():
         return direct
@@ -85,11 +79,12 @@ def download(url, filename):
 
 
 def select_units(units):
-    """Copy selected unit templates into `units/` for recognition."""
-    if os.path.isdir("units"):
-        [os.remove("units/" + unit) for unit in os.listdir("units")]
+    """Copy selected unit templates into `cv-images/units/` for recognition."""
+    units_dir = "cv-images/units"
+    if os.path.isdir(units_dir):
+        [os.remove(os.path.join(units_dir, unit)) for unit in os.listdir(units_dir)]
     else:
-        os.mkdir("units")
+        os.makedirs(units_dir, exist_ok=True)
 
     # Read and write all images
     for new_unit in units:
@@ -101,7 +96,7 @@ def select_units(units):
 
             img = cv2.imread(str(src_path))
             if img is not None:
-                cv2.imwrite("units/" + new_unit, img)
+                cv2.imwrite("cv-images/units/" + new_unit, img)
             else:
                 print(f"Failed to read image: {new_unit} ({src_path})")
 
@@ -110,7 +105,7 @@ def select_units(units):
             continue
 
     # Verify enough units were selected
-    return len(os.listdir("units")) > 4
+    return len(os.listdir("cv-images/units")) > 4
 
 
 def start_bot_class(logger):

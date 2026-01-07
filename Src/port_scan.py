@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import socket
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -7,7 +8,8 @@ from subprocess import DEVNULL, Popen, check_output
 from typing import Optional
 
 
-ADB_PATH = ".scrcpy\\adb"
+# Cross-Platform ADB path: Windows uses vendored binary, Unix uses system adb
+ADB_PATH = ".scrcpy\\adb" if os.name == "nt" else "adb"
 SOCKET_TIMEOUT_S = 0.05
 CONNECT_WAIT_S = 1.5
 MAX_WORKERS = 96

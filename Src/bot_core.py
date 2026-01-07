@@ -102,7 +102,8 @@ class Bot:
 
         # Fallback: use .scrcpy\adb if adbutils failed
         if not self.adb_device:
-            self.shell(f".scrcpy\\adb connect {self.device}")
+            adb_exec = ".scrcpy\\adb" if os.name == "nt" else "adb"
+            self.shell(f"{adb_exec} connect {self.device}")
 
         # Try to launch application through ADB shell
         self.shell("monkey -p com.my.defense 1")
@@ -233,9 +234,9 @@ class Bot:
         """Interactive capture mode for missing unit icons.
 
         The user navigates in-game (e.g. unit collection) and confirms each capture.
-        Screenshots are stored under `all_units/missing_units/`.
+        Screenshots are stored under `cv-images/all_units/missing_units/`.
         """
-        output_root = Path("all_units") / "missing_units"
+        output_root = Path("cv-images/all_units") / "missing_units"
         raw_dir = output_root / "raw_screens"
         raw_dir.mkdir(parents=True, exist_ok=True)
 
@@ -368,7 +369,7 @@ class Bot:
         if self.screenRGB is None:
             return [0, 0]
 
-        imgSrc = f"icons/{target}.png"
+        imgSrc = f"cv-images/icons/{target}.png"
         if not os.path.exists(imgSrc):
             return [0, 0]
 
@@ -406,14 +407,14 @@ class Bot:
 
         # Determine which icons to check
         if icon_list is None:
-            icons_to_check = [f for f in os.listdir("icons") if f.endswith(".png")]
+            icons_to_check = [f for f in os.listdir("cv-images/icons") if f.endswith(".png")]
         else:
             icons_to_check = icon_list
 
         for target in icons_to_check:
             x = 0
             y = 0
-            imgSrc = f"icons/{target}"
+            imgSrc = f"cv-images/icons/{target}"
 
             if not os.path.isfile(imgSrc):
                 continue

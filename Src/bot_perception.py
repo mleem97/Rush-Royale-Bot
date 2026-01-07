@@ -76,8 +76,8 @@ def match_unit(filename, ref_colors, ref_units):
 # Get status of current grid
 # Currently 0.082 seconds call, multithreading is about 0.64 seconds
 def grid_status(names, prev_grid=None):
-    ref_units = os.listdir("units")
-    ref_colors = [get_color('units/' + unit)[0] for unit in ref_units]
+    ref_units = os.listdir("cv-images/units")
+    ref_colors = [get_color('cv-images/units/' + unit)[0] for unit in ref_units]
     grid_stats = []
     for filename in names:
         rank, rank_prob = match_rank(filename)
