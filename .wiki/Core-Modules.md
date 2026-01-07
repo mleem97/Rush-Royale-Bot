@@ -306,9 +306,80 @@ ctk.set_default_color_theme("blue")  # Color scheme
 
 Custom color palette defined in `COLORS` dict for consistent styling.
 
+### Appearance Controls
+
+The sidebar includes:
+- **Appearance Mode** dropdown: Switch between Dark/Light/System
+- **UI Scaling** dropdown: Adjust for HiDPI displays (80%-150%)
+
+### Tabs
+
+| Tab | Purpose |
+|-----|---------|
+| 🎮 Dashboard | Visual 3x5 grid with live unit display |
+| 📊 Combat Info | Detailed text-based grid data |
+| ⚙️ Konfiguration | Unit selection via dropdowns |
+| 🧠 Training | ML model training and auto-labeling |
+| 📝 Log | Real-time log output |
+| ℹ️ About | Bot information |
+
 ### Legacy GUI
 
 The original Tkinter GUI is preserved as `gui_legacy.py` for reference.
+
+---
+
+## bot_env.py
+
+Gymnasium-compatible reinforcement learning environment.
+
+### Class: `RushRoyaleEnv`
+
+Wraps the bot for training RL agents.
+
+```python
+from bot_env import RushRoyaleEnv
+from stable_baselines3 import PPO
+
+env = RushRoyaleEnv(bot_instance)
+model = PPO("MlpPolicy", env)
+model.learn(total_timesteps=10000)
+```
+
+#### Observation Space
+
+- Shape: `(15, 2)` - 15 grid cells with (unit_type, rank)
+- Unit types: 0-20 (encoded from unit names)
+- Ranks: 0-7
+
+#### Action Space
+
+| Action Range | Meaning |
+|--------------|---------|
+| 0-59 | Merge (15 positions × 4 directions) |
+| 60 | Summon new unit |
+| 61-65 | Mana upgrades 1-5 |
+| 66 | Wait (do nothing) |
+
+#### Rewards
+
+| Event | Reward |
+|-------|--------|
+| Step survived | +1 |
+| High rank unit | +2 |
+| Wave complete | +5 |
+| Game lost | -100 |
+| Floor complete | +100 |
+
+### Class: `ImitationDataCollector`
+
+Record state-action pairs from rule-based gameplay.
+
+```python
+collector = ImitationDataCollector()
+collector.record(grid_df, action=42, action_type="merge")
+collector.save("data.npz")
+```
 
 ---
 

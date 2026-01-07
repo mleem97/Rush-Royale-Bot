@@ -4,6 +4,52 @@ Common issues and their solutions.
 
 ---
 
+## Platform-Specific Issues
+
+### Linux: "adb: command not found"
+
+**Cause:** ADB not installed or not in PATH.
+
+**Solution:**
+```bash
+# Ubuntu/Debian
+sudo apt install android-tools-adb
+
+# Fedora
+sudo dnf install android-tools
+
+# Arch
+sudo pacman -S android-tools
+```
+
+### Linux: Dark Mode Not Working
+
+**Cause:** CustomTkinter cannot detect system theme on some Linux distros.
+
+**Solution:**
+1. Open the bot GUI
+2. In the sidebar, use the **Appearance** dropdown
+3. Manually select "Dark" or "Light"
+
+### macOS: "scrcpy: command not found"
+
+**Cause:** scrcpy not installed.
+
+**Solution:**
+```bash
+brew install scrcpy
+```
+
+### macOS: Window Title Bar Not Dark
+
+**Cause:** Tcl/Tk version too old.
+
+**Solution:**
+- Use Python installed via Homebrew or Anaconda
+- Ensure Tcl/Tk 8.6.9+ is installed
+
+---
+
 ## Connection Issues
 
 ### "No device found!"
@@ -17,9 +63,13 @@ Common issues and their solutions.
 4. Run `adb devices` to verify connection
 
 ```bash
-# Manual connection
+# Windows
 .scrcpy\adb connect 127.0.0.1:5555
 .scrcpy\adb devices
+
+# Linux/macOS
+adb connect 127.0.0.1:5555
+adb devices
 ```
 
 ### "adbutils connection failed"
@@ -28,8 +78,8 @@ Common issues and their solutions.
 
 **Solutions:**
 1. This is usually a warning, not an error
-2. The bot will use `.scrcpy\adb` as fallback
-3. Ensure `.scrcpy\adb.exe` exists and is executable
+2. The bot will use system `adb` as fallback
+3. Ensure ADB is installed and in PATH
 
 ### "scrcpy client failed"
 
@@ -202,6 +252,13 @@ pip install opencv-python
 pip install adbutils
 ```
 
+### "ModuleNotFoundError: No module named 'customtkinter'"
+
+**Solution:**
+```bash
+pip install customtkinter
+```
+
 ### "No module named 'scrcpy'"
 
 **Note:** scrcpy is optional. The bot works without it.
@@ -210,6 +267,18 @@ pip install adbutils
 ```bash
 pip install scrcpy-client
 ```
+
+### rank_model.pkl Compatibility Error
+
+**Error:** `ModuleNotFoundError` or `unsupported pickle protocol` when loading model.
+
+**Cause:** Model was trained with a different Python/scikit-learn version.
+
+**Solution:**
+1. Go to GUI → 🧠 Training tab
+2. Start the bot to capture some grids
+3. Click **🔄 Auto-Label Grid** to generate training data
+4. Click **🧠 Train Model** to create a compatible model
 
 ### Ruff/Pylance Errors
 

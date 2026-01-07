@@ -2,11 +2,22 @@
 
 ## Prerequisites
 
-- **Operating System**: Windows 10/11
+- **Operating System**: Windows 10/11, Linux, or macOS
 - **Python**: 3.10, 3.11, 3.12, 3.13, or 3.14
 - **Android Emulator**: BlueStacks, LDPlayer, MEmu, or similar with ADB enabled
 
+### System Dependencies (Linux/macOS only)
+
+| Dependency | Ubuntu/Debian | macOS (Homebrew) |
+|------------|---------------|------------------|
+| ADB | `sudo apt install android-tools-adb` | `brew install android-platform-tools` |
+| scrcpy | `sudo apt install scrcpy` | `brew install scrcpy` |
+
+> **Note**: On Windows, ADB and scrcpy binaries are bundled in the `.scrcpy/` folder.
+
 ## Quick Installation
+
+### Windows
 
 1. **Clone the Repository**
    ```bash
@@ -40,16 +51,59 @@
    launch_gui.bat
    ```
 
+### Linux / macOS
+
+1. **Install System Dependencies**
+   ```bash
+   # Ubuntu/Debian
+   sudo apt install python3 python3-pip python3-venv android-tools-adb scrcpy
+
+   # macOS
+   brew install python3 android-platform-tools scrcpy
+   ```
+
+2. **Clone and Install**
+   ```bash
+   git clone https://github.com/mleem97/Rush-Royale-Bot.git
+   cd Rush-Royale-Bot
+   chmod +x install.sh launch.sh
+   ./install.sh
+   ```
+
+3. **Configure Your Units**
+   ```bash
+   nano config.ini
+   # Set: units = chemist, harlequin, bombardier, dryad, demon_hunter
+   ```
+
+4. **Launch the Bot**
+   ```bash
+   ./launch.sh
+   ```
+
 ## Manual Installation
 
 If the installer fails, you can set up manually:
 
+### Windows (PowerShell)
 ```powershell
 # Create virtual environment
 python -m venv .bot_env
 
 # Activate it
 .\.bot_env\Scripts\Activate.ps1
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### Linux/macOS (Bash)
+```bash
+# Create virtual environment
+python3 -m venv .bot_env
+
+# Activate it
+source .bot_env/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
