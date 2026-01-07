@@ -1,18 +1,18 @@
 # ============================================
-# Rush Royale Bot - Project Configuration
+# RushBot - Project Configuration
 # ============================================
 
 [project]
-name = "rush-royale-bot"
+name = "rushbot"
 version = "2026.1"
 description = "Automated Bot for Rush Royale with ML-based unit recognition"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
-    { name = "Rush Royale Bot Team" }
+    { name = "RushBot Team" }
 ]
-keywords = ["bot", "automation", "machine-learning", "opencv", "adb"]
+keywords = ["bot", "automation", "machine-learning", "opencv", "adb", "rush-royale"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -21,27 +21,31 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Games/Entertainment",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-    "numpy>=2.4.0",
-    "opencv-python>=4.12.0",
-    "pandas>=2.3.0",
-    "Pillow>=12.0.0",
-    "requests>=2.32.0",
+    "numpy>=1.26.0,<2.3.0",
+    "opencv-python>=4.10.0",
+    "pandas>=2.2.0",
+    "Pillow>=10.0.0",
+    "requests>=2.31.0",
     "packaging>=24.0",
     "scipy>=1.10.0",
     "joblib>=1.3.0",
     "threadpoolctl>=3.2.0",
-    "tqdm>=4.67.0",
-    "scikit-learn>=1.8.0",
-    "adbutils>=2.9.0",
+    "tqdm>=4.66.0",
+    "scikit-learn>=1.5.0",
+    "adbutils>=2.0.0",
     "pure-python-adb>=0.3.0.dev0",
     "av>=12.0.0",
     "customtkinter>=5.2.0",
     "darkdetect>=0.8.0",
 ]
+
+[project.scripts]
+rushbot = "rush_bot.gui:main"
 
 [project.optional-dependencies]
 dev = [
@@ -79,57 +83,52 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["Src*"]
+where = ["src"]
+include = ["rush_bot*"]
 
 # ============================================
 # Tool Configurations
 # ============================================
 
-[tool.black]
-line-length = 100
-target-version = ["py313"]
-extend-exclude = '''
-/(\.bot_env|\.scrcpy|\.vs|\.git|scrcpy|all_units|icons|units|old_icon)/
-'''
-
-[tool.isort]
-profile = "black"
-line_length = 100
-known_first_party = ["bot_perception", "port_scan"]
-skip = [".bot_env", ".scrcpy", ".vs", ".git", "scrcpy", "all_units", "icons", "units", "old_icon"]
-force_single_line = true
-lines_between_types = 1
-
 [tool.ruff]
 line-length = 100
-target-version = "py313"
-src = ["Src"]
+target-version = "py310"
+src = ["src"]
 extend-exclude = [
     ".bot_env",
     ".scrcpy",
     ".vs",
-    "scrcpy",
-    "all_units",
-    "icons",
-    "units",
-    "old_icon",
+    "cv-images",
+    "Src",  # Legacy, will be removed
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP"]
-ignore = ["E501"]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # Pyflakes
+    "I",   # isort (import sorting)
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "RUF", # Ruff-specific rules
+]
+ignore = ["E501"]  # line too long (handled by formatter)
+fixable = ["ALL"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["bot_perception", "port_scan"]
+known-first-party = ["rush_bot"]
 force-single-line = true
-lines-between-types = 1
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
 
 [tool.pyright]
 venvPath = "."
 venv = ".bot_env"
-pythonVersion = "3.13"
+pythonVersion = "3.10"
 typeCheckingMode = "basic"
+include = ["src"]
+exclude = [".bot_env", ".scrcpy", "cv-images", "Src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -138,8 +137,8 @@ python_functions = ["test_*"]
 addopts = "-v --tb=short"
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
-exclude = [".bot_env", ".scrcpy", "all_units", "icons"]
+exclude = [".bot_env", ".scrcpy", "cv-images"]
