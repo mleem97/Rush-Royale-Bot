@@ -1152,6 +1152,145 @@ class ContentFrame(ctk.CTkFrame):
         else:  # Linux
             subprocess.Popen(["xdg-open", str(missing_dir)])
 
+    def _check_model_status(self):
+        """Check if rank_model.pkl exists and is loadable."""
+        model_path = Path("rank_model.pkl")
+        if model_path.exists():
+            try:
+                import pickle
+                with open(model_path, "rb") as f:
+                    model = pickle.load(f)
+                classes = getattr(model, "classes_", [])
+                self.model_status_label.configure(
+                    text=f"Model: ✅ Loaded (classes: {list(classes)})",
+                    text_color=COLORS["success"],
+                )
+            except Exception as e:
+                self.model_status_label.configure(
+                    text=f"Model: ⚠️ Error loading: {e}",
+                    text_color=COLORS["warning"],
+                )
+        else:
+            self.model_status_label.configure(
+                text="Model: ❌ Not found (rank_model.pkl missing)",
+                text_color=COLORS["danger"],
+            )
+
+    def _update_dataset_info(self):
+        """Count samples in machine_learning/inputs folder."""
+        ml_dir = Path("machine_learning/inputs")
+        if ml_dir.exists():
+            # Count files matching pattern
+            flat_count = len(list(ml_dir.glob("*_input_*.png")))
+            # Count files in subdirectories
+            sub_count = sum(len(list(sub.glob("*.png"))) for sub in ml_dir.iterdir() if sub.is_dir())
+            total = flat_count + sub_count
+            self.dataset_info_label.configure(text=f"Dataset samples: {total}")
+        else:
+            self.dataset_info_label.configure(text="Dataset: folder not found")
+
+    def _auto_label_from_game(self):
+        """Use existing model to auto-label current game grid."""
+        import threading
+
+        def run_auto_label():
+            try:
+                self.progress_label.configure(text="Auto-labeling in progress...")
+                self.training_progress.set(0.2)
+
+                import bot_perception
+                bot_perception.ensure_training_dirs()
+
+                # Check if OCR_inputs has data
+                ocr_dir = Path("OCR_inputs")
+                if not ocr_dir.exists() or not list(ocr_dir.glob("*.png")):
+                    self.master.after(0, lambda: self.progress_label.configure(
+                        text="No OCR_inputs found. Start bot first to capture grid."
+                    ))
+                    return
+
+                self.training_progress.set(0.5)
+
+                # Run auto-labeling (uses current model to label and save)
+                bot_perception.add_grid_to_dataset()
+
+                self.training_progress.set(1.0)
+                self.master.after(0, lambda: self.progress_label.configure(
+                    text="✅ Grid added to dataset!"
+                ))
+                self.master.after(0, self._update_dataset_info)
+
+            except Exception as e:
+                self.master.after(0, lambda: self.progress_label.configure(
+                    text=f"Error: {e}"
+                ))
+            finally:
+                self.master.after(500, lambda: self.training_progress.set(0))
+
+        thread = threading.Thread(target=run_auto_label, daemon=True)
+        thread.start()
+
+    def _train_new_model(self):
+        """Train new rank model from dataset in background thread."""
+        import threading
+
+        def run_training():
+            try:
+                self.progress_label.configure(text="Training model...")
+                self.training_progress.set(0.1)
+
+                import bot_perception
+                bot_perception.ensure_training_dirs()
+
+                ml_dir = Path("machine_learning/inputs")
+                if not ml_dir.exists():
+                    self.master.after(0, lambda: self.progress_label.configure(
+                        text="Dataset folder not found!"
+                    ))
+                    return
+
+                self.training_progress.set(0.3)
+
+                # Train model
+                model = bot_perception.train_rank_model(ml_dir)
+
+                self.training_progress.set(0.7)
+
+                # Save model
+                saved_path = bot_perception.save_rank_model(model)
+
+                self.training_progress.set(1.0)
+
+                classes = list(model.classes_)
+                self.master.after(0, lambda: self.progress_label.configure(
+                    text=f"✅ Model trained! Classes: {classes}"
+                ))
+                self.master.after(0, self._check_model_status)
+
+            except Exception as e:
+                self.master.after(0, lambda: self.progress_label.configure(
+                    text=f"Training error: {e}"
+                ))
+            finally:
+                self.master.after(500, lambda: self.training_progress.set(0))
+
+        thread = threading.Thread(target=run_training, daemon=True)
+        thread.start()
+
+    def _open_ml_folder(self):
+        """Open machine_learning/inputs folder in file explorer."""
+        import subprocess
+        import sys
+        ml_dir = Path("machine_learning/inputs").resolve()
+        ml_dir.mkdir(parents=True, exist_ok=True)
+
+        if sys.platform == "win32":
+            subprocess.Popen(["explorer", str(ml_dir)])
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", str(ml_dir)])
+        else:
+            subprocess.Popen(["xdg-open", str(ml_dir)])
+
     def _setup_about_tab(self):
         """Setup about/info display."""
         tab = self.tabview.tab("ℹ️ About")
