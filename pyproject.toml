@@ -69,10 +69,10 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/Rush-Royale-Bot"
-Documentation = "https://github.com/yourusername/Rush-Royale-Bot/wiki"
-Repository = "https://github.com/yourusername/Rush-Royale-Bot"
-Issues = "https://github.com/yourusername/Rush-Royale-Bot/issues"
+Homepage = "https://github.com/mleem97/RushBot"
+Documentation = "https://rushbot.wiki"
+Repository = "https://github.com/mleem97/RushBot"
+Issues = "https://github.com/mleem97/RushBot/issues"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]

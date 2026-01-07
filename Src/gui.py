@@ -677,11 +677,16 @@ class ContentFrame(ctk.CTkFrame):
                 row_cells.append(cell_data)
             self.grid_cells.append(row_cells)
 
-        # Legend
+        # Legend - show selected units from config
         legend_frame = ctk.CTkFrame(tab, fg_color="transparent")
         legend_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
 
-        legend_units = ["demon_hunter", "dryad", "harlequin", "chemist", "knight_statue", "shaman"]
+        # Get units from config (same as sidebar)
+        config = self.master.config
+        config_units = config.get("bot", "units", fallback="demon_hunter,dryad,harlequin,chemist,knight_statue").replace(" ", "").split(",")
+        # Ensure we have 5 units for legend
+        legend_units = config_units[:5] if len(config_units) >= 5 else config_units + ["empty"] * (5 - len(config_units))
+        
         for i, unit in enumerate(legend_units):
             color = UNIT_COLORS.get(unit, COLORS["unit_default"])
             lbl = ctk.CTkLabel(
@@ -741,7 +746,8 @@ class ContentFrame(ctk.CTkFrame):
 
         # Create 5 unit dropdowns
         self.unit_vars = []
-        unit_labels = ["Slot 1 (DPS)", "Slot 2 (Support)", "Slot 3 (Support)", "Slot 4 (Utility)", "Slot 5 (Flex)"]
+        # Show actual unit names from config instead of generic slot names
+        unit_labels = [f"Slot {i+1}: {u.replace('_', ' ').title()}" for i, u in enumerate(current_units[:5])]
 
         for i in range(5):
             row_frame = ctk.CTkFrame(units_frame, fg_color="transparent")

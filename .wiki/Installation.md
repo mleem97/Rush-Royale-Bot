@@ -21,8 +21,8 @@
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/mleem97/Rush-Royale-Bot.git
-   cd Rush-Royale-Bot
+   git clone https://github.com/mleem97/RushBot.git
+   cd RushBot
    ```
 
 2. **Run the Installer**
@@ -64,8 +64,8 @@
 
 2. **Clone and Install**
    ```bash
-   git clone https://github.com/mleem97/Rush-Royale-Bot.git
-   cd Rush-Royale-Bot
+   git clone https://github.com/mleem97/RushBot.git
+   cd RushBot
    chmod +x install.sh launch.sh
    ./install.sh
    ```

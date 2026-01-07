@@ -85,8 +85,8 @@ Rush-Royale-Bot/
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/mleem97/Rush-Royale-Bot.git
-   cd Rush-Royale-Bot
+   git clone https://github.com/mleem97/RushBot.git
+   cd RushBot
    ```
 
 2. **Run the installer:**
@@ -121,8 +121,8 @@ Rush-Royale-Bot/
 2. **Clone and install:**
 
    ```bash
-   git clone https://github.com/mleem97/Rush-Royale-Bot.git
-   cd Rush-Royale-Bot
+   git clone https://github.com/mleem97/RushBot.git
+   cd RushBot
    chmod +x install.sh launch.sh
    ./install.sh
    ```
@@ -245,7 +245,7 @@ require_shaman = False        # Leave if no shaman partner
 
 ## 🤝 Contributing
 
-Contributions welcome!
+Contributions welcome! See our [Wiki](https://rushbot.wiki) for detailed documentation.
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -276,7 +276,7 @@ The following units are **not fully supported** by the bot and may cause unexpec
 | Common | ✅ Full Support |
 | Rare | ✅ Full Support |
 | Epic | ✅ Full Support |
-| Legendary | ⚠️ 31/40 supported - Twins, Treant, Mole + 6 others need implementation (see [Issues](https://github.com/mleem97/Rush-Royale-Bot/issues)) |
+| Legendary | ⚠️ 31/40 supported - Twins, Treant, Mole + 6 others need implementation (see [Issues](https://github.com/mleem97/RushBot/issues)) |
 
 ## 🙏 Acknowledgments
 
