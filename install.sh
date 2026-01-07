@@ -2,19 +2,37 @@
 # =============================================================================
 # Rush Royale Bot - Cross-Platform Installation Script (Linux/macOS)
 # =============================================================================
+# Usage: ./install.sh [--dev]
+#   --dev    Install development dependencies (testing, linting, ML tools)
+# =============================================================================
 set -e
+
+# Parse arguments
+DEV_MODE=false
+for arg in "$@"; do
+    case $arg in
+        --dev)
+            DEV_MODE=true
+            shift
+            ;;
+    esac
+done
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}"
 echo "============================================"
 echo "   Rush Royale Bot - Installer"
 echo "   Linux/macOS Edition"
+if [ "$DEV_MODE" = true ]; then
+    echo -e "   ${CYAN}[DEVELOPMENT MODE]${BLUE}"
+fi
 echo "============================================"
 echo -e "${NC}"
 
@@ -96,13 +114,25 @@ source "$VENV_DIR/bin/activate"
 # Upgrade pip
 pip install --upgrade pip --quiet
 
-# Install requirements
-if [ -f "requirements.txt" ]; then
-    pip install -r requirements.txt
-    echo -e "${GREEN}[OK]${NC} All dependencies installed!"
+# Install requirements based on mode
+if [ "$DEV_MODE" = true ]; then
+    echo -e "${CYAN}[DEV]${NC} Installing development dependencies..."
+    if [ -f "requirements-dev.txt" ]; then
+        pip install -r requirements-dev.txt
+        echo -e "${GREEN}[OK]${NC} All development dependencies installed!"
+    else
+        echo -e "${RED}[ERROR]${NC} requirements-dev.txt not found!"
+        exit 1
+    fi
 else
-    echo -e "${RED}[ERROR]${NC} requirements.txt not found!"
-    exit 1
+    echo -e "${GREEN}[PROD]${NC} Installing production dependencies..."
+    if [ -f "requirements.txt" ]; then
+        pip install -r requirements.txt
+        echo -e "${GREEN}[OK]${NC} All production dependencies installed!"
+    else
+        echo -e "${RED}[ERROR]${NC} requirements.txt not found!"
+        exit 1
+    fi
 fi
 
 # 6. Verify installation
@@ -126,6 +156,9 @@ except ImportError as e:
 echo ""
 echo -e "${GREEN}============================================${NC}"
 echo -e "${GREEN}   Installation Complete!${NC}"
+if [ "$DEV_MODE" = true ]; then
+    echo -e "${CYAN}   [Development Environment]${NC}"
+fi
 echo -e "${GREEN}============================================${NC}"
 echo ""
 echo "To start the bot:"
@@ -135,6 +168,11 @@ echo "Or manually:"
 echo "  source $VENV_DIR/bin/activate"
 echo "  python Src/gui.py"
 echo ""
+if [ "$DEV_MODE" = false ]; then
+    echo "For development setup, run:"
+    echo "  ./install.sh --dev"
+    echo ""
+fi
 
 # Make launch script executable
 if [ -f "launch.sh" ]; then

@@ -1,0 +1,35 @@
+# ============================================
+# Rush Royale Bot - Development Dependencies
+# ============================================
+# Install with: pip install -r requirements-dev.txt
+# This includes all production dependencies!
+# ============================================
+
+# === Include Production Dependencies ===
+-r requirements.txt
+
+# === Jupyter / Notebook Support ===
+ipykernel>=6.29.0
+ipywidgets>=8.1.0
+notebook>=7.0.0
+
+# === Code Formatting & Linting ===
+black>=24.0.0
+ruff>=0.8.0
+isort>=5.13.0
+
+# === Type Checking ===
+pyright>=1.1.390
+mypy>=1.13.0
+
+# === Testing ===
+pytest>=8.0.0
+pytest-cov>=6.0.0
+
+# === Reinforcement Learning (Optional) ===
+gymnasium>=1.0.0
+stable-baselines3>=2.4.0
+
+# === Documentation ===
+mkdocs>=1.6.0
+mkdocs-material>=9.5.0

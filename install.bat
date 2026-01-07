@@ -1,10 +1,24 @@
 @echo off
 REM cSpell:ignore setlocal enabledelayedexpansion errorlevel VENV venv
+REM =============================================================================
+REM Rush Royale Bot - Windows Installation Script
+REM Usage: install.bat [--dev]
+REM   --dev    Install development dependencies (testing, linting, ML tools)
+REM =============================================================================
 setlocal enabledelayedexpansion
 title Rush Royale Bot - Installation
 
+:: Parse arguments
+set "DEV_MODE=0"
+if "%~1"=="--dev" set "DEV_MODE=1"
+if "%~1"=="-dev" set "DEV_MODE=1"
+
 echo ============================================
-echo   Rush Royale Bot - Installation (Optimiert)
+if "!DEV_MODE!"=="1" (
+    echo   Rush Royale Bot - Installation [DEV]
+) else (
+    echo   Rush Royale Bot - Installation [PROD]
+)
 echo ============================================
 echo.
 
@@ -105,18 +119,14 @@ if %errorlevel% NEQ 0 (
     echo [WARNUNG] pip Update fehlgeschlagen, fahre fort...
 )
 
-echo [INFO] Installiere Bibliotheken aus requirements.txt...
-"!VENV_DIR!\Scripts\python.exe" -m pip install -r requirements.txt
-
-if %errorlevel% NEQ 0 (
-    color 0E
-    echo.
-    echo [WARNUNG] Es gab Fehler bei der Installation einiger Pakete.
-    echo Bitte pruefen Sie das Log oben.
-    echo.
+:: Install based on mode
+if "!DEV_MODE!"=="1" (
+    echo [INFO] Installiere Entwicklungs-Bibliotheken aus requirements-dev.txt...
+    "!VENV_DIR!\Scripts\python.exe" -m pip install -r requirements-dev.txt
+) else (
+    echo [INFO] Installiere Produktions-Bibliotheken aus requirements.txt...
+    "!VENV_DIR!\Scripts\python.exe" -m pip install -r requirements.txt
 )
-echo [INFO] Installiere Bibliotheken aus requirements.txt...
-"!VENV_DIR!\Scripts\python.exe" -m pip install -r requirements.txt
 
 if !errorlevel! NEQ 0 (
     color 0E
@@ -148,9 +158,17 @@ echo [INFO] Erstelle Start-Skript (launch_gui.bat)...
 
 echo.
 echo ============================================
-echo    Installation erfolgreich abgeschlossen!
+if "!DEV_MODE!"=="1" (
+    echo    Installation [DEV] erfolgreich!
+) else (
+    echo    Installation [PROD] erfolgreich!
+)
 echo ============================================
 echo.
 echo Sie koennen den Bot nun mit 'launch_gui.bat' starten.
+if "!DEV_MODE!"=="0" (
+    echo.
+    echo Fuer Entwicklungsumgebung: install.bat --dev
+)
 echo.
 pause

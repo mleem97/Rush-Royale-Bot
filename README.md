@@ -133,6 +133,32 @@ Rush-Royale-Bot/
    ./launch.sh
    ```
 
+### Development Installation
+
+For development work (includes linting, testing, ML tools):
+
+```bash
+# Windows
+install.bat --dev
+
+# Linux / macOS
+./install.sh --dev
+
+# Or with pip directly
+pip install -r requirements-dev.txt
+```
+
+**Dev dependencies include:**
+
+| Package | Purpose |
+| --- | --- |
+| black, ruff, isort | Code formatting & linting |
+| pyright, mypy | Type checking |
+| pytest, pytest-cov | Testing & coverage |
+| ipykernel, notebook | Jupyter support |
+| gymnasium, stable-baselines3 | Reinforcement learning |
+| mkdocs, mkdocs-material | Documentation |
+
 ### Manual Installation
 
 ```bash
@@ -140,8 +166,11 @@ Rush-Royale-Bot/
 python -m venv .bot_env
 .bot_env\Scripts\activate
 
-# Install dependencies
+# Install production dependencies
 pip install -r requirements.txt
+
+# Or install everything (dev)
+pip install -r requirements-dev.txt
 ```
 
 ## 🎯 Usage

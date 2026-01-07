@@ -43,6 +43,17 @@ obj/
 .coverage
 htmlcov/
 .tox/
+*.egg-info/
+.eggs/
+
+# --- Documentation build ---
+site/
+docs/_build/
+
+# --- Local environment files ---
+.env
+.env.local
+.env.*.local
 
 # --- Local runtime outputs ---
 *.log
