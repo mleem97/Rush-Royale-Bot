@@ -8,12 +8,12 @@
 
 | Kategorie | Gesamt | Offen | In Arbeit | Erledigt |
 |-----------|--------|-------|-----------|----------|
-| Kritische Bugs | 7 | 1 | 0 | 6 |
+| Kritische Bugs | 7 | 0 | 0 | 7 |
 | Kern-Funktionalität | 3 | 0 | 0 | 3 |
 | Gameplay-Features | 3 | 0 | 0 | 3 |
 | Qualität & Tooling | 4 | 0 | 0 | 4 |
 | ML/Training (Neu) | 8 | 7 | 0 | 1 |
-| **Gesamt** | **25** | **8** | **0** | **17** |
+| **Gesamt** | **25** | **7** | **0** | **18** |
 
 ---
 
@@ -26,7 +26,7 @@
 | T003 | Merge-Logik stabilisieren | ✅ Erledigt | Subagent | 2026-01-18 |
 | T014 | False-Positive Icon-Detection beheben | ✅ Erledigt | Subagent | 2026-01-18 |
 | T015 | Screen-State-Filtering implementieren | ✅ Erledigt | Subagent | 2026-01-19 |
-| T016 | Merge-Mechanismus reparieren | ⏳ Offen | - | - |
+| T016 | Merge-Mechanismus reparieren | ✅ Erledigt | Subagent | 2026-01-19 |
 | T017 | Ladebildschirm-Erkennung implementieren | ✅ Erledigt | Subagent | 2026-01-18 |
 
 ---
@@ -78,6 +78,41 @@
 ---
 
 ## 📝 Änderungsprotokoll
+
+### [2026-01-19] T016: Merge-Mechanismus Debug-Logging implementiert
+
+**IMPLEMENTIERUNG:**
+- **Neues Debug-System:** `MergeDebugger` Klasse für umfassendes Merge-Logging
+- **Datenklasse:** `MergeAttempt` für einzelne Merge-Versuche
+
+**NEUE KLASSEN:**
+1. `MergeDebugger`:
+   - `log_attempt()`: Loggt jeden Merge-Versuch mit allen Details
+   - `get_failures()`: Liefert letzte fehlgeschlagene Versuche
+   - `get_success_rate()`: Berechnet Erfolgsquote
+   - `get_failure_breakdown()`: Aufschlüsselung nach Fehlergrund
+   - `export_history()`: Exportiert History in Log-Datei
+   - `format_summary()`: Formatierte Statistik-Zusammenfassung
+
+2. `MergeAttempt` Dataclass:
+   - Source/Target Unit, Rank, Position
+   - Swipe-Vektor-Berechnung
+   - Dauer in ms
+   - Result und Notes
+
+**UPDATES:**
+- `MergeLogic.execute_merge()` mit Debug-Logging erweitert
+- `MergeValidator` mit optionalem Debugger für Validation-Failures
+- Globaler `get_merge_debugger()` Accessor
+
+**TESTS:**
+- 13 neue Unit-Tests für Merge-Debugging
+- Alle Tests bestehen (405/405 passed)
+
+**COMMITS:**
+- feat(core): add merge debug logging and statistics T016
+
+---
 
 ### [2026-01-19] T015: Screen-State-Filtering implementiert
 
