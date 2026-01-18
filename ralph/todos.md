@@ -100,12 +100,12 @@
 ## 🟢 Priorität 4: Qualität & Tooling
 
 ### T010: Test-Coverage erhöhen
-- **Status:** ⏳ Offen
+- **Status:** ✅ Erledigt
 - **Beschreibung:** Mehr Unit-Tests für Kernfunktionen
 - **Akzeptanzkriterien:**
-  - [ ] >70% Coverage für `rush_bot/core/`
-  - [ ] >70% Coverage für `rush_bot/perception/`
-  - [ ] Mocking für ADB-Calls
+  - [x] >70% Coverage für `rush_bot/core/` (device 85%, bot 100%, logger 100%)
+  - [x] >70% Coverage für `rush_bot/perception/` (vision 72%, screen_state 88%)
+  - [x] Mocking für ADB-Calls (unittest.mock für alle Device-Tests)
 
 ### T011: Type Hints vervollständigen
 - **Status:** ⏳ Offen

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
@@ -691,3 +692,484 @@ class TestMergeDirection:
 
         direction = calculate_merge_direction([2, 2], [0, 0])
         assert direction == (-2, -2)
+
+
+# =============================================================================
+# Extended BotLogger Tests (T010 - Coverage Enhancement)
+# =============================================================================
+
+
+class TestBotLoggerMethods:
+    """Extended tests for BotLogger methods."""
+
+    def test_debug_method(self) -> None:
+        """Test debug log method."""
+        logger = BotLogger()
+        # Should not raise
+        logger.debug("Debug message")
+
+    def test_info_method(self) -> None:
+        """Test info log method."""
+        logger = BotLogger()
+        logger.info("Info message")
+
+    def test_warning_method(self) -> None:
+        """Test warning log method."""
+        logger = BotLogger()
+        logger.warning("Warning message")
+
+    def test_error_method(self) -> None:
+        """Test error log method."""
+        logger = BotLogger()
+        logger.error("Error message")
+
+    def test_critical_method(self) -> None:
+        """Test critical log method."""
+        logger = BotLogger()
+        logger.critical("Critical message")
+
+    def test_log_with_mock_widget(self) -> None:
+        """Test logging with mocked GUI widget."""
+        mock_widget = MagicMock()
+        mock_widget.configure = MagicMock()
+        mock_widget.insert = MagicMock()
+        mock_widget.see = MagicMock()
+
+        logger = BotLogger(log_widget=mock_widget)
+        logger.info("Test message")
+
+        # Widget methods should have been called
+        assert mock_widget.configure.called
+        assert mock_widget.insert.called
+
+    def test_log_widget_exception_handling(self) -> None:
+        """Test that widget exceptions are handled gracefully."""
+        mock_widget = MagicMock()
+        mock_widget.configure.side_effect = Exception("Widget error")
+
+        logger = BotLogger(log_widget=mock_widget)
+        # Should not raise despite widget error
+        logger.info("Test message")
+
+
+# =============================================================================
+# Extended Bot Tests (T010 - Coverage Enhancement)
+# =============================================================================
+
+
+class TestBotMethods:
+    """Extended tests for Bot class methods."""
+
+    def test_bot_start_sets_running(self) -> None:
+        """Test that start() sets running to True."""
+        bot = Bot()
+        bot.start()
+        assert bot.running is True
+
+    def test_bot_stop_sets_running_false(self) -> None:
+        """Test that stop() sets running to False."""
+        bot = Bot()
+        bot.running = True
+        bot.stop()
+        assert bot.running is False
+
+    def test_bot_tap_calls_device(self) -> None:
+        """Test that tap() delegates to device manager."""
+        bot = Bot()
+        bot.device = MagicMock()
+        bot.device.tap = MagicMock()
+
+        bot.tap(100, 200)
+
+        bot.device.tap.assert_called_once_with(100, 200)
+
+    def test_bot_swipe_calls_device(self) -> None:
+        """Test that swipe() delegates to device manager."""
+        bot = Bot()
+        bot.device = MagicMock()
+        bot.device.swipe = MagicMock()
+
+        bot.swipe((100, 200), (300, 400), duration_ms=500)
+
+        bot.device.swipe.assert_called_once_with(100, 200, 300, 400, 500)
+
+    def test_bot_screenshot_calls_device(self) -> None:
+        """Test that screenshot() delegates to device manager."""
+        bot = Bot()
+        bot.device = MagicMock()
+        mock_img = MagicMock()
+        bot.device.screenshot.return_value = mock_img
+
+        result = bot.screenshot()
+
+        assert result is mock_img
+        bot.device.screenshot.assert_called_once()
+
+    def test_bot_with_gui(self) -> None:
+        """Test bot initialization with GUI."""
+        mock_gui = MagicMock()
+        bot = Bot(gui=mock_gui)
+        assert bot.gui is mock_gui
+
+
+# =============================================================================
+# Extended BotHandler Tests (T010 - Coverage Enhancement)
+# =============================================================================
+
+
+class TestBotHandlerSelectUnits:
+    """Tests for BotHandler.select_units method."""
+
+    def test_select_units_with_missing_file(self, temp_dir: Path) -> None:
+        """Test select_units returns False for missing files."""
+        result = BotHandler.select_units(["nonexistent_unit.png"])
+        assert result is False
+
+    def test_select_units_empty_list(self) -> None:
+        """Test select_units with empty list."""
+        result = BotHandler.select_units([])
+        assert result is True  # No files to validate
+
+
+# =============================================================================
+# Extended DeviceManager Tests (T010 - Coverage Enhancement)
+# =============================================================================
+
+
+class TestDeviceManagerOperations:
+    """Extended tests for DeviceManager operations."""
+
+    def test_screenshot_success(self) -> None:
+        """Test successful screenshot capture."""
+        manager = DeviceManager()
+        manager._device = MagicMock()
+        manager._state = DeviceState.CONNECTED
+        mock_img = MagicMock()
+        manager._device.screenshot.return_value = mock_img
+
+        result = manager.screenshot()
+
+        assert result is mock_img
+
+    def test_screenshot_retry_on_failure(self) -> None:
+        """Test screenshot retries on transient failure."""
+        config = DeviceConfig(screenshot_retry_count=3, screenshot_retry_delay=0.01)
+        manager = DeviceManager(config=config)
+        manager._device = MagicMock()
+        manager._state = DeviceState.CONNECTED
+
+        # Fail twice, succeed on third
+        mock_img = MagicMock()
+        manager._device.screenshot.side_effect = [
+            Exception("Transient error"),
+            Exception("Transient error"),
+            mock_img,
+        ]
+
+        result = manager.screenshot()
+
+        assert result is mock_img
+        assert manager._device.screenshot.call_count == 3
+
+    def test_screenshot_all_retries_fail(self) -> None:
+        """Test screenshot returns None when all retries fail."""
+        config = DeviceConfig(screenshot_retry_count=2, screenshot_retry_delay=0.01)
+        manager = DeviceManager(config=config)
+        manager._device = MagicMock()
+        manager._state = DeviceState.CONNECTED
+        manager._device.screenshot.side_effect = Exception("Persistent error")
+
+        result = manager.screenshot()
+
+        assert result is None
+
+    def test_shell_success(self) -> None:
+        """Test successful shell command."""
+        manager = DeviceManager()
+        manager._device = MagicMock()
+        manager._state = DeviceState.CONNECTED
+        manager._device.shell.return_value = "output"
+
+        result = manager.shell("echo test")
+
+        assert result == "output"
+
+    def test_input_text_not_connected(self) -> None:
+        """Test input_text when not connected."""
+        manager = DeviceManager()
+        result = manager.input_text("hello")
+        assert result is False
+
+    def test_input_text_success(self) -> None:
+        """Test successful text input."""
+        manager = DeviceManager()
+        manager._device = MagicMock()
+        manager._state = DeviceState.CONNECTED
+
+        result = manager.input_text("hello world")
+
+        assert result is True
+        # Verify shell was called with escaped text
+        manager._device.shell.assert_called()
+
+    def test_press_key_not_connected(self) -> None:
+        """Test press_key when not connected."""
+        manager = DeviceManager()
+        result = manager.press_key(4)
+        assert result is False
+
+    def test_press_key_success(self) -> None:
+        """Test successful key press."""
+        manager = DeviceManager()
+        manager._device = MagicMock()
+        manager._state = DeviceState.CONNECTED
+
+        result = manager.press_key(66)  # ENTER key
+
+        assert result is True
+        manager._device.shell.assert_called_with("input keyevent 66")
+
+    def test_device_info_property(self) -> None:
+        """Test device_info property."""
+        manager = DeviceManager()
+        assert manager.device_info is None
+
+        # Set device info
+        info = DeviceInfo(serial="test", model="Test Device")
+        manager._device_info = info
+        assert manager.device_info is info
+
+    def test_ensure_connected_raises(self) -> None:
+        """Test _ensure_connected raises when not connected."""
+        manager = DeviceManager()
+
+        with pytest.raises(DeviceNotConnectedError):
+            manager._ensure_connected()
+
+    def test_tap_exception_handling(self) -> None:
+        """Test tap handles exceptions and triggers reconnect check."""
+        config = DeviceConfig(auto_reconnect=False)
+        manager = DeviceManager(config=config)
+        manager._device = MagicMock()
+        manager._state = DeviceState.CONNECTED
+        manager._device.click.side_effect = Exception("Click failed")
+        # Simulate device ping failure (device unreachable)
+        manager._device.shell.side_effect = Exception("Device offline")
+
+        result = manager.tap(100, 200)
+
+        assert result is False
+
+    def test_swipe_exception_handling(self) -> None:
+        """Test swipe handles exceptions gracefully."""
+        config = DeviceConfig(auto_reconnect=False)
+        manager = DeviceManager(config=config)
+        manager._device = MagicMock()
+        manager._state = DeviceState.CONNECTED
+        manager._device.swipe.side_effect = Exception("Swipe failed")
+        manager._device.shell.side_effect = Exception("Device offline")
+
+        result = manager.swipe(0, 0, 100, 100)
+
+        assert result is False
+
+    def test_shell_exception_handling(self) -> None:
+        """Test shell handles exceptions gracefully."""
+        config = DeviceConfig(auto_reconnect=False)
+        manager = DeviceManager(config=config)
+        manager._device = MagicMock()
+        manager._state = DeviceState.CONNECTED
+        manager._device.shell.side_effect = Exception("Shell failed")
+
+        result = manager.shell("invalid command")
+
+        assert result is None
+
+
+class TestDeviceInfoFromDevice:
+    """Tests for DeviceInfo.from_device method edge cases."""
+
+    def test_from_device_prop_exception(self) -> None:
+        """Test from_device handles prop exceptions."""
+        mock_device = MagicMock()
+        mock_device.serial = "test-device"
+        mock_device.prop.get.side_effect = Exception("Prop error")
+        mock_device.shell.return_value = ""
+
+        info = DeviceInfo.from_device(mock_device)
+
+        assert info.serial == "test-device"
+        assert info.model == "Unknown"
+        assert info.android_version == "Unknown"
+
+    def test_from_device_shell_exception(self) -> None:
+        """Test from_device handles shell exceptions."""
+        mock_device = MagicMock()
+        mock_device.serial = "test-device"
+        mock_device.prop.get.return_value = "TestModel"
+        mock_device.shell.side_effect = Exception("Shell error")
+
+        info = DeviceInfo.from_device(mock_device)
+
+        assert info.serial == "test-device"
+        assert info.screen_width == 0
+        assert info.screen_height == 0
+
+    def test_from_device_invalid_screen_size(self) -> None:
+        """Test from_device handles invalid screen size output."""
+        mock_device = MagicMock()
+        mock_device.serial = "test-device"
+        mock_device.prop.get.return_value = "TestModel"
+        mock_device.shell.return_value = "Invalid output"
+
+        info = DeviceInfo.from_device(mock_device)
+
+        assert info.screen_width == 0
+        assert info.screen_height == 0
+
+    def test_emulator_detection_127(self) -> None:
+        """Test emulator detection for 127.0.0.1 addresses."""
+        mock_device = MagicMock()
+        mock_device.serial = "127.0.0.1:5555"
+        mock_device.prop.get.return_value = "Emulator"
+        mock_device.shell.return_value = "Physical size: 1080x1920"
+
+        info = DeviceInfo.from_device(mock_device)
+
+        assert info.is_emulator is True
+
+    def test_emulator_detection_serial(self) -> None:
+        """Test emulator detection for emulator-* serials."""
+        mock_device = MagicMock()
+        mock_device.serial = "emulator-5554"
+        mock_device.prop.get.return_value = "Emulator"
+        mock_device.shell.return_value = "Physical size: 1080x1920"
+
+        info = DeviceInfo.from_device(mock_device)
+
+        assert info.is_emulator is True
+
+    def test_physical_device_detection(self) -> None:
+        """Test physical device is not marked as emulator."""
+        mock_device = MagicMock()
+        mock_device.serial = "ABCD1234"
+        mock_device.prop.get.return_value = "Pixel 6"
+        mock_device.shell.return_value = "Physical size: 1080x2400"
+
+        info = DeviceInfo.from_device(mock_device)
+
+        assert info.is_emulator is False
+
+
+class TestDeviceManagerStateCallbacks:
+    """Tests for DeviceManager state callback handling."""
+
+    def test_state_callback_exception_handling(self) -> None:
+        """Test that state callback exceptions don't break the manager."""
+
+        def bad_callback(state: DeviceState) -> None:
+            raise ValueError("Callback error")
+
+        manager = DeviceManager(on_state_change=bad_callback)
+        # Should not raise despite callback exception
+        manager._set_state(DeviceState.CONNECTING)
+
+    def test_state_not_changed_if_same(self) -> None:
+        """Test that callback isn't called if state unchanged."""
+        callback_calls: list[DeviceState] = []
+
+        def callback(state: DeviceState) -> None:
+            callback_calls.append(state)
+
+        manager = DeviceManager(on_state_change=callback)
+        manager._set_state(DeviceState.DISCONNECTED)  # Same as initial
+
+        # Should not have been called since state didn't change
+        assert len(callback_calls) == 0
+
+
+class TestDeviceManagerListDevices:
+    """Tests for DeviceManager.list_devices method."""
+
+    def test_list_devices_with_devices(self) -> None:
+        """Test list_devices returns device serials."""
+        with patch("adbutils.adb") as mock_adb:
+            mock_device1 = MagicMock()
+            mock_device1.serial = "device1"
+            mock_device2 = MagicMock()
+            mock_device2.serial = "device2"
+            mock_adb.device_list.return_value = [mock_device1, mock_device2]
+
+            manager = DeviceManager()
+            devices = manager.list_devices()
+
+            assert devices == ["device1", "device2"]
+
+    def test_list_devices_exception_handling(self) -> None:
+        """Test list_devices handles exceptions."""
+        with patch("adbutils.adb") as mock_adb:
+            mock_adb.device_list.side_effect = Exception("ADB error")
+
+            manager = DeviceManager()
+            devices = manager.list_devices()
+
+            assert devices == []
+
+
+class TestDeviceManagerConnection:
+    """Tests for DeviceManager connection scenarios."""
+
+    def test_connect_falls_back_to_first_device(self) -> None:
+        """Test connect falls back to first device if address not found."""
+        with patch("adbutils.adb") as mock_adb:
+            mock_device = MagicMock()
+            mock_device.serial = "other-device"
+            mock_device.prop.get.return_value = "TestDevice"
+            mock_device.shell.return_value = "Physical size: 1080x1920"
+            mock_adb.device_list.return_value = [mock_device]
+            mock_adb.connect = MagicMock()
+
+            manager = DeviceManager()
+            result = manager.connect("nonexistent:5555")
+
+            assert result is True
+            assert manager._device == mock_device
+
+    def test_connect_network_address(self) -> None:
+        """Test connect with network address calls adb.connect."""
+        with patch("adbutils.adb") as mock_adb:
+            mock_device = MagicMock()
+            mock_device.serial = "192.168.1.100:5555"
+            mock_device.prop.get.return_value = "TestDevice"
+            mock_device.shell.return_value = "Physical size: 1080x1920"
+            mock_adb.device_list.return_value = [mock_device]
+
+            manager = DeviceManager()
+            result = manager.connect("192.168.1.100:5555")
+
+            assert result is True
+            mock_adb.connect.assert_called()
+
+    def test_connect_exception_without_auto_reconnect(self) -> None:
+        """Test connect raises exception when auto_reconnect is False."""
+        with patch("adbutils.adb") as mock_adb:
+            mock_adb.device_list.side_effect = Exception("Connection failed")
+            config = DeviceConfig(auto_reconnect=False)
+
+            manager = DeviceManager(config=config)
+
+            with pytest.raises(DeviceConnectionError):
+                manager.connect()
+
+    def test_disconnect_sets_state(self) -> None:
+        """Test disconnect properly cleans up state."""
+        manager = DeviceManager()
+        manager._device = MagicMock()
+        manager._device_info = DeviceInfo(serial="test")
+        manager._state = DeviceState.CONNECTED
+
+        manager.disconnect()
+
+        assert manager._device is None
+        assert manager._device_info is None
+        assert manager._state == DeviceState.DISCONNECTED

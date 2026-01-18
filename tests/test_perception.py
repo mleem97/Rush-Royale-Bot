@@ -907,3 +907,344 @@ class TestTemplateStateMap:
         for template, expected_state in expected_mappings.items():
             if template in TEMPLATE_STATE_MAP:
                 assert TEMPLATE_STATE_MAP[template] == expected_state
+
+
+# =============================================================================
+# Extended GridExtractor Tests (T010 - Coverage Enhancement)
+# =============================================================================
+
+
+class TestGridExtractorMethods:
+    """Extended tests for GridExtractor methods."""
+
+    def test_get_cell_center(self) -> None:
+        """Test get_cell_center returns correct center coordinates."""
+        extractor = GridExtractor(
+            screen_width=REFERENCE_WIDTH,
+            screen_height=REFERENCE_HEIGHT,
+        )
+        center = extractor.get_cell_center(0, 0)
+
+        # Center should be at (top_x + cell_width/2, top_y + cell_height/2)
+        expected_x = 153 + 60  # 153 + 120/2
+        expected_y = 945 + 60  # 945 + 120/2
+        assert center == (expected_x, expected_y)
+
+    def test_get_cell_center_middle(self) -> None:
+        """Test get_cell_center for middle cell."""
+        extractor = GridExtractor()
+        center = extractor.get_cell_center(1, 2)  # Middle cell
+
+        # Should be properly calculated
+        assert isinstance(center, tuple)
+        assert len(center) == 2
+        assert center[0] > 0
+        assert center[1] > 0
+
+    def test_get_cell_center_row_out_of_bounds(self) -> None:
+        """Test get_cell_center raises for invalid row."""
+        extractor = GridExtractor()
+
+        with pytest.raises(ValueError, match=r"Row.*out of bounds"):
+            extractor.get_cell_center(5, 0)
+
+    def test_get_cell_center_col_out_of_bounds(self) -> None:
+        """Test get_cell_center raises for invalid column."""
+        extractor = GridExtractor()
+
+        with pytest.raises(ValueError, match=r"Col.*out of bounds"):
+            extractor.get_cell_center(0, 10)
+
+    def test_get_cell_bounds(self) -> None:
+        """Test get_cell_bounds returns correct bounding box."""
+        extractor = GridExtractor(
+            screen_width=REFERENCE_WIDTH,
+            screen_height=REFERENCE_HEIGHT,
+        )
+        bounds = extractor.get_cell_bounds(0, 0)
+
+        assert bounds == (153, 945, 120, 120)
+
+    def test_get_cell_bounds_row_out_of_bounds(self) -> None:
+        """Test get_cell_bounds raises for invalid row."""
+        extractor = GridExtractor()
+
+        with pytest.raises(ValueError, match=r"Row.*out of bounds"):
+            extractor.get_cell_bounds(-1, 0)
+
+    def test_get_cell_bounds_col_out_of_bounds(self) -> None:
+        """Test get_cell_bounds raises for invalid column."""
+        extractor = GridExtractor()
+
+        with pytest.raises(ValueError, match=r"Col.*out of bounds"):
+            extractor.get_cell_bounds(0, -1)
+
+    def test_cell_index_to_pos(self) -> None:
+        """Test cell_index_to_pos converts index correctly."""
+        extractor = GridExtractor()
+
+        # Index 0 -> (0, 0)
+        assert extractor.cell_index_to_pos(0) == (0, 0)
+
+        # Index 4 -> (0, 4)
+        assert extractor.cell_index_to_pos(4) == (0, 4)
+
+        # Index 5 -> (1, 0)
+        assert extractor.cell_index_to_pos(5) == (1, 0)
+
+        # Index 14 -> (2, 4)
+        assert extractor.cell_index_to_pos(14) == (2, 4)
+
+    def test_cell_index_to_pos_out_of_bounds(self) -> None:
+        """Test cell_index_to_pos raises for invalid index."""
+        extractor = GridExtractor()
+
+        with pytest.raises(ValueError, match=r"Index.*out of bounds"):
+            extractor.cell_index_to_pos(15)
+
+        with pytest.raises(ValueError, match=r"Index.*out of bounds"):
+            extractor.cell_index_to_pos(-1)
+
+    def test_pos_to_cell_index(self) -> None:
+        """Test pos_to_cell_index converts position correctly."""
+        extractor = GridExtractor()
+
+        # (0, 0) -> 0
+        assert extractor.pos_to_cell_index(0, 0) == 0
+
+        # (0, 4) -> 4
+        assert extractor.pos_to_cell_index(0, 4) == 4
+
+        # (1, 0) -> 5
+        assert extractor.pos_to_cell_index(1, 0) == 5
+
+        # (2, 4) -> 14
+        assert extractor.pos_to_cell_index(2, 4) == 14
+
+    def test_pos_to_cell_index_out_of_bounds(self) -> None:
+        """Test pos_to_cell_index raises for invalid position."""
+        extractor = GridExtractor()
+
+        with pytest.raises(ValueError, match=r"Row.*out of bounds"):
+            extractor.pos_to_cell_index(3, 0)
+
+        with pytest.raises(ValueError, match=r"Col.*out of bounds"):
+            extractor.pos_to_cell_index(0, 5)
+
+    def test_from_screenshot(self) -> None:
+        """Test from_screenshot class method."""
+        # Create a mock screenshot
+        screenshot = np.zeros((1920, 1080, 3), dtype=np.uint8)
+
+        extractor = GridExtractor.from_screenshot(screenshot)
+
+        assert extractor.screen_width == 1080
+        assert extractor.screen_height == 1920
+
+
+class TestGridConfig:
+    """Tests for the GridConfig dataclass."""
+
+    def test_grid_config_creation(self) -> None:
+        """Test creating a GridConfig."""
+        config = GridConfig(
+            top_x=100,
+            top_y=200,
+            cell_width=50,
+            cell_height=50,
+        )
+
+        assert config.top_x == 100
+        assert config.top_y == 200
+        assert config.cell_width == 50
+        assert config.cell_height == 50
+        assert config.cell_gap == 0  # Default
+        assert config.rows == GRID_ROWS
+        assert config.cols == GRID_COLS
+
+    def test_grid_config_total_cells(self) -> None:
+        """Test total_cells property."""
+        config = GridConfig(
+            top_x=0,
+            top_y=0,
+            cell_width=100,
+            cell_height=100,
+            rows=3,
+            cols=5,
+        )
+
+        assert config.total_cells == 15
+
+    def test_custom_grid_config(self) -> None:
+        """Test GridExtractor with custom config."""
+        custom_config = GridConfig(
+            top_x=50,
+            top_y=100,
+            cell_width=100,
+            cell_height=100,
+            cell_gap=10,
+            rows=2,
+            cols=3,
+        )
+
+        extractor = GridExtractor(config=custom_config)
+        boxes, cell_size = extractor.get_grid()
+
+        assert boxes.shape == (2, 3, 2)
+        assert cell_size == (100, 100)
+        assert boxes[0, 0, 0] == 50
+        assert boxes[0, 0, 1] == 100
+
+
+# =============================================================================
+# Extended BotPerception Tests (T010 - Coverage Enhancement)
+# =============================================================================
+
+
+class TestBotPerceptionMethods:
+    """Extended tests for BotPerception methods."""
+
+    def test_match_histogram_empty_refs(self) -> None:
+        """Test _match_histogram with no reference histograms."""
+        perception = BotPerception()
+        perception._ref_histograms = []
+
+        img = np.zeros((100, 100, 3), dtype=np.uint8)
+        result = perception._match_histogram(img)
+
+        assert result == ("unknown.png", 0.0)
+
+    def test_match_template_empty_refs(self) -> None:
+        """Test _match_template with no reference templates."""
+        perception = BotPerception()
+        perception._ref_templates = []
+
+        img = np.zeros((100, 100, 3), dtype=np.uint8)
+        result = perception._match_template(img)
+
+        assert result == ("unknown.png", 0.0)
+
+    def test_compute_color_histogram(self) -> None:
+        """Test _compute_color_histogram produces valid output."""
+        # Create a simple test image
+        img = np.zeros((50, 50, 3), dtype=np.uint8)
+        img[:, :, 0] = 255  # Blue channel
+
+        hist = BotPerception._compute_color_histogram(img)
+
+        assert isinstance(hist, np.ndarray)
+        assert hist.dtype == np.float32
+        # With 32 bins per channel, flattened should be 32*32 = 1024
+        assert hist.shape == (1024,)
+
+    def test_get_dominant_color_nonexistent_file(self) -> None:
+        """Test _get_dominant_color with nonexistent file."""
+        result = BotPerception._get_dominant_color("nonexistent.png")
+
+        assert result.shape == (5, 3)
+        assert np.all(result == 0)
+
+    def test_get_dominant_color_with_crop(self, temp_dir: Path) -> None:
+        """Test _get_dominant_color with crop option."""
+        # Create a test image
+        img = np.full((100, 100, 3), 128, dtype=np.uint8)
+        test_path = temp_dir / "test_image.png"
+        cv2.imwrite(str(test_path), img)
+
+        result = BotPerception._get_dominant_color(test_path, crop=True)
+
+        assert result.shape == (5, 3)
+
+    def test_match_unit_nonexistent_file(self) -> None:
+        """Test match_unit with nonexistent file."""
+        perception = BotPerception()
+
+        result = perception.match_unit("nonexistent.png")
+
+        assert result == ("unknown.png", 0.0)
+
+    def test_match_unit_empty_refs(self) -> None:
+        """Test match_unit with no reference units."""
+        perception = BotPerception()
+        perception._ref_units = []
+
+        result = perception.match_unit("some_file.png")
+
+        assert result == ("unknown.png", 0.0)
+
+    def test_is_empty_slot_dark_image(self) -> None:
+        """Test _is_empty_slot with dark image."""
+        perception = BotPerception()
+
+        # Very dark image should be considered empty
+        dark_img = np.zeros((100, 100, 3), dtype=np.uint8)
+        dark_img[:] = 10  # Very dark
+
+        result = perception._is_empty_slot(dark_img)
+
+        # The actual behavior depends on implementation
+        assert isinstance(result, bool)
+
+
+class TestBotPerceptionRankModel:
+    """Tests for BotPerception rank model functionality."""
+
+    def test_load_rank_model_cached(self) -> None:
+        """Test that rank model is cached after loading."""
+        perception = BotPerception()
+
+        # Load once
+        model1 = perception._load_rank_model()
+
+        # Load again - should return same instance
+        model2 = perception._load_rank_model()
+
+        if model1 is not None:
+            assert model1 is model2
+
+    def test_match_rank_with_valid_image(self, temp_dir: Path) -> None:
+        """Test match_rank with valid image."""
+        perception = BotPerception()
+
+        # Create a test image with correct dimensions (120x120 for the model)
+        img = np.full((120, 120, 3), 128, dtype=np.uint8)
+        test_path = temp_dir / "test_unit.png"
+        cv2.imwrite(str(test_path), img)
+
+        # match_rank returns a tuple (rank, confidence)
+        result = perception.match_rank(test_path)
+
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+        rank, confidence = result
+        assert isinstance(rank, int)
+        assert rank >= 0
+        assert isinstance(confidence, float)
+
+    def test_match_rank_nonexistent_file(self) -> None:
+        """Test match_rank with nonexistent file returns (0, 0.0)."""
+        perception = BotPerception()
+
+        result = perception.match_rank("nonexistent_file.png")
+
+        assert result == (0, 0.0)
+
+
+class TestModuleLevelFunctions:
+    """Tests for module-level functions in vision.py."""
+
+    def test_get_grid_function(self) -> None:
+        """Test the get_grid convenience function."""
+        boxes, cell_size = get_grid()
+
+        assert boxes.shape == (GRID_ROWS, GRID_COLS, 2)
+        assert len(cell_size) == 2
+
+    def test_get_grid_with_custom_resolution(self) -> None:
+        """Test get_grid with custom resolution."""
+        boxes, cell_size = get_grid(screen_width=720, screen_height=1280)
+
+        assert boxes.shape == (GRID_ROWS, GRID_COLS, 2)
+        # Should be scaled
+        scale_x = 720 / REFERENCE_WIDTH
+        assert cell_size[0] == int(120 * scale_x)

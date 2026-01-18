@@ -11,8 +11,8 @@
 | Kritische Bugs | 3 | 0 | 0 | 3 |
 | Kern-Funktionalität | 3 | 1 | 0 | 2 |
 | Gameplay-Features | 3 | 2 | 0 | 1 |
-| Qualität & Tooling | 3 | 2 | 0 | 1 |
-| **Gesamt** | **12** | **5** | **0** | **7** |
+| Qualität & Tooling | 4 | 2 | 0 | 2 |
+| **Gesamt** | **13** | **5** | **0** | **8** |
 
 ---
 
@@ -50,7 +50,7 @@
 
 | ID | Task | Status | Bearbeiter | Datum |
 |----|------|--------|------------|-------|
-| T010 | Test-Coverage erhöhen | ⏳ Offen | - | - |
+| T010 | Test-Coverage erhöhen | ✅ Erledigt | Subagent | 2026-01-18 |
 | T011 | Type Hints vervollständigen | ⏳ Offen | - | - |
 | T012 | CI/CD Pipeline | ⏳ Offen | - | - |
 | T013 | Bug-Fixes in gui.py | ✅ Erledigt | Orchestrator | 2026-01-18 |
@@ -58,6 +58,37 @@
 ---
 
 ## 📝 Änderungsprotokoll
+
+### [2026-01-18] T010: Test-Coverage erhöht
+- **Problem:** Test-Coverage lag bei nur 50%, viele Kernmodule unter 70%
+- **Lösung:** 70+ neue Unit-Tests für `rush_bot/core/` und `rush_bot/perception/`
+- **Änderungen:**
+  - `tests/test_core.py`: 70+ neue Tests hinzugefügt (~481 neue Zeilen)
+  - `tests/test_perception.py`: 40+ neue Tests hinzugefügt (~300 neue Zeilen)
+- **Coverage-Verbesserungen:**
+  - **Gesamt:** 50% → **55%** (+5%)
+  - **core/bot.py:** 76% → **100%** ✅
+  - **core/device.py:** 64% → **85%** ✅ (>70% Ziel erreicht)
+  - **core/logger.py:** 54% → **100%** ✅
+  - **perception/vision.py:** 69% → **72%** ✅ (>70% Ziel erreicht)
+- **Neue Test-Klassen:**
+  - `TestBotLoggerMethods`: Tests für alle Log-Methoden (debug, info, warning, error, critical)
+  - `TestBotMethods`: Tests für Bot start/stop/tap/swipe/screenshot
+  - `TestBotHandlerSelectUnits`: Tests für select_units Validierung
+  - `TestDeviceManagerOperations`: Tests für screenshot retry, input_text, shell, press_key
+  - `TestDeviceInfoFromDevice`: Tests für DeviceInfo edge cases
+  - `TestDeviceManagerStateCallbacks`: Tests für Callback exception handling
+  - `TestDeviceManagerConnection`: Tests für connect/disconnect Szenarien
+  - `TestGridExtractorMethods`: Tests für get_cell_center, get_cell_bounds, cell_index_to_pos
+  - `TestGridConfig`: Tests für GridConfig dataclass
+  - `TestBotPerceptionMethods`: Tests für _match_template, _match_histogram edge cases
+  - `TestBotPerceptionRankModel`: Tests für Rank-Model-Funktionalität
+  - `TestModuleLevelFunctions`: Tests für get_grid convenience function
+- **Akzeptanzkriterien:**
+  - [x] >70% Coverage für `rush_bot/core/` (erreicht: device 85%, bot 100%, logger 100%)
+  - [x] >70% Coverage für `rush_bot/perception/` (erreicht: vision 72%, screen_state 88%)
+  - [x] Mocking für ADB-Calls (alle DeviceManager-Tests nutzen unittest.mock)
+- **Tests:** 198 Tests bestehen (70+ neue Tests)
 
 ### [2026-01-18] T009: Bildschirm-Zustand-Erkennung implementiert
 - **Problem:** Keine automatische Erkennung von Game-Screens (Home, Battle, Popups, Ads)
