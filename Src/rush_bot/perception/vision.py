@@ -634,6 +634,75 @@ class BotPerception:
 
         return (int(prob.argmax()), float(prob.max()))
 
+    def match_unit_array(self, img: np.ndarray) -> tuple[str, float]:
+        """Match a unit image array to known unit types.
+
+        This is an array-accepting variant of match_unit for in-memory images.
+
+        Args:
+            img: BGR image array of the unit.
+
+        Returns:
+            Tuple of (unit_name, confidence). Higher confidence = better match.
+        """
+        if not self._ref_units or img is None or img.size == 0:
+            return ("unknown.png", 0.0)
+
+        # Method 1: Template matching
+        template_match, template_score = self._match_template(img)
+
+        if template_score >= TEMPLATE_MATCH_THRESHOLD:
+            return (template_match, template_score)
+
+        # Method 2: Histogram comparison
+        hist_match, hist_score = self._match_histogram(img)
+
+        # Combine results
+        results = [
+            (template_match, template_score),
+            (hist_match, hist_score),
+        ]
+
+        valid_results = [
+            (name, score)
+            for name, score in results
+            if name not in ("unknown.png", "empty.png") and score > 0.3
+        ]
+
+        if valid_results:
+            return max(valid_results, key=lambda x: x[1])
+
+        if self._is_empty_slot(img):
+            return ("empty.png", 1.0)
+
+        return ("unknown.png", 0.0)
+
+    def match_rank_array(self, img: np.ndarray) -> tuple[int, float]:
+        """Detect the rank of a unit from an image array.
+
+        This is an array-accepting variant of match_rank for in-memory images.
+
+        Args:
+            img: BGR or grayscale image array.
+
+        Returns:
+            Tuple of (rank, confidence). Rank 0 = empty slot.
+        """
+        model = self._load_rank_model()
+        if model is None or img is None or img.size == 0:
+            return (0, 0.0)
+
+        # Convert to grayscale if needed
+        if len(img.shape) == 3:
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = img
+
+        edges = cv2.Canny(gray, 50, 100)
+        prob = model.predict_proba(edges.reshape(1, -1))
+
+        return (int(prob.argmax()), float(prob.max()))
+
     def analyze_grid(
         self,
         image_paths: list[Path | str],

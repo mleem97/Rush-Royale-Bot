@@ -1,5 +1,12 @@
 """Computer Vision and Machine Learning module."""
 
+from .cv_debug import CVDebugFrame
+from .cv_debug import CVDebugLevel
+from .cv_debug import CVDebugMode
+from .cv_debug import DetectionResult
+from .cv_debug import MergeCandidate
+from .cv_debug import PageContext
+from .cv_debug import run_cv_debug_on_screenshot
 from .icon_detection import ICON_ROI_MAP
 from .icon_detection import ContextAwareIconDetector
 from .icon_detection import IconROI
@@ -30,6 +37,14 @@ from .vision import save_rank_model
 from .vision import train_rank_model
 
 __all__ = [
+    # CV Debug Mode
+    "CVDebugFrame",
+    "CVDebugLevel",
+    "CVDebugMode",
+    "DetectionResult",
+    "MergeCandidate",
+    "PageContext",
+    "run_cv_debug_on_screenshot",
     # Icon Detection (Context-Aware)
     "ContextAwareIconDetector",
     "ICON_ROI_MAP",
