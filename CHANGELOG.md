@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- (placeholder)
+
+### Changed
+- (placeholder)
+
+### Fixed
+- (placeholder)
+
+### Security
+- (placeholder)
+
+## [0.5.1] - 2026-01-18
+
+### Added
 - Comprehensive `.gitignore` with 200+ patterns covering Python, ML, IDE, OS-specific files
 - `.gitkeep` files to preserve empty directory structure for ML data
   - `machine_learning/inputs/.gitkeep`
@@ -206,7 +220,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
-- **Unreleased** - Project hygiene improvements (.gitignore, .gitkeep files)
+- **Unreleased** - (placeholder)
+- **0.5.1** - Project hygiene improvements (.gitignore, .gitkeep files)
 - **0.5.0** - Documentation and icon organization
 - **0.4.0** - Loading screen detection & context-aware icons (T014, T017)
 - **0.3.0** - Dungeon automation, mana management, screen state detection (T007-T009)
@@ -215,7 +230,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **0.0.1** - Python 3.13 upgrade and enhanced testing
 - **0.0.0** - Initial Rush Royale Bot release (original AxelBjork project)
 
-[Unreleased]: https://github.com/mleem97/Rush-Royale-Bot/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/mleem97/Rush-Royale-Bot/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/mleem97/Rush-Royale-Bot/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/mleem97/Rush-Royale-Bot/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/mleem97/Rush-Royale-Bot/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/mleem97/Rush-Royale-Bot/compare/v0.2.0...v0.3.0
