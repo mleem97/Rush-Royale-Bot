@@ -70,12 +70,13 @@
 ## 🟡 Priorität 3: Gameplay-Features
 
 ### T007: PvE-Dungeon-Loop implementieren
-- **Status:** ⏳ Offen
+- **Status:** ✅ Erledigt
 - **Beschreibung:** Vollständige PvE-Automatisierung
+- **Dateien:** `src/rush_bot/core/dungeon.py`
 - **Akzeptanzkriterien:**
-  - [ ] Dungeon-Eintritt automatisiert
-  - [ ] Kampf-Loop funktioniert
-  - [ ] Ergebnis-Screen erkannt
+  - [x] Dungeon-Eintritt automatisiert
+  - [x] Kampf-Loop funktioniert
+  - [x] Ergebnis-Screen erkannt
 
 ### T008: Mana-Management verbessern
 - **Status:** ✅ Erledigt

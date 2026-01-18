@@ -10,9 +10,9 @@
 |-----------|--------|-------|-----------|----------|
 | Kritische Bugs | 3 | 0 | 0 | 3 |
 | Kern-Funktionalität | 3 | 0 | 0 | 3 |
-| Gameplay-Features | 3 | 1 | 0 | 2 |
+| Gameplay-Features | 3 | 0 | 0 | 3 |
 | Qualität & Tooling | 4 | 0 | 0 | 4 |
-| **Gesamt** | **13** | **1** | **0** | **12** |
+| **Gesamt** | **13** | **0** | **0** | **13** |
 
 ---
 
@@ -40,7 +40,7 @@
 
 | ID | Task | Status | Bearbeiter | Datum |
 |----|------|--------|------------|-------|
-| T007 | PvE-Dungeon-Loop | ⏳ Offen | - | - |
+| T007 | PvE-Dungeon-Loop | ✅ Erledigt | Subagent | 2026-01-18 |
 | T008 | Mana-Management | ✅ Erledigt | Subagent | 2026-01-18 |
 | T009 | Bildschirm-Zustand-Erkennung | ✅ Erledigt | Subagent | 2026-01-18 |
 
@@ -58,6 +58,53 @@
 ---
 
 ## 📝 Änderungsprotokoll
+
+### [2026-01-18] T007: PvE-Dungeon-Loop implementiert
+- **Problem:** Keine automatisierte PvE-Dungeon-Farming-Funktionalität
+- **Lösung:** Neues `DungeonLoop` Modul mit vollständiger Dungeon-Automatisierung
+- **Änderungen:**
+  - `src/rush_bot/core/dungeon.py`: Neue Datei mit ~1070 Zeilen Code
+  - `src/rush_bot/core/__init__.py`: 7 neue Exports hinzugefügt
+  - `tests/test_core.py`: 43 neue Unit-Tests für Dungeon-Loop
+- **Features:**
+  - **DungeonConfig:** Konfigurierbare Parameter (target_chapter, target_floor, auto_retry, max_retries, skip_ads)
+  - **DungeonState Enum:** 13 Zustände für State-Machine (IDLE, NAVIGATING, IN_BATTLE, etc.)
+  - **DungeonResult Enum:** 5 Ergebnistypen (VICTORY, DEFEAT, ERROR, CANCELLED, TIMEOUT)
+  - **DungeonStats:** Statistik-Tracking (victories, defeats, win_rate, battle_time, ads_skipped)
+  - **DungeonRunResult:** Detailliertes Ergebnis pro Dungeon-Run
+  - **Resolution-Skalierung:** Automatische Anpassung an verschiedene Bildschirmauflösungen (720p-1440p)
+  - **Navigation-Automation:** Automatische Navigation vom Home-Screen zum Dungeon
+  - **Chapter/Floor-Auswahl:** Template-basierte Erkennung und Auswahl
+  - **Battle-Loop:** Automatisierte Kampf-Überwachung mit Victory/Defeat-Erkennung
+  - **Retry-System:** Konfigurierbares Auto-Retry bei Niederlagen
+  - **Ad-Handling:** Automatisches Überspringen von Werbung
+  - **Popup-Handling:** Erkennung und Schließen von Popups
+  - **Continuous-Mode:** `run_continuous()` für mehrfache Dungeon-Runs
+- **Neue Klassen:**
+  - `DungeonLoop`: Hauptklasse für Dungeon-Automatisierung
+  - `DungeonConfig`: Dataclass für Loop-Konfiguration
+  - `DungeonStats`: Dataclass für Session-Statistiken
+  - `DungeonRunResult`: Dataclass für Run-Ergebnisse
+  - `DungeonState`: Enum für State-Machine-Zustände
+  - `DungeonResult`: Enum für Run-Ergebnisse
+- **Hauptmethoden:**
+  - `run()`: Einzelner Dungeon-Run mit Navigation, Battle und Ergebnis-Handling
+  - `run_continuous()`: Mehrfache Runs bis max_runs oder stop()
+  - `stop()`: Graceful Shutdown des Loops
+  - `reset_stats()`: Statistiken zurücksetzen
+  - `_navigate_to_dungeon()`: Home → Dungeon-Selection Navigation
+  - `_select_chapter()`: Chapter-Auswahl via Template-Matching
+  - `_select_floor()`: Floor-Auswahl via Template-Matching oder Grid-Position
+  - `_run_battle_loop()`: Battle-Überwachung mit Timeout
+  - `_handle_victory()`: Victory-Screen-Handling
+  - `_handle_defeat()`: Defeat-Screen-Handling mit Retry-Logik
+  - `_handle_advertisement()`: Ad-Skip-Logik
+  - `_handle_popup()`: Popup-Close-Logik
+- **Akzeptanzkriterien:**
+  - [x] Dungeon-Eintritt automatisiert
+  - [x] Kampf-Loop funktioniert (Battle-State-Tracking)
+  - [x] Ergebnis-Screen erkannt (Victory/Defeat Detection)
+- **Tests:** 322 Tests bestehen (43 neue Dungeon-Loop-Tests)
 
 ### [2026-01-18] T008: Mana-Management implementiert
 - **Problem:** Keine automatische Mana-Erkennung, keine Upgrade-Priorisierung

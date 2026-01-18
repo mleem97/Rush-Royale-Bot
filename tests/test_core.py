@@ -2193,3 +2193,618 @@ class TestCreateManaManager:
         manager = create_mana_manager(screen_width=720, screen_height=1280)
         assert manager.screen_width == 720
         assert manager.screen_height == 1280
+
+
+# =============================================================================
+# Dungeon Loop Tests
+# =============================================================================
+
+from rush_bot.core import DungeonConfig
+from rush_bot.core import DungeonLoop
+from rush_bot.core import DungeonResult
+from rush_bot.core import DungeonRunResult
+from rush_bot.core import DungeonState
+from rush_bot.core import DungeonStats
+from rush_bot.core import create_dungeon_loop
+
+
+class TestDungeonConfig:
+    """Tests for DungeonConfig dataclass."""
+
+    def test_default_config(self) -> None:
+        """Test default dungeon configuration."""
+        config = DungeonConfig()
+        assert config.target_chapter == 1
+        assert config.target_floor == 1
+        assert config.auto_retry is True
+        assert config.max_retries == 3
+        assert config.skip_ads is True
+        assert config.battle_timeout_seconds == 600
+        assert config.enable_battle_automation is True
+
+    def test_custom_config(self) -> None:
+        """Test custom dungeon configuration."""
+        config = DungeonConfig(
+            target_chapter=3,
+            target_floor=10,
+            auto_retry=False,
+            max_retries=5,
+        )
+        assert config.target_chapter == 3
+        assert config.target_floor == 10
+        assert config.auto_retry is False
+        assert config.max_retries == 5
+
+    def test_invalid_chapter_raises_error(self) -> None:
+        """Test that invalid chapter raises ValueError."""
+        with pytest.raises(ValueError, match="Invalid chapter"):
+            DungeonConfig(target_chapter=0)
+
+        with pytest.raises(ValueError, match="Invalid chapter"):
+            DungeonConfig(target_chapter=7)
+
+    def test_invalid_floor_raises_error(self) -> None:
+        """Test that invalid floor raises ValueError."""
+        with pytest.raises(ValueError, match="Invalid floor"):
+            DungeonConfig(target_floor=0)
+
+        with pytest.raises(ValueError, match="Invalid floor"):
+            DungeonConfig(target_floor=15)
+
+    def test_invalid_max_retries_raises_error(self) -> None:
+        """Test that invalid max_retries raises ValueError."""
+        with pytest.raises(ValueError, match="Invalid max_retries"):
+            DungeonConfig(max_retries=-1)
+
+
+class TestDungeonState:
+    """Tests for DungeonState enum."""
+
+    def test_all_states_exist(self) -> None:
+        """Test that all expected states exist."""
+        assert DungeonState.IDLE is not None
+        assert DungeonState.NAVIGATING_TO_DUNGEON is not None
+        assert DungeonState.SELECTING_CHAPTER is not None
+        assert DungeonState.SELECTING_FLOOR is not None
+        assert DungeonState.WAITING_FOR_BATTLE is not None
+        assert DungeonState.IN_BATTLE is not None
+        assert DungeonState.BATTLE_ENDED is not None
+        assert DungeonState.HANDLING_VICTORY is not None
+        assert DungeonState.HANDLING_DEFEAT is not None
+        assert DungeonState.HANDLING_AD is not None
+        assert DungeonState.RETURNING_TO_MENU is not None
+        assert DungeonState.ERROR is not None
+        assert DungeonState.COMPLETED is not None
+
+
+class TestDungeonResult:
+    """Tests for DungeonResult enum."""
+
+    def test_all_results_exist(self) -> None:
+        """Test that all expected results exist."""
+        assert DungeonResult.VICTORY is not None
+        assert DungeonResult.DEFEAT is not None
+        assert DungeonResult.ERROR is not None
+        assert DungeonResult.CANCELLED is not None
+        assert DungeonResult.TIMEOUT is not None
+
+
+class TestDungeonStats:
+    """Tests for DungeonStats dataclass."""
+
+    def test_default_stats(self) -> None:
+        """Test default stats are zero."""
+        stats = DungeonStats()
+        assert stats.runs_completed == 0
+        assert stats.victories == 0
+        assert stats.defeats == 0
+        assert stats.errors == 0
+        assert stats.total_battle_time_seconds == 0.0
+        assert stats.ads_skipped == 0
+        assert stats.retries_used == 0
+
+    def test_record_victory(self) -> None:
+        """Test recording a victory."""
+        stats = DungeonStats()
+        stats.record_victory(120.5)
+
+        assert stats.runs_completed == 1
+        assert stats.victories == 1
+        assert stats.total_battle_time_seconds == 120.5
+
+    def test_record_defeat(self) -> None:
+        """Test recording a defeat."""
+        stats = DungeonStats()
+        stats.record_defeat(60.0)
+
+        assert stats.runs_completed == 1
+        assert stats.defeats == 1
+        assert stats.total_battle_time_seconds == 60.0
+
+    def test_record_error(self) -> None:
+        """Test recording an error."""
+        stats = DungeonStats()
+        stats.record_error()
+
+        assert stats.errors == 1
+
+    def test_record_ad_skip(self) -> None:
+        """Test recording ad skip."""
+        stats = DungeonStats()
+        stats.record_ad_skip()
+
+        assert stats.ads_skipped == 1
+
+    def test_record_retry(self) -> None:
+        """Test recording retry."""
+        stats = DungeonStats()
+        stats.record_retry()
+
+        assert stats.retries_used == 1
+
+    def test_win_rate_calculation(self) -> None:
+        """Test win rate calculation."""
+        stats = DungeonStats()
+
+        # No runs, should be 0
+        assert stats.win_rate == 0.0
+
+        # 2 victories, 1 defeat = 66.67%
+        stats.record_victory(60.0)
+        stats.record_victory(60.0)
+        stats.record_defeat(60.0)
+
+        assert abs(stats.win_rate - 66.666666) < 0.1
+
+    def test_average_battle_time(self) -> None:
+        """Test average battle time calculation."""
+        stats = DungeonStats()
+
+        # No runs, should be 0
+        assert stats.average_battle_time == 0.0
+
+        # 3 runs with different times
+        stats.record_victory(60.0)
+        stats.record_victory(120.0)
+        stats.record_defeat(90.0)
+
+        assert stats.average_battle_time == 90.0
+
+
+class TestDungeonRunResult:
+    """Tests for DungeonRunResult dataclass."""
+
+    def test_victory_result(self) -> None:
+        """Test victory run result."""
+        result = DungeonRunResult(
+            result=DungeonResult.VICTORY,
+            chapter=2,
+            floor=5,
+            battle_time_seconds=120.0,
+        )
+
+        assert result.result == DungeonResult.VICTORY
+        assert result.chapter == 2
+        assert result.floor == 5
+        assert result.battle_time_seconds == 120.0
+        assert result.error_message == ""
+        assert result.retry_count == 0
+
+    def test_error_result(self) -> None:
+        """Test error run result."""
+        result = DungeonRunResult(
+            result=DungeonResult.ERROR,
+            chapter=1,
+            floor=1,
+            error_message="Failed to connect",
+        )
+
+        assert result.result == DungeonResult.ERROR
+        assert result.error_message == "Failed to connect"
+
+
+class TestDungeonLoop:
+    """Tests for DungeonLoop class."""
+
+    def test_dungeon_loop_creation(self) -> None:
+        """Test that DungeonLoop can be created."""
+        mock_device = MagicMock()
+        mock_detector = MagicMock()
+
+        dungeon = DungeonLoop(mock_device, mock_detector)
+
+        assert dungeon is not None
+        assert dungeon.state == DungeonState.IDLE
+        assert dungeon.is_running is False
+
+    def test_dungeon_loop_with_config(self) -> None:
+        """Test DungeonLoop with custom config."""
+        mock_device = MagicMock()
+        mock_detector = MagicMock()
+        config = DungeonConfig(target_chapter=3, target_floor=7)
+
+        dungeon = DungeonLoop(mock_device, mock_detector, config)
+
+        assert dungeon.config.target_chapter == 3
+        assert dungeon.config.target_floor == 7
+
+    def test_state_change_callback(self) -> None:
+        """Test state change callback is called."""
+        mock_device = MagicMock()
+        mock_detector = MagicMock()
+        states_received: list[DungeonState] = []
+
+        def callback(state: DungeonState) -> None:
+            states_received.append(state)
+
+        dungeon = DungeonLoop(mock_device, mock_detector, on_state_change=callback)
+        dungeon._set_state(DungeonState.NAVIGATING_TO_DUNGEON)
+
+        assert DungeonState.NAVIGATING_TO_DUNGEON in states_received
+
+    def test_state_change_callback_exception_handling(self) -> None:
+        """Test that callback exceptions don't crash the loop."""
+        mock_device = MagicMock()
+        mock_detector = MagicMock()
+
+        def bad_callback(state: DungeonState) -> None:
+            raise RuntimeError("Callback error")
+
+        dungeon = DungeonLoop(mock_device, mock_detector, on_state_change=bad_callback)
+
+        # Should not raise
+        dungeon._set_state(DungeonState.IN_BATTLE)
+        assert dungeon.state == DungeonState.IN_BATTLE
+
+    def test_battle_action_callback(self) -> None:
+        """Test battle action callback is called."""
+        mock_device = MagicMock()
+        mock_detector = MagicMock()
+        actions_received: list[str] = []
+
+        def callback(action: str) -> None:
+            actions_received.append(action)
+
+        dungeon = DungeonLoop(mock_device, mock_detector, on_battle_action=callback)
+        dungeon._notify_battle_action("Summon unit")
+
+        assert "Summon unit" in actions_received
+
+    def test_coordinate_scaling(self) -> None:
+        """Test coordinate scaling to different resolutions."""
+        mock_device = MagicMock()
+        mock_detector = MagicMock()
+
+        dungeon = DungeonLoop(mock_device, mock_detector)
+
+        # Default is 1080x1920
+        assert dungeon._scale_x(540) == 540
+        assert dungeon._scale_y(960) == 960
+
+        # Test scaling to 720x1280
+        dungeon._screen_width = 720
+        dungeon._screen_height = 1280
+
+        assert dungeon._scale_x(1080) == 720  # Full width
+        assert dungeon._scale_y(1920) == 1280  # Full height
+
+    def test_update_screen_resolution(self) -> None:
+        """Test screen resolution update from device info."""
+        mock_device = MagicMock()
+        mock_device.device_info = DeviceInfo(
+            serial="test",
+            screen_width=1440,
+            screen_height=2560,
+        )
+        mock_detector = MagicMock()
+
+        dungeon = DungeonLoop(mock_device, mock_detector)
+        dungeon._update_screen_resolution()
+
+        assert dungeon._screen_width == 1440
+        assert dungeon._screen_height == 2560
+
+    def test_stats_property(self) -> None:
+        """Test stats property returns DungeonStats."""
+        mock_device = MagicMock()
+        mock_detector = MagicMock()
+
+        dungeon = DungeonLoop(mock_device, mock_detector)
+
+        assert isinstance(dungeon.stats, DungeonStats)
+        assert dungeon.stats.victories == 0
+
+    def test_stop_method(self) -> None:
+        """Test stop method sets should_stop flag."""
+        mock_device = MagicMock()
+        mock_detector = MagicMock()
+
+        dungeon = DungeonLoop(mock_device, mock_detector)
+        dungeon.stop()
+
+        assert dungeon._should_stop is True
+
+    def test_reset_stats(self) -> None:
+        """Test reset_stats clears statistics."""
+        mock_device = MagicMock()
+        mock_detector = MagicMock()
+
+        dungeon = DungeonLoop(mock_device, mock_detector)
+        dungeon._stats.record_victory(60.0)
+        dungeon._stats.record_defeat(30.0)
+
+        dungeon.reset_stats()
+
+        assert dungeon.stats.victories == 0
+        assert dungeon.stats.defeats == 0
+        assert dungeon.stats.runs_completed == 0
+
+    def test_double_run_returns_error(self) -> None:
+        """Test that running while already running returns error."""
+        mock_device = MagicMock()
+        mock_detector = MagicMock()
+
+        dungeon = DungeonLoop(mock_device, mock_detector)
+        dungeon._is_running = True
+
+        result = dungeon.run()
+
+        assert result.result == DungeonResult.ERROR
+        assert "Already running" in result.error_message
+
+    def test_create_error_result(self) -> None:
+        """Test error result creation."""
+        mock_device = MagicMock()
+        mock_detector = MagicMock()
+
+        dungeon = DungeonLoop(mock_device, mock_detector)
+        result = dungeon._create_error_result("Test error")
+
+        assert result.result == DungeonResult.ERROR
+        assert result.error_message == "Test error"
+        assert dungeon.state == DungeonState.ERROR
+        assert dungeon.stats.errors == 1
+
+
+class TestDungeonLoopNavigation:
+    """Tests for DungeonLoop navigation methods."""
+
+    def test_navigate_to_dungeon_already_there(self) -> None:
+        """Test navigation when already on dungeon select."""
+        mock_device = MagicMock()
+        mock_device.screenshot.return_value = MagicMock()
+
+        mock_detector = MagicMock()
+        mock_result = MagicMock()
+        mock_result.state.name = "DUNGEON_SELECT"
+        mock_detector.detect.return_value = mock_result
+
+        dungeon = DungeonLoop(mock_device, mock_detector)
+
+        # Mock _capture_screen to return valid array
+        dungeon._capture_screen = MagicMock(return_value=np.zeros((1920, 1080, 3), dtype=np.uint8))
+
+        result = dungeon._navigate_to_dungeon()
+
+        assert result is True
+
+    def test_select_chapter_found(self) -> None:
+        """Test chapter selection when chapter template is found."""
+        mock_device = MagicMock()
+        mock_device.tap.return_value = True
+
+        mock_detector = MagicMock()
+        mock_detector.find_template.return_value = (True, (100, 200, 50, 50), 0.9)
+
+        dungeon = DungeonLoop(mock_device, mock_detector)
+        dungeon._capture_screen = MagicMock(return_value=np.zeros((1920, 1080, 3), dtype=np.uint8))
+        dungeon._delay = MagicMock()
+
+        result = dungeon._select_chapter()
+
+        assert result is True
+        mock_device.tap.assert_called()
+
+    def test_select_floor_found(self) -> None:
+        """Test floor selection when floor template is found."""
+        mock_device = MagicMock()
+        mock_device.tap.return_value = True
+
+        mock_detector = MagicMock()
+        mock_detector.find_template.return_value = (True, (100, 200, 50, 50), 0.9)
+
+        dungeon = DungeonLoop(mock_device, mock_detector)
+        dungeon._capture_screen = MagicMock(return_value=np.zeros((1920, 1080, 3), dtype=np.uint8))
+        dungeon._delay = MagicMock()
+
+        result = dungeon._select_floor()
+
+        assert result is True
+
+
+class TestDungeonLoopBattle:
+    """Tests for DungeonLoop battle handling."""
+
+    def test_handle_victory(self) -> None:
+        """Test victory handling."""
+        mock_device = MagicMock()
+        mock_device.tap.return_value = True
+        mock_detector = MagicMock()
+
+        dungeon = DungeonLoop(mock_device, mock_detector)
+        dungeon._battle_start_time = 100.0
+        dungeon._delay = MagicMock()
+
+        with patch("time.time", return_value=220.0):
+            dungeon._handle_victory()
+
+        assert dungeon.stats.victories == 1
+        assert dungeon.stats.runs_completed == 1
+        mock_device.tap.assert_called()
+
+    def test_handle_defeat_no_retry(self) -> None:
+        """Test defeat handling without retry."""
+        mock_device = MagicMock()
+        mock_device.tap.return_value = True
+        mock_detector = MagicMock()
+
+        config = DungeonConfig(auto_retry=False)
+        dungeon = DungeonLoop(mock_device, mock_detector, config)
+        dungeon._battle_start_time = 100.0
+        dungeon._delay = MagicMock()
+
+        with patch("time.time", return_value=200.0):
+            should_retry = dungeon._handle_defeat()
+
+        assert should_retry is False
+        assert dungeon.stats.defeats == 1
+
+    def test_handle_defeat_with_retry(self) -> None:
+        """Test defeat handling with retry available."""
+        mock_device = MagicMock()
+        mock_device.tap.return_value = True
+        mock_detector = MagicMock()
+
+        config = DungeonConfig(auto_retry=True, max_retries=3)
+        dungeon = DungeonLoop(mock_device, mock_detector, config)
+        dungeon._battle_start_time = 100.0
+        dungeon._current_retry = 0
+        dungeon._delay = MagicMock()
+
+        with patch("time.time", return_value=200.0):
+            should_retry = dungeon._handle_defeat()
+
+        assert should_retry is True
+        assert dungeon._current_retry == 1
+        assert dungeon.stats.retries_used == 1
+
+    def test_handle_defeat_max_retries_reached(self) -> None:
+        """Test defeat handling when max retries reached."""
+        mock_device = MagicMock()
+        mock_device.tap.return_value = True
+        mock_detector = MagicMock()
+
+        config = DungeonConfig(auto_retry=True, max_retries=3)
+        dungeon = DungeonLoop(mock_device, mock_detector, config)
+        dungeon._battle_start_time = 100.0
+        dungeon._current_retry = 3  # Already at max
+        dungeon._delay = MagicMock()
+
+        with patch("time.time", return_value=200.0):
+            should_retry = dungeon._handle_defeat()
+
+        assert should_retry is False
+
+    def test_handle_advertisement(self) -> None:
+        """Test advertisement handling."""
+        mock_device = MagicMock()
+        mock_device.tap.return_value = True
+        mock_detector = MagicMock()
+
+        dungeon = DungeonLoop(mock_device, mock_detector)
+        dungeon._delay = MagicMock()
+
+        dungeon._handle_advertisement()
+
+        assert dungeon.stats.ads_skipped == 1
+        assert mock_device.tap.call_count >= 1
+
+    def test_handle_popup_with_close_button(self) -> None:
+        """Test popup handling with close button found."""
+        mock_device = MagicMock()
+        mock_device.tap.return_value = True
+
+        mock_detector = MagicMock()
+        mock_detector.get_close_button_location.return_value = (500, 300)
+
+        dungeon = DungeonLoop(mock_device, mock_detector)
+        dungeon._capture_screen = MagicMock(return_value=np.zeros((1920, 1080, 3), dtype=np.uint8))
+        dungeon._delay = MagicMock()
+
+        dungeon._handle_popup()
+
+        mock_device.tap.assert_called_with(500, 300)
+
+    def test_handle_popup_with_back_button(self) -> None:
+        """Test popup handling with back button found."""
+        mock_device = MagicMock()
+        mock_device.tap.return_value = True
+
+        mock_detector = MagicMock()
+        mock_detector.get_close_button_location.return_value = None
+        mock_detector.get_back_button_location.return_value = (100, 150)
+
+        dungeon = DungeonLoop(mock_device, mock_detector)
+        dungeon._capture_screen = MagicMock(return_value=np.zeros((1920, 1080, 3), dtype=np.uint8))
+        dungeon._delay = MagicMock()
+
+        dungeon._handle_popup()
+
+        mock_device.tap.assert_called_with(100, 150)
+
+
+class TestDungeonLoopCapture:
+    """Tests for DungeonLoop capture methods."""
+
+    def test_capture_screen_success(self) -> None:
+        """Test successful screen capture."""
+        from PIL import Image
+
+        mock_device = MagicMock()
+        # Create a mock PIL image
+        mock_pil_image = Image.new("RGB", (1080, 1920), color=(255, 0, 0))
+        mock_device.screenshot.return_value = mock_pil_image
+
+        mock_detector = MagicMock()
+        dungeon = DungeonLoop(mock_device, mock_detector)
+
+        result = dungeon._capture_screen()
+
+        assert result is not None
+        assert result.shape == (1920, 1080, 3)
+
+    def test_capture_screen_failure(self) -> None:
+        """Test capture screen when screenshot fails."""
+        mock_device = MagicMock()
+        mock_device.screenshot.return_value = None
+
+        mock_detector = MagicMock()
+        dungeon = DungeonLoop(mock_device, mock_detector)
+
+        result = dungeon._capture_screen()
+
+        assert result is None
+
+
+class TestCreateDungeonLoop:
+    """Tests for create_dungeon_loop factory function."""
+
+    def test_create_default(self) -> None:
+        """Test creating dungeon loop with defaults."""
+        mock_device = MagicMock()
+        mock_detector = MagicMock()
+
+        dungeon = create_dungeon_loop(mock_device, mock_detector)
+
+        assert isinstance(dungeon, DungeonLoop)
+        assert dungeon.config.target_chapter == 1
+        assert dungeon.config.target_floor == 1
+
+    def test_create_with_parameters(self) -> None:
+        """Test creating dungeon loop with parameters."""
+        mock_device = MagicMock()
+        mock_detector = MagicMock()
+
+        dungeon = create_dungeon_loop(
+            mock_device,
+            mock_detector,
+            chapter=4,
+            floor=10,
+            auto_retry=False,
+            max_retries=5,
+        )
+
+        assert dungeon.config.target_chapter == 4
+        assert dungeon.config.target_floor == 10
+        assert dungeon.config.auto_retry is False
+        assert dungeon.config.max_retries == 5
