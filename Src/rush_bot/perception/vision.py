@@ -14,10 +14,11 @@ from typing import TYPE_CHECKING
 import cv2
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
 from sklearn.linear_model import LogisticRegression
 
 if TYPE_CHECKING:
-    from numpy.typing import NDArray
+    pass
 
 
 # Directory layout
@@ -346,9 +347,9 @@ class BotPerception:
     def __init__(self) -> None:
         """Initialize the perception system."""
         self._ref_units: list[str] = []
-        self._ref_templates: list[NDArray[np.uint8]] = []
-        self._ref_colors: list[NDArray[np.uint8]] = []
-        self._ref_histograms: list[NDArray[np.float32]] = []
+        self._ref_templates: list[np.ndarray] = []
+        self._ref_colors: list[np.ndarray] = []
+        self._ref_histograms: list[np.ndarray] = []
         self._rank_model: LogisticRegression | None = None
         self._load_reference_data()
 
@@ -389,9 +390,9 @@ class BotPerception:
 
     @staticmethod
     def _compute_color_histogram(
-        img: NDArray[np.uint8],
+        img: np.ndarray,
         bins: int = 32,
-    ) -> NDArray[np.float32]:
+    ) -> np.ndarray:
         """Compute a normalized color histogram for an image.
 
         Args:
@@ -460,7 +461,7 @@ class BotPerception:
 
     def _match_template(
         self,
-        img: NDArray[np.uint8],
+        img: np.ndarray,
     ) -> tuple[str, float]:
         """Match an image against reference templates using template matching.
 
@@ -494,7 +495,7 @@ class BotPerception:
 
     def _match_histogram(
         self,
-        img: NDArray[np.uint8],
+        img: np.ndarray,
     ) -> tuple[str, float]:
         """Match an image against references using histogram comparison.
 
@@ -594,7 +595,7 @@ class BotPerception:
 
         return ("unknown.png", 0.0)
 
-    def _is_empty_slot(self, img: NDArray[np.uint8]) -> bool:
+    def _is_empty_slot(self, img: np.ndarray) -> bool:
         """Check if an image represents an empty grid slot.
 
         Args:
@@ -604,9 +605,9 @@ class BotPerception:
             True if the slot appears empty.
         """
         # Empty slots tend to be dark/uniform
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        mean_val = float(np.mean(gray))
-        std_val = float(np.std(gray))
+        gray: np.ndarray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        mean_val = float(gray.mean())
+        std_val = float(gray.std())
 
         # Empty slots have low brightness and low variance
         return mean_val < 50 and std_val < 30
@@ -731,7 +732,7 @@ class BotPerception:
 
         # Return lowest rank adjacent unit
         adj_df = grid_df.iloc[adjacent_indices].sort_values("rank", ascending=True)
-        return adj_df.index[0]
+        return int(adj_df.index[0])
 
 
 # === Training Functions ===

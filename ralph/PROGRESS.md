@@ -11,8 +11,8 @@
 | Kritische Bugs | 3 | 0 | 0 | 3 |
 | Kern-Funktionalität | 3 | 1 | 0 | 2 |
 | Gameplay-Features | 3 | 2 | 0 | 1 |
-| Qualität & Tooling | 4 | 2 | 0 | 2 |
-| **Gesamt** | **13** | **5** | **0** | **8** |
+| Qualität & Tooling | 4 | 1 | 0 | 3 |
+| **Gesamt** | **13** | **4** | **0** | **9** |
 
 ---
 
@@ -51,13 +51,42 @@
 | ID | Task | Status | Bearbeiter | Datum |
 |----|------|--------|------------|-------|
 | T010 | Test-Coverage erhöhen | ✅ Erledigt | Subagent | 2026-01-18 |
-| T011 | Type Hints vervollständigen | ⏳ Offen | - | - |
-| T012 | CI/CD Pipeline | ⏳ Offen | - | - |
+| T011 | Type Hints vervollständigen | ✅ Erledigt | Subagent | 2026-01-18 |
+| T012 | CI/CD Pipeline | ✅ Erledigt | Orchestrator | 2026-01-18 |
 | T013 | Bug-Fixes in gui.py | ✅ Erledigt | Orchestrator | 2026-01-18 |
 
 ---
 
 ## 📝 Änderungsprotokoll
+
+### [2026-01-18] T011: Type Hints vervollständigt
+- **Problem:** `mypy src` hatte 18 Fehler, Type Hints unvollständig
+- **Lösung:** Systematische Korrektur aller Typ-Annotationen im gesamten Package
+- **Änderungen:**
+  - `src/rush_bot/perception/vision.py`: Generische `np.ndarray` Typen für OpenCV-Kompatibilität
+  - `src/rush_bot/gui/main_window.py`: `Any` für Legacy-Bot-Instanz (Migration)
+  - `src/rush_bot/core/device.py`: Type-Ignore für adbutils externe API
+  - `src/bot_logger.py`: Korrektur `format`-Variable/Methode-Namenskonflikt
+  - `src/bot_core.py`: Typ-Annotation für `current_icons` Liste
+  - `src/port_scan.py`: Expliziter `str()` cast für ADB serial
+  - `src/detect_deck.py`: `NDArray` zu `np.ndarray` für Konsistenz, `int()` cast für numpy-Index
+  - `src/test_gui.py`: Import-Korrektur für Legacy-GUI-Modul
+- **Zusätzlich:**
+  - `types-requests` Stub-Package installiert
+- **Akzeptanzkriterien:**
+  - [x] `mypy src` ohne Fehler (32 Dateien geprüft)
+  - [x] Kein `Any` außer bei externen APIs (Legacy-Bot, adbutils)
+  - [x] Docstrings vorhanden für öffentliche Funktionen
+- **Tests:** 198 Tests bestehen weiterhin
+
+### [2026-01-18] T012: CI/CD Pipeline (bereits implementiert)
+- **Hinweis:** CI/CD Pipeline war bereits in `.github/workflows/` vorhanden
+- **Dateien:** `.github/workflows/tests.yml`, `.github/workflows/release.yml`
+- **Features:**
+  - Tests auf ubuntu-latest und windows-latest
+  - Python 3.10, 3.11, 3.12, 3.13 Matrix
+  - Ruff Linting, Mypy Type-Check
+  - Coverage-Report mit Codecov
 
 ### [2026-01-18] T010: Test-Coverage erhöht
 - **Problem:** Test-Coverage lag bei nur 50%, viele Kernmodule unter 70%

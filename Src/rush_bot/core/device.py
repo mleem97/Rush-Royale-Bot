@@ -411,7 +411,8 @@ class DeviceManager:
                 self._ensure_connected()
                 img = self._device.screenshot()
                 logger.debug("Screenshot captured")
-                return img
+                # adbutils.screenshot() returns PIL.Image.Image or None
+                return img  # type: ignore[no-any-return]
             except DeviceNotConnectedError:
                 return None
             except Exception as e:
@@ -436,7 +437,8 @@ class DeviceManager:
             self._ensure_connected()
             result = self._device.shell(command)
             logger.debug(f"Shell command: {command}")
-            return result
+            # Ensure return type is str or None
+            return str(result) if result is not None else None
         except DeviceNotConnectedError:
             return None
         except Exception as e:

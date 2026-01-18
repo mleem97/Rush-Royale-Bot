@@ -386,7 +386,7 @@ class Bot:
         self, new: bool = True, available: bool = False, icon_list=None
     ) -> pd.DataFrame:
         """Check if any icons are on screen"""
-        current_icons = []
+        current_icons: list[dict[str, object]] = []
         if new:
             self.getScreen()
 

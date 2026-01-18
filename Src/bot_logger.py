@@ -131,17 +131,17 @@ class CustomFormatter(logging.Formatter):
     red = "\x1b[31;20m"
     bold_red = "\x1b[31;1m"
     reset = "\x1b[0m"
-    format = "[%(asctime)s] %(message)s"
+    _format_str = "[%(asctime)s] %(message)s"
 
     FORMATS = {
-        logging.DEBUG: blue + format + reset,
-        logging.INFO: grey + format + reset,
-        logging.WARNING: yellow + format + reset,
-        logging.ERROR: red + format + reset,
-        logging.CRITICAL: bold_red + format + reset,
+        logging.DEBUG: blue + _format_str + reset,
+        logging.INFO: grey + _format_str + reset,
+        logging.WARNING: yellow + _format_str + reset,
+        logging.ERROR: red + _format_str + reset,
+        logging.CRITICAL: bold_red + _format_str + reset,
     }
 
-    def format(self, record):
+    def format(self, record: logging.LogRecord) -> str:
         log_fmt = self.FORMATS.get(record.levelno)
         formatter = logging.Formatter(log_fmt, "%H:%M")
         return formatter.format(record)

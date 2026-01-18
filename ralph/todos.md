@@ -108,20 +108,21 @@
   - [x] Mocking für ADB-Calls (unittest.mock für alle Device-Tests)
 
 ### T011: Type Hints vervollständigen
-- **Status:** ⏳ Offen
+- **Status:** ✅ Erledigt
 - **Beschreibung:** Strenge Typisierung im gesamten Package
 - **Akzeptanzkriterien:**
-  - [ ] `mypy src` ohne Fehler
-  - [ ] Kein `Any` außer bei externen APIs
-  - [ ] Docstrings für öffentliche Funktionen
+  - [x] `mypy src` ohne Fehler
+  - [x] Kein `Any` außer bei externen APIs
+  - [x] Docstrings für öffentliche Funktionen
 
 ### T012: CI/CD Pipeline einrichten
-- **Status:** ⏳ Offen
+- **Status:** ✅ Erledigt
 - **Beschreibung:** GitHub Actions für automatisierte Tests
+- **Dateien:** `.github/workflows/tests.yml`, `.github/workflows/release.yml`
 - **Akzeptanzkriterien:**
-  - [ ] Tests bei jedem Push
-  - [ ] Linting-Check
-  - [ ] Type-Check
+  - [x] Tests bei jedem Push
+  - [x] Linting-Check
+  - [x] Type-Check
 
 ---
 

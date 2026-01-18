@@ -8,13 +8,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
-
-if TYPE_CHECKING:
-    from numpy.typing import NDArray
 
 # Paths
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -75,7 +71,7 @@ def get_slot_positions(
         return [DECK_SLOTS_PORTRAIT]
 
 
-def load_unit_templates(all_units_dir: Path | str) -> dict[str, NDArray]:
+def load_unit_templates(all_units_dir: Path | str) -> dict[str, np.ndarray]:
     """Load all unit template images.
 
     Args:
@@ -110,8 +106,8 @@ def load_unit_templates(all_units_dir: Path | str) -> dict[str, NDArray]:
 
 
 def match_template_multi_scale(
-    slot_img: NDArray,
-    template: NDArray,
+    slot_img: np.ndarray,
+    template: np.ndarray,
     scales: list[float] | None = None,
 ) -> float:
     """Match template at multiple scales and return best score.
@@ -156,7 +152,7 @@ def match_template_multi_scale(
 
 
 def detect_deck_from_screenshot(
-    screenshot: NDArray,
+    screenshot: np.ndarray,
     all_units_dir: Path | str = "cv-images/all_units",
     confidence_threshold: float = 0.4,
 ) -> list[tuple[str, float]]:
@@ -274,7 +270,7 @@ def detect_deck_from_device(
 # =============================================================================
 
 
-def extract_features(img: NDArray) -> NDArray:
+def extract_features(img: np.ndarray) -> np.ndarray:
     """Extract features from an image for ML classification."""
     # Resize to consistent size
     img = cv2.resize(img, (64, 64))
@@ -315,12 +311,12 @@ def extract_features(img: NDArray) -> NDArray:
             hog_features.extend(hist / (hist.sum() + 1e-7))
 
     # Combine all features
-    features = np.concatenate([h_hist, s_hist, v_hist, hog_features])
+    features: np.ndarray = np.concatenate([h_hist, s_hist, v_hist, hog_features])
 
     return features
 
 
-def predict_unit_ml(img: NDArray) -> tuple[str, float]:
+def predict_unit_ml(img: np.ndarray) -> tuple[str, float]:
     """Predict unit using ML model.
 
     Args:
@@ -340,14 +336,14 @@ def predict_unit_ml(img: NDArray) -> tuple[str, float]:
     # Load model and labels
     clf = joblib.load(MODEL_PATH)
     with open(LABELS_PATH) as f:
-        label_map = {int(k): v for k, v in json.load(f).items()}
+        label_map: dict[int, str] = {int(k): v for k, v in json.load(f).items()}
 
     # Extract features
     features = extract_features(img).reshape(1, -1)
 
     # Predict with probability
     proba = clf.predict_proba(features)[0]
-    pred_idx = np.argmax(proba)
+    pred_idx = int(np.argmax(proba))
     confidence = proba[pred_idx]
 
     unit_name = label_map.get(pred_idx, "unknown")
@@ -356,7 +352,7 @@ def predict_unit_ml(img: NDArray) -> tuple[str, float]:
 
 
 def detect_deck_ml(
-    screenshot: NDArray,
+    screenshot: np.ndarray,
     confidence_threshold: float = 0.5,
 ) -> list[tuple[str, float]]:
     """Detect deck using ML model.

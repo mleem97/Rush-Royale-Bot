@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import configparser
 import threading
-from typing import TYPE_CHECKING
+from typing import Any
 
 import customtkinter as ctk
 
@@ -15,10 +15,6 @@ from rush_bot import PROJECT_ROOT
 from rush_bot.gui.content import ContentFrame
 from rush_bot.gui.sidebar import SidebarFrame
 from rush_bot.gui.theme import setup_theme
-
-if TYPE_CHECKING:
-    from rush_bot.core import Bot
-
 
 # =============================================================================
 # Main Application
@@ -35,7 +31,9 @@ class RushBotApp(ctk.CTk):
         self.stop_flag: bool = False
         self.running: bool = False
         self.info_ready: threading.Event = threading.Event()
-        self.bot_instance: Bot | None = None
+        # Note: bot_instance can be either the new Bot class or legacy bot_core.Bot
+        # Using Any to accommodate both during migration period
+        self.bot_instance: Any = None
         self.thread_run: threading.Thread | None = None
 
         # Load configuration

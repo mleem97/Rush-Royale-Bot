@@ -3,9 +3,9 @@ import tkinter as tk
 
 import pytest
 
-from gui import create_combat_info
-from gui import create_options
-from gui import write_to_widget
+from gui_legacy import create_combat_info
+from gui_legacy import create_options
+from gui_legacy import write_to_widget
 
 
 def _make_root():

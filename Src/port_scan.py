@@ -98,7 +98,7 @@ def get_device(force_scan: bool = False) -> str | None:
 
         devices = adb.device_list()
         if devices:
-            serial = devices[0].serial
+            serial = str(devices[0].serial)
             print(f"[INFO] Found connected device via adbutils: {serial}")
             return serial
     except Exception:
