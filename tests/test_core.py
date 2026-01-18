@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -18,11 +19,17 @@ from rush_bot.core import DeviceInfo
 from rush_bot.core import DeviceManager
 from rush_bot.core import DeviceNotConnectedError
 from rush_bot.core import DeviceState
+from rush_bot.core import LatencyStats
 from rush_bot.core import MergeCandidate
 from rush_bot.core import MergeConfig
 from rush_bot.core import MergeLogic
 from rush_bot.core import MergeResult
 from rush_bot.core import MergeValidator
+from rush_bot.core import ScrcpyClient
+from rush_bot.core import ScreenshotConfig
+from rush_bot.core import ScreenshotPipeline
+from rush_bot.core import ScreenshotResult
+from rush_bot.core import ScreenshotSource
 
 
 class TestBotLogger:
@@ -1173,3 +1180,501 @@ class TestDeviceManagerConnection:
         assert manager._device is None
         assert manager._device_info is None
         assert manager._state == DeviceState.DISCONNECTED
+
+
+# ==============================================================================
+# Screenshot Pipeline Tests
+# ==============================================================================
+
+
+class TestScreenshotConfig:
+    """Tests for ScreenshotConfig dataclass."""
+
+    def test_default_config(self) -> None:
+        """Test default configuration values."""
+        config = ScreenshotConfig()
+        assert config.use_scrcpy is True
+        assert config.scrcpy_max_width == 800
+        assert config.scrcpy_bitrate == 4_000_000
+        assert config.scrcpy_max_fps == 60
+        assert config.fallback_to_adb is True
+        assert config.buffer_size == 5
+        assert config.target_latency_ms == 100.0
+        assert config.max_latency_ms == 500.0
+        assert config.auto_select_source is True
+        assert config.scrcpy_startup_timeout == 5.0
+
+    def test_custom_config(self) -> None:
+        """Test custom configuration values."""
+        config = ScreenshotConfig(
+            use_scrcpy=False,
+            scrcpy_max_width=1080,
+            buffer_size=10,
+            target_latency_ms=50.0,
+        )
+        assert config.use_scrcpy is False
+        assert config.scrcpy_max_width == 1080
+        assert config.buffer_size == 10
+        assert config.target_latency_ms == 50.0
+
+
+class TestScreenshotSource:
+    """Tests for ScreenshotSource enum."""
+
+    def test_source_values(self) -> None:
+        """Test screenshot source enum values."""
+        assert ScreenshotSource.SCRCPY.value == "scrcpy"
+        assert ScreenshotSource.ADB.value == "adb"
+        assert ScreenshotSource.BUFFER.value == "buffer"
+
+    def test_source_enum_members(self) -> None:
+        """Test all enum members exist."""
+        members = list(ScreenshotSource)
+        assert len(members) == 3
+        assert ScreenshotSource.SCRCPY in members
+        assert ScreenshotSource.ADB in members
+        assert ScreenshotSource.BUFFER in members
+
+
+class TestScreenshotResult:
+    """Tests for ScreenshotResult dataclass."""
+
+    def test_result_creation(self) -> None:
+        """Test creating a screenshot result."""
+        image = np.zeros((480, 640, 3), dtype=np.uint8)
+        result = ScreenshotResult(
+            image=image,
+            source=ScreenshotSource.ADB,
+            latency_ms=150.5,
+            timestamp=1000.0,
+            width=640,
+            height=480,
+        )
+        assert result.image.shape == (480, 640, 3)
+        assert result.source == ScreenshotSource.ADB
+        assert result.latency_ms == 150.5
+        assert result.timestamp == 1000.0
+        assert result.width == 640
+        assert result.height == 480
+
+    def test_result_resolution_property(self) -> None:
+        """Test resolution property."""
+        image = np.zeros((1080, 1920, 3), dtype=np.uint8)
+        result = ScreenshotResult(
+            image=image,
+            source=ScreenshotSource.SCRCPY,
+            latency_ms=50.0,
+            timestamp=1000.0,
+            width=1920,
+            height=1080,
+        )
+        assert result.resolution == (1920, 1080)
+
+
+class TestLatencyStats:
+    """Tests for LatencyStats dataclass."""
+
+    def test_default_stats(self) -> None:
+        """Test default latency stats."""
+        stats = LatencyStats()
+        assert stats.avg_latency_ms == 0.0
+        assert stats.min_latency_ms == float("inf")
+        assert stats.max_latency_ms == 0.0
+        assert stats.sample_count == 0
+        assert stats.source == ScreenshotSource.ADB
+        assert stats.scrcpy_available is False
+        assert stats.adb_available is False
+
+    def test_custom_stats(self) -> None:
+        """Test custom latency stats."""
+        stats = LatencyStats(
+            avg_latency_ms=75.0,
+            min_latency_ms=45.0,
+            max_latency_ms=120.0,
+            sample_count=100,
+            source=ScreenshotSource.SCRCPY,
+            scrcpy_available=True,
+            adb_available=True,
+        )
+        assert stats.avg_latency_ms == 75.0
+        assert stats.min_latency_ms == 45.0
+        assert stats.max_latency_ms == 120.0
+        assert stats.sample_count == 100
+        assert stats.source == ScreenshotSource.SCRCPY
+
+
+class TestScreenshotPipeline:
+    """Tests for ScreenshotPipeline class."""
+
+    def test_pipeline_creation(self) -> None:
+        """Test pipeline can be created."""
+        pipeline = ScreenshotPipeline()
+        assert pipeline is not None
+        assert pipeline.is_running is False
+        assert pipeline.current_source == ScreenshotSource.ADB
+        assert pipeline.has_scrcpy is False
+        assert pipeline.has_adb is False
+
+    def test_pipeline_with_config(self) -> None:
+        """Test pipeline with custom config."""
+        config = ScreenshotConfig(use_scrcpy=False, buffer_size=10)
+        pipeline = ScreenshotPipeline(config=config)
+        assert pipeline.config.use_scrcpy is False
+        assert pipeline.config.buffer_size == 10
+
+    def test_pipeline_set_device_manager(self) -> None:
+        """Test setting device manager."""
+        pipeline = ScreenshotPipeline()
+        mock_manager = MagicMock()
+        mock_manager.is_connected = True
+
+        pipeline.set_device_manager(mock_manager)
+
+        assert pipeline._device_manager == mock_manager
+        assert pipeline.has_adb is True
+
+    def test_pipeline_start_no_sources(self) -> None:
+        """Test starting pipeline with no sources available."""
+        config = ScreenshotConfig(use_scrcpy=False)
+        pipeline = ScreenshotPipeline(config=config)
+
+        result = pipeline.start()
+
+        assert result is False
+        assert pipeline.is_running is False
+
+    def test_pipeline_start_with_adb(self) -> None:
+        """Test starting pipeline with ADB available."""
+        config = ScreenshotConfig(use_scrcpy=False)
+        mock_manager = MagicMock()
+        mock_manager.is_connected = True
+
+        pipeline = ScreenshotPipeline(device_manager=mock_manager, config=config)
+        result = pipeline.start()
+
+        assert result is True
+        assert pipeline.is_running is True
+        assert pipeline.current_source == ScreenshotSource.ADB
+
+        pipeline.stop()
+
+    def test_pipeline_stop(self) -> None:
+        """Test stopping pipeline."""
+        config = ScreenshotConfig(use_scrcpy=False)
+        mock_manager = MagicMock()
+        mock_manager.is_connected = True
+
+        pipeline = ScreenshotPipeline(device_manager=mock_manager, config=config)
+        pipeline.start()
+
+        pipeline.stop()
+
+        assert pipeline.is_running is False
+
+    def test_pipeline_capture_adb(self) -> None:
+        """Test capturing screenshot via ADB."""
+        from PIL import Image as PILImage
+
+        config = ScreenshotConfig(use_scrcpy=False)
+        mock_manager = MagicMock()
+        mock_manager.is_connected = True
+
+        # Create mock PIL image
+        mock_pil = PILImage.new("RGB", (640, 480), color="red")
+        mock_manager.screenshot.return_value = mock_pil
+
+        pipeline = ScreenshotPipeline(device_manager=mock_manager, config=config)
+        pipeline.start()
+
+        result = pipeline.capture()
+
+        assert result is not None
+        assert result.source == ScreenshotSource.ADB
+        assert result.width == 640
+        assert result.height == 480
+        assert result.latency_ms >= 0
+
+        pipeline.stop()
+
+    def test_pipeline_capture_numpy(self) -> None:
+        """Test capturing screenshot as numpy array."""
+        from PIL import Image as PILImage
+
+        config = ScreenshotConfig(use_scrcpy=False)
+        mock_manager = MagicMock()
+        mock_manager.is_connected = True
+
+        mock_pil = PILImage.new("RGB", (640, 480), color="blue")
+        mock_manager.screenshot.return_value = mock_pil
+
+        pipeline = ScreenshotPipeline(device_manager=mock_manager, config=config)
+        pipeline.start()
+
+        image = pipeline.capture_numpy()
+
+        assert image is not None
+        assert isinstance(image, np.ndarray)
+        assert image.shape == (480, 640, 3)
+
+        pipeline.stop()
+
+    def test_pipeline_get_latency_stats(self) -> None:
+        """Test getting latency stats."""
+        pipeline = ScreenshotPipeline()
+        stats = pipeline.get_latency_stats()
+
+        assert isinstance(stats, LatencyStats)
+        assert stats.sample_count == 0
+
+    def test_pipeline_get_latency_stats_with_samples(self) -> None:
+        """Test latency stats with recorded samples."""
+        from PIL import Image as PILImage
+
+        config = ScreenshotConfig(use_scrcpy=False)
+        mock_manager = MagicMock()
+        mock_manager.is_connected = True
+
+        mock_pil = PILImage.new("RGB", (640, 480), color="green")
+        mock_manager.screenshot.return_value = mock_pil
+
+        pipeline = ScreenshotPipeline(device_manager=mock_manager, config=config)
+        pipeline.start()
+
+        # Capture a few screenshots to build stats
+        for _ in range(5):
+            pipeline.capture()
+
+        stats = pipeline.get_latency_stats()
+
+        assert stats.sample_count == 5
+        assert stats.avg_latency_ms > 0
+        assert stats.source == ScreenshotSource.ADB
+
+        pipeline.stop()
+
+    def test_pipeline_switch_source_invalid(self) -> None:
+        """Test switching to unavailable source."""
+        pipeline = ScreenshotPipeline()
+
+        # Try to switch to scrcpy when not available
+        result = pipeline.switch_source(ScreenshotSource.SCRCPY)
+        assert result is False
+
+        # Try to switch to buffer source (not allowed)
+        result = pipeline.switch_source(ScreenshotSource.BUFFER)
+        assert result is False
+
+    def test_pipeline_switch_source_valid(self) -> None:
+        """Test switching to available source."""
+        config = ScreenshotConfig(use_scrcpy=False)
+        mock_manager = MagicMock()
+        mock_manager.is_connected = True
+
+        pipeline = ScreenshotPipeline(device_manager=mock_manager, config=config)
+        pipeline.start()
+
+        # Already using ADB, should succeed
+        result = pipeline.switch_source(ScreenshotSource.ADB)
+        assert result is True
+
+        pipeline.stop()
+
+    def test_pipeline_get_latest_frame_empty(self) -> None:
+        """Test getting latest frame when buffer is empty."""
+        pipeline = ScreenshotPipeline()
+        frame = pipeline.get_latest_frame()
+        assert frame is None
+
+    def test_pipeline_get_latest_frame(self) -> None:
+        """Test getting latest frame from buffer."""
+        from PIL import Image as PILImage
+
+        config = ScreenshotConfig(use_scrcpy=False)
+        mock_manager = MagicMock()
+        mock_manager.is_connected = True
+
+        mock_pil = PILImage.new("RGB", (640, 480), color="yellow")
+        mock_manager.screenshot.return_value = mock_pil
+
+        pipeline = ScreenshotPipeline(device_manager=mock_manager, config=config)
+        pipeline.start()
+        pipeline.capture()
+
+        frame = pipeline.get_latest_frame()
+
+        assert frame is not None
+        assert isinstance(frame, np.ndarray)
+        assert frame.shape == (480, 640, 3)
+
+        pipeline.stop()
+
+    def test_pipeline_frame_callback(self) -> None:
+        """Test frame callback is called on capture."""
+        from PIL import Image as PILImage
+
+        config = ScreenshotConfig(use_scrcpy=False)
+        mock_manager = MagicMock()
+        mock_manager.is_connected = True
+
+        mock_pil = PILImage.new("RGB", (640, 480), color="white")
+        mock_manager.screenshot.return_value = mock_pil
+
+        callback_results: list[ScreenshotResult] = []
+
+        def on_frame(result: ScreenshotResult) -> None:
+            callback_results.append(result)
+
+        pipeline = ScreenshotPipeline(device_manager=mock_manager, config=config, on_frame=on_frame)
+        pipeline.start()
+        pipeline.capture()
+
+        assert len(callback_results) == 1
+        assert callback_results[0].source == ScreenshotSource.ADB
+
+        pipeline.stop()
+
+    def test_pipeline_callback_error_handling(self) -> None:
+        """Test frame callback error is handled gracefully."""
+        from PIL import Image as PILImage
+
+        config = ScreenshotConfig(use_scrcpy=False)
+        mock_manager = MagicMock()
+        mock_manager.is_connected = True
+
+        mock_pil = PILImage.new("RGB", (640, 480), color="black")
+        mock_manager.screenshot.return_value = mock_pil
+
+        def bad_callback(result: ScreenshotResult) -> None:
+            raise RuntimeError("Callback error")
+
+        pipeline = ScreenshotPipeline(
+            device_manager=mock_manager, config=config, on_frame=bad_callback
+        )
+        pipeline.start()
+
+        # Should not raise, error is logged but handled
+        result = pipeline.capture()
+        assert result is not None
+
+        pipeline.stop()
+
+    def test_pipeline_benchmark(self) -> None:
+        """Test benchmark method."""
+        from PIL import Image as PILImage
+
+        config = ScreenshotConfig(use_scrcpy=False)
+        mock_manager = MagicMock()
+        mock_manager.is_connected = True
+
+        mock_pil = PILImage.new("RGB", (640, 480), color="gray")
+        mock_manager.screenshot.return_value = mock_pil
+
+        pipeline = ScreenshotPipeline(device_manager=mock_manager, config=config)
+        pipeline.start()
+
+        results = pipeline.benchmark(iterations=3)
+
+        assert ScreenshotSource.ADB in results
+        assert results[ScreenshotSource.ADB] > 0
+
+        pipeline.stop()
+
+    def test_pipeline_double_start(self) -> None:
+        """Test starting pipeline twice returns True."""
+        config = ScreenshotConfig(use_scrcpy=False)
+        mock_manager = MagicMock()
+        mock_manager.is_connected = True
+
+        pipeline = ScreenshotPipeline(device_manager=mock_manager, config=config)
+
+        result1 = pipeline.start()
+        result2 = pipeline.start()
+
+        assert result1 is True
+        assert result2 is True
+
+        pipeline.stop()
+
+    def test_pipeline_stop_when_not_running(self) -> None:
+        """Test stopping pipeline when not running does nothing."""
+        pipeline = ScreenshotPipeline()
+
+        # Should not raise
+        pipeline.stop()
+
+        assert pipeline.is_running is False
+
+
+class TestScrcpyClient:
+    """Tests for ScrcpyClient class."""
+
+    def test_client_creation(self) -> None:
+        """Test client can be created."""
+        client = ScrcpyClient(device="test-device")
+        assert client.device == "test-device"
+        assert client.is_connected is False
+        assert client.last_frame is None
+
+    def test_client_with_config(self) -> None:
+        """Test client with custom configuration."""
+        client = ScrcpyClient(
+            device="emulator-5554",
+            max_width=1080,
+            bitrate=8_000_000,
+            max_fps=30,
+        )
+        assert client.max_width == 1080
+        assert client.bitrate == 8_000_000
+        assert client.max_fps == 30
+
+    def test_client_start_import_error(self) -> None:
+        """Test client handles import error gracefully."""
+        client = ScrcpyClient()
+
+        with patch.dict("sys.modules", {"scrcpy": None}):
+            with patch("builtins.__import__", side_effect=ImportError("No scrcpy")):
+                # May succeed or fail depending on scrcpy availability
+                # The important thing is it doesn't raise
+                _ = client.start(timeout=0.1)
+
+    def test_client_stop_when_not_started(self) -> None:
+        """Test stopping client when not started."""
+        client = ScrcpyClient()
+        # Should not raise
+        client.stop()
+        assert client.is_connected is False
+
+    def test_client_frame_callback(self) -> None:
+        """Test frame callback is invoked."""
+        frames_received: list[np.ndarray] = []
+
+        def on_frame(frame: np.ndarray) -> None:
+            frames_received.append(frame)
+
+        client = ScrcpyClient(on_frame=on_frame)
+
+        # Simulate frame reception
+        test_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        client._handle_frame(test_frame)
+
+        assert len(frames_received) == 1
+        assert client.last_frame is not None
+
+    def test_client_frame_callback_with_none(self) -> None:
+        """Test frame callback handles None frame."""
+        client = ScrcpyClient()
+        # Should not raise
+        client._handle_frame(None)
+        assert client.last_frame is None
+
+    def test_client_connection_handlers(self) -> None:
+        """Test connection/disconnection handlers."""
+        client = ScrcpyClient()
+
+        assert client.is_connected is False
+
+        client._handle_init()
+        assert client.is_connected is True
+
+        client._handle_disconnect()
+        assert client.is_connected is False

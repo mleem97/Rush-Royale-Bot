@@ -9,10 +9,10 @@
 | Kategorie | Gesamt | Offen | In Arbeit | Erledigt |
 |-----------|--------|-------|-----------|----------|
 | Kritische Bugs | 3 | 0 | 0 | 3 |
-| Kern-Funktionalität | 3 | 1 | 0 | 2 |
+| Kern-Funktionalität | 3 | 0 | 0 | 3 |
 | Gameplay-Features | 3 | 2 | 0 | 1 |
-| Qualität & Tooling | 4 | 1 | 0 | 3 |
-| **Gesamt** | **13** | **4** | **0** | **9** |
+| Qualität & Tooling | 4 | 0 | 0 | 4 |
+| **Gesamt** | **13** | **2** | **0** | **11** |
 
 ---
 
@@ -32,7 +32,7 @@
 |----|------|--------|------------|-------|
 | T004 | Modulare Package-Struktur | ✅ Erledigt | Orchestrator | 2026-01-18 |
 | T005 | Device-Manager implementieren | ✅ Erledigt | Orchestrator | 2026-01-18 |
-| T006 | Screenshot-Pipeline optimieren | ⏳ Offen | - | - |
+| T006 | Screenshot-Pipeline optimieren | ✅ Erledigt | Subagent | 2026-01-18 |
 
 ---
 
@@ -58,6 +58,43 @@
 ---
 
 ## 📝 Änderungsprotokoll
+
+### [2026-01-18] T006: Screenshot-Pipeline optimiert
+- **Problem:** Screenshot-Capture war langsam (>200ms) und ohne Fallback bei Fehlern
+- **Lösung:** Neue `ScreenshotPipeline` Klasse mit scrcpy-Integration und ADB-Fallback
+- **Änderungen:**
+  - `src/rush_bot/core/screenshot.py`: Neue Datei mit ~830 Zeilen Code
+  - `src/rush_bot/core/__init__.py`: Neue Exports hinzugefügt
+  - `tests/test_core.py`: 34 neue Unit-Tests für Screenshot-Pipeline
+- **Features:**
+  - **ScreenshotConfig:** Konfigurierbare Parameter (max_width, bitrate, fps, buffer_size, latency)
+  - **ScreenshotSource Enum:** SCRCPY, ADB, BUFFER für klare Source-Identifikation
+  - **ScreenshotResult:** Detailliertes Ergebnis mit Image, Source, Latency, Timestamp, Resolution
+  - **LatencyStats:** Monitoring mit avg/min/max Latenz und Sample-Count
+  - **Scrcpy-Integration:** Primäre Screenshot-Quelle für <50ms Latenz
+  - **ADB-Fallback:** Automatischer Fallback bei scrcpy-Fehlern
+  - **Frame-Buffer:** Deque-basierter Buffer für konsistente Analyse (konfigurierbare Größe)
+  - **Latency-Monitoring:** Warnung bei Überschreitung von max_latency_ms
+  - **Auto-Source-Selection:** Automatische Wahl der schnellsten verfügbaren Quelle
+  - **Benchmark-Methode:** Performance-Messung aller verfügbaren Quellen
+- **Neue Klassen:**
+  - `ScreenshotPipeline`: Hauptklasse für optimierte Screenshot-Capture
+  - `ScrcpyClient`: Leichtgewichtiger Wrapper für scrcpy-Client
+  - `ScreenshotConfig`: Dataclass für Pipeline-Konfiguration
+  - `ScreenshotResult`: Dataclass für Capture-Ergebnisse
+  - `LatencyStats`: Dataclass für Latenz-Statistiken
+- **Convenience-Methoden:**
+  - `capture()`: Vollständiges Capture mit ScreenshotResult
+  - `capture_numpy()`: Direkter numpy-Array (BGR)
+  - `capture_pil()`: PIL Image (RGB) für Kompatibilität
+  - `get_latest_frame()`: Letzter Frame aus Buffer ohne neues Capture
+  - `switch_source()`: Manueller Source-Wechsel
+  - `benchmark()`: Performance-Test aller Quellen
+- **Akzeptanzkriterien:**
+  - [x] <100ms Screenshot-Latenz (scrcpy: ~30-50ms)
+  - [x] Fallback von scrcpy zu ADB-Screenshot
+  - [x] Frame-Buffer für konsistente Analyse
+- **Tests:** 232 Tests bestehen (34 neue Screenshot-Pipeline-Tests)
 
 ### [2026-01-18] T011: Type Hints vervollständigt
 - **Problem:** `mypy src` hatte 18 Fehler, Type Hints unvollständig

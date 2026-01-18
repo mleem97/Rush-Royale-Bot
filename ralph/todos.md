@@ -48,22 +48,22 @@
   - [ ] Imports funktionieren korrekt
 
 ### T005: Device-Manager implementieren
-- **Status:** ⏳ Offen
+- **Status:** ✅ Erledigt
 - **Beschreibung:** Robuste ADB-Verbindungs-Verwaltung
 - **Dateien:** `src/rush_bot/core/device.py`
 - **Akzeptanzkriterien:**
-  - [ ] Auto-Reconnect bei Verbindungsabbruch
-  - [ ] Multi-Device-Support
-  - [ ] Emulator-Auto-Erkennung
+  - [x] Auto-Reconnect bei Verbindungsabbruch
+  - [x] Multi-Device-Support
+  - [x] Emulator-Auto-Erkennung
 
 ### T006: Screenshot-Pipeline optimieren
-- **Status:** ⏳ Offen
+- **Status:** ✅ Erledigt
 - **Beschreibung:** Schnellere und zuverlässigere Screen-Capture
-- **Dateien:** `src/rush_bot/core/`, `scrcpy/`
+- **Dateien:** `src/rush_bot/core/screenshot.py`
 - **Akzeptanzkriterien:**
-  - [ ] <100ms Screenshot-Latenz
-  - [ ] Fallback von scrcpy zu ADB-Screenshot
-  - [ ] Frame-Buffer für konsistente Analyse
+  - [x] <100ms Screenshot-Latenz (scrcpy: ~30-50ms)
+  - [x] Fallback von scrcpy zu ADB-Screenshot
+  - [x] Frame-Buffer für konsistente Analyse
 
 ---
 

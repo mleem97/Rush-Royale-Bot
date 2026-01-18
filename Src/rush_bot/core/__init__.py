@@ -14,6 +14,12 @@ from .merge import MergeConfig
 from .merge import MergeLogic
 from .merge import MergeResult
 from .merge import MergeValidator
+from .screenshot import LatencyStats
+from .screenshot import ScrcpyClient
+from .screenshot import ScreenshotConfig
+from .screenshot import ScreenshotPipeline
+from .screenshot import ScreenshotResult
+from .screenshot import ScreenshotSource
 
 __all__ = [
     "Bot",
@@ -25,9 +31,15 @@ __all__ = [
     "DeviceManager",
     "DeviceNotConnectedError",
     "DeviceState",
+    "LatencyStats",
     "MergeCandidate",
     "MergeConfig",
     "MergeLogic",
     "MergeResult",
     "MergeValidator",
+    "ScreenshotConfig",
+    "ScreenshotPipeline",
+    "ScreenshotResult",
+    "ScreenshotSource",
+    "ScrcpyClient",
 ]
