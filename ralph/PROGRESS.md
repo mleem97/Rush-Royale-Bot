@@ -8,12 +8,12 @@
 
 | Kategorie | Gesamt | Offen | In Arbeit | Erledigt |
 |-----------|--------|-------|-----------|----------|
-| Kritische Bugs | 7 | 2 | 0 | 5 |
+| Kritische Bugs | 7 | 1 | 0 | 6 |
 | Kern-Funktionalität | 3 | 0 | 0 | 3 |
 | Gameplay-Features | 3 | 0 | 0 | 3 |
 | Qualität & Tooling | 4 | 0 | 0 | 4 |
 | ML/Training (Neu) | 8 | 7 | 0 | 1 |
-| **Gesamt** | **25** | **9** | **0** | **16** |
+| **Gesamt** | **25** | **8** | **0** | **17** |
 
 ---
 
@@ -25,7 +25,7 @@
 | T002 | Grid-Parsing korrigieren | ✅ Erledigt | Subagent | 2026-01-18 |
 | T003 | Merge-Logik stabilisieren | ✅ Erledigt | Subagent | 2026-01-18 |
 | T014 | False-Positive Icon-Detection beheben | ✅ Erledigt | Subagent | 2026-01-18 |
-| T015 | Screen-State-Filtering implementieren | ⏳ Offen | - | - |
+| T015 | Screen-State-Filtering implementieren | ✅ Erledigt | Subagent | 2026-01-19 |
 | T016 | Merge-Mechanismus reparieren | ⏳ Offen | - | - |
 | T017 | Ladebildschirm-Erkennung implementieren | ✅ Erledigt | Subagent | 2026-01-18 |
 
@@ -78,6 +78,44 @@
 ---
 
 ## 📝 Änderungsprotokoll
+
+### [2026-01-19] T015: Screen-State-Filtering implementiert
+
+**IMPLEMENTIERUNG:**
+- **Neue ScreenStates:** START_SCREEN, TRANSIT, DUNGEON_FLOOR_SELECT, BATTLE_PREPARATION
+- **State Machine:** Neue `ScreenStateMachine` Klasse für Transition-Management
+- **Transition-Definitions:** `VALID_TRANSITIONS` Liste mit allen Game-Flow-Übergängen
+
+**NEUE KLASSEN:**
+1. `ScreenStateMachine`:
+   - `update(state, confidence)`: State-Update mit Validierung
+   - `is_stuck(max_iterations)`: Timeout-Detection
+   - `get_expected_states()`: Valide nächste States
+   - `format_history()`: Debug-Ausgabe der History
+
+2. `StateTransition` Dataclass:
+   - `from_state`, `to_state`: Quell- und Zielstate
+   - `max_iterations`: Timeout pro Transition
+
+3. `StateHistoryEntry` Dataclass:
+   - State, Timestamp, Confidence, Iteration
+
+**STATE-TRENNUNG:**
+- `DUNGEON_SELECT`: Chapter-Auswahl (Chapter 1-6)
+- `DUNGEON_FLOOR_SELECT`: Floor-Auswahl (Floor 1-14)
+
+**TEMPLATE-UPDATES:**
+- Floor-Templates jetzt auf DUNGEON_FLOOR_SELECT gemappt
+- Neue Main_Menu Templates (Home_Menu, PVP_Button, PVE_Button)
+
+**TESTS:**
+- 17 neue Unit-Tests für State Machine
+- Alle Tests bestehen (392/392 passed)
+
+**COMMITS:**
+- feat(perception): add screen state machine with transitions T015
+
+---
 
 ### [2026-01-19] T025: CV-Only Debug Mode implementiert
 
