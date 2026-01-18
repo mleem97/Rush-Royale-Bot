@@ -25,13 +25,14 @@
   - [x] Unit-Tests für Grid-Extraktion vorhanden (20 Tests)
 
 ### T003: Merge-Logik stabilisieren
-- **Status:** ⏳ Offen
+- **Status:** ✅ Erledigt
 - **Beschreibung:** Falsches Matching von Einheiten beim Mergen
-- **Dateien:** `src/bot_core.py`, `src/bot_handler.py`
+- **Dateien:** `src/bot_core.py`, `src/rush_bot/core/merge.py`
 - **Akzeptanzkriterien:**
-  - [ ] Nur gleiche Unit-Typen werden gemerged
-  - [ ] Merge-Richtung wird korrekt berechnet
-  - [ ] DPS-Units werden geschützt
+  - [x] Nur gleiche Unit-Typen werden gemerged
+  - [x] Merge-Richtung wird korrekt berechnet
+  - [x] DPS-Units werden geschützt (konfigurierbar)
+  - [x] Tests für Merge-Logik vorhanden (31 Tests)
 
 ---
 

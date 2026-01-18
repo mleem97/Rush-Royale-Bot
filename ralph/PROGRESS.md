@@ -8,11 +8,11 @@
 
 | Kategorie | Gesamt | Offen | In Arbeit | Erledigt |
 |-----------|--------|-------|-----------|----------|
-| Kritische Bugs | 3 | 1 | 0 | 2 |
+| Kritische Bugs | 3 | 0 | 0 | 3 |
 | Kern-Funktionalität | 3 | 3 | 0 | 0 |
 | Gameplay-Features | 3 | 3 | 0 | 0 |
 | Qualität & Tooling | 3 | 2 | 0 | 1 |
-| **Gesamt** | **12** | **9** | **0** | **3** |
+| **Gesamt** | **12** | **8** | **0** | **4** |
 
 ---
 
@@ -22,7 +22,7 @@
 |----|------|--------|------------|-------|
 | T001 | Unit-Erkennung reparieren | ✅ Erledigt | Orchestrator | 2026-01-18 |
 | T002 | Grid-Parsing korrigieren | ✅ Erledigt | Subagent | 2026-01-18 |
-| T003 | Merge-Logik stabilisieren | ⏳ Offen | - | - |
+| T003 | Merge-Logik stabilisieren | ✅ Erledigt | Subagent | 2026-01-18 |
 
 ---
 
@@ -58,6 +58,27 @@
 ---
 
 ## 📝 Änderungsprotokoll
+
+### [2026-01-18] T003: Merge-Logik stabilisiert
+- **Problem:** Merge-Validierung fehlte, DPS-Schutz war inkonsistent, keine Typen-Prüfung
+- **Lösung:** Implementierung einer robusten `MergeLogic` Klasse mit Validierung und DPS-Schutz
+- **Änderungen:**
+  - `src/rush_bot/core/merge.py`: Neue Klassen `MergeValidator`, `MergeLogic`, `MergeCandidate`, `MergeConfig`, `MergeResult`
+  - `src/rush_bot/core/__init__.py`: Neue Exports hinzugefügt
+  - `src/bot_core.py`: `merge_unit()` mit Validierung erweitert, `_get_protected_units()` und `_apply_dps_protection()` hinzugefügt
+  - `tests/test_core.py`: 31 neue Unit-Tests für Merge-Logik
+- **Features:**
+  - **Typ-Validierung:** `MergeValidator.can_merge()` prüft gleichen Typ UND Rang
+  - **Special Units:** Harlequin, Dryad, Mime, Scrapper können mit anderen Typen mergen
+  - **DPS-Schutz:** Konfigurierbar via `config.ini` (`dps_unit`), schützt wenn ≤3 Einheiten
+  - **Merge-Richtung:** `calculate_merge_direction()` berechnet korrekte Swipe-Richtung
+  - **Candidate Selection:** `select_best_candidate()` priorisiert nach Rang
+- **Akzeptanzkriterien:**
+  - [x] Nur gleiche Unit-Typen werden gemerged (validiert via `merge_unit(validate=True)`)
+  - [x] Merge-Richtung wird korrekt berechnet (`calculate_merge_direction()`)
+  - [x] DPS-Units werden geschützt (konfigurierbar via `_apply_dps_protection()`)
+  - [x] Tests für Merge-Logik vorhanden (31 neue Tests)
+- **Tests:** 73 Tests bestehen (31 neue Merge-Tests)
 
 ### [2026-01-18] T002: Grid-Parsing korrigiert
 - **Problem:** Grid-Koordinaten waren hardcodiert für 1080x1920 Auflösung
