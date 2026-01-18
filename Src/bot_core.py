@@ -9,7 +9,6 @@ import configparser
 import logging
 import os
 import time
-
 from pathlib import Path
 from subprocess import DEVNULL
 from subprocess import Popen
@@ -23,6 +22,7 @@ import pandas as pd
 
 import bot_perception
 import port_scan
+from rush_bot.perception import GridExtractor
 
 try:
     from adbutils import adb
@@ -96,9 +96,7 @@ class Bot:
                 self.adb_device = adb.device(serial=self.device)
                 self.logger.info(f"Connected via adbutils: {self.device}")
             except Exception as e:
-                self.logger.warning(
-                    f"adbutils connection failed: {e}, using shell fallback"
-                )
+                self.logger.warning(f"adbutils connection failed: {e}, using shell fallback")
 
         # Fallback: use .scrcpy\adb if adbutils failed
         if not self.adb_device:
@@ -173,9 +171,20 @@ class Bot:
         time.sleep(SLEEP_DELAY * 10)
 
     def swipe(self, start, end):
-        """Swipe on combat grid to merge units"""
-        boxes, box_size = get_grid()
-        offset = 60  # Center of the box (120/2)
+        """Swipe on combat grid to merge units.
+
+        Args:
+            start: Starting cell position as [row, col].
+            end: Ending cell position as [row, col].
+        """
+        # Get screen resolution from current screenshot
+        if self.screenRGB is not None:
+            screen_height, screen_width = self.screenRGB.shape[:2]
+        else:
+            screen_width, screen_height = 1080, 1920
+
+        boxes, box_size = get_grid(screen_width, screen_height)
+        offset = box_size[0] // 2  # Center of the box
 
         start_pos = boxes[start[0], start[1]] + offset
         end_pos = boxes[end[0], end[1]] + offset
@@ -191,10 +200,7 @@ class Bot:
                 1 / 60,
             )
         else:
-            cmd = (
-                f"input swipe {start_pos[0]} {start_pos[1]} "
-                f"{end_pos[0]} {end_pos[1]} 300"
-            )
+            cmd = f"input swipe {start_pos[0]} {start_pos[1]} {end_pos[0]} {end_pos[1]} 300"
             self.shell(cmd)
 
     def key_input(self, key: int):
@@ -219,12 +225,7 @@ class Bot:
 
     def _normalize_unit_name(self, raw_name: str) -> str:
         name = (raw_name or "").strip().lower()
-        name = (
-            name.replace("ä", "ae")
-            .replace("ö", "oe")
-            .replace("ü", "ue")
-            .replace("ß", "ss")
-        )
+        name = name.replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss")
         name = name.replace("-", "_").replace(" ", "_")
         name = "".join(ch for ch in name if (ch.isalnum() or ch == "_"))
         name = "_".join(part for part in name.split("_") if part)
@@ -240,18 +241,12 @@ class Bot:
         raw_dir = output_root / "raw_screens"
         raw_dir.mkdir(parents=True, exist_ok=True)
 
-        self.logger.warning(
-            "UNIT UPDATE MODE: Open a unit in-game; press Enter here to capture."
-        )
-        self.logger.warning(
-            "Type a unit name when asked (example: 'treant'). Type 'quit' to stop."
-        )
+        self.logger.warning("UNIT UPDATE MODE: Open a unit in-game; press Enter here to capture.")
+        self.logger.warning("Type a unit name when asked (example: 'treant'). Type 'quit' to stop.")
 
         while not getattr(self, "bot_stop", False):
             try:
-                _ = input(
-                    "Press Enter to capture (or type 'quit' to stop): "
-                ).strip()
+                _ = input("Press Enter to capture (or type 'quit' to stop): ").strip()
             except (EOFError, KeyboardInterrupt):
                 self.logger.info("Unit update cancelled.")
                 return
@@ -268,9 +263,7 @@ class Bot:
                 continue
 
             try:
-                raw_name = input(
-                    "Unit name (e.g. 'mole', 'treant', 'twins1'): "
-                ).strip()
+                raw_name = input("Unit name (e.g. 'mole', 'treant', 'twins1'): ").strip()
             except (EOFError, KeyboardInterrupt):
                 self.logger.info("Unit update cancelled.")
                 return
@@ -449,16 +442,11 @@ class Bot:
                 if sc != 1.0:
                     new_w = max(1, int(template_blur.shape[1] * sc))
                     new_h = max(1, int(template_blur.shape[0] * sc))
-                    tmpl = cv2.resize(
-                        template_blur, (new_w, new_h), interpolation=cv2.INTER_AREA
-                    )
+                    tmpl = cv2.resize(template_blur, (new_w, new_h), interpolation=cv2.INTER_AREA)
                 else:
                     tmpl = template_blur
 
-                if (
-                    img_gray_blur.shape[0] < tmpl.shape[0]
-                    or img_gray_blur.shape[1] < tmpl.shape[1]
-                ):
+                if img_gray_blur.shape[0] < tmpl.shape[0] or img_gray_blur.shape[1] < tmpl.shape[1]:
                     continue
 
                 res = cv2.matchTemplate(img_gray_blur, tmpl, cv2.TM_CCOEFF_NORMED)
@@ -478,9 +466,7 @@ class Bot:
                 y = int(best_y)
                 current_icons.append([target, found, (x, y)])
 
-        icon_df = pd.DataFrame(
-            current_icons, columns=["icon", "available", "pos [X,Y]"]
-        )
+        icon_df = pd.DataFrame(current_icons, columns=["icon", "available", "pos [X,Y]"])
         if available:
             # Safe filtering
             if not icon_df.empty:
@@ -491,16 +477,34 @@ class Bot:
         return icon_df
 
     def scan_grid(self, new: bool = False):
-        """Scan battle grid, update OCR images"""
-        boxes, box_size = get_grid()
+        """Scan battle grid, update OCR images.
+
+        Extracts the 15 grid cells (3 rows x 5 columns) from the current
+        screenshot and saves them as individual images for recognition.
+
+        Args:
+            new: If True, take a fresh screenshot before scanning.
+
+        Returns:
+            List of 15 file paths to the extracted cell images.
+        """
         if new:
             self.getScreen()
+
+        # Determine screen resolution from current screenshot
+        if self.screenRGB is not None:
+            screen_height, screen_width = self.screenRGB.shape[:2]
+        else:
+            # Fallback to reference resolution
+            screen_width, screen_height = 1080, 1920
+
+        boxes, box_size = get_grid(screen_width, screen_height)
         box_list = boxes.reshape(15, 2)
         names = []
         if not os.path.isdir("OCR_inputs"):
             os.mkdir("OCR_inputs")
         for i in range(len(box_list)):
-            file_name = f"OCR_inputs/icon_{str(i)}.png"
+            file_name = f"OCR_inputs/icon_{i!s}.png"
             x, y = box_list[i]
             dx, dy = box_size
             self.crop_img(int(x), int(y), int(dx), int(dy), name=file_name)
@@ -533,9 +537,7 @@ class Bot:
 
     def merge_special_unit(self, df_split, merge_series, special_type):
         """Merge special units like harlequin, dryad, mime, scrapper"""
-        special_unit = adv_filter_keys(
-            merge_series, units=special_type, remove=False
-        )
+        special_unit = adv_filter_keys(merge_series, units=special_type, remove=False)
         normal_unit = adv_filter_keys(merge_series, units=special_type, remove=True)
 
         # Check if we have both types
@@ -594,9 +596,7 @@ class Bot:
                     break
         return merge_df
 
-    def harley_merge(
-        self, df_split, merge_series, target: str = "knight_statue.png"
-    ):
+    def harley_merge(self, df_split, merge_series, target: str = "knight_statue.png"):
         """Harley merge target"""
         merge_df = None
         hq_series = adv_filter_keys(merge_series, units="harlequin.png")
@@ -613,9 +613,7 @@ class Bot:
                     break
         return merge_df
 
-    def try_merge(
-        self, rank: int = 1, prev_grid=None, merge_target: str = "zealot.png"
-    ):
+    def try_merge(self, rank: int = 1, prev_grid=None, merge_target: str = "zealot.png"):
         """Try to find a merge target and merge it"""
 
         info = ""
@@ -644,9 +642,7 @@ class Bot:
 
         merge_series = preserve_unit(merge_series, target="chemist.png")
         for _ in range(4):
-            merge_series = preserve_unit(
-                merge_series, target="cauldron.png", keep_min=True
-            )
+            merge_series = preserve_unit(merge_series, target="cauldron.png", keep_min=True)
 
         num_knight = sum(adv_filter_keys(merge_series, units="knight_statue.png"))
         if num_knight % 2 == 1:
@@ -722,9 +718,7 @@ class Bot:
         target_chapter = int(np.ceil(floor / 3))
         target_chapter_icon_name = f"chapter_{target_chapter}.png"
 
-        self.logger.debug(
-            f"Looking for chapter {target_chapter}, floor {target_floor_icon_name}"
-        )
+        self.logger.debug(f"Looking for chapter {target_chapter}, floor {target_floor_icon_name}")
 
         # Check if on dungeon page
         on_dungeon_page = False
@@ -732,16 +726,11 @@ class Bot:
             avail_buttons = self.get_current_icons(
                 available=True, new=True, icon_list=["dungeon_page.png"]
             )
-            if (
-                not avail_buttons.empty
-                and (avail_buttons["icon"] == "dungeon_page.png").any()
-            ):
+            if not avail_buttons.empty and (avail_buttons["icon"] == "dungeon_page.png").any():
                 self.logger.info("On dungeon page.")
                 on_dungeon_page = True
                 break
-            self.logger.warning(
-                f"Not on dungeon page (attempt {attempt + 1}/5). Navigating..."
-            )
+            self.logger.warning(f"Not on dungeon page (attempt {attempt + 1}/5). Navigating...")
             self.battle_screen(pve=True, start=False)
             time.sleep(2)
 
@@ -796,10 +785,7 @@ class Bot:
                 available=True, new=True, icon_list=[target_floor_icon_name]
             )
 
-            if (
-                not avail_buttons.empty
-                and (avail_buttons["icon"] == target_floor_icon_name).any()
-            ):
+            if not avail_buttons.empty and (avail_buttons["icon"] == target_floor_icon_name).any():
                 floor_pos = get_button_pos(avail_buttons, target_floor_icon_name)
                 self.logger.info(f"Found floor {floor} at {floor_pos}")
 
@@ -816,9 +802,7 @@ class Bot:
                         not avail_buttons.empty
                         and (avail_buttons["icon"] == target_floor_icon_name).any()
                     ):
-                        floor_pos = get_button_pos(
-                            avail_buttons, target_floor_icon_name
-                        )
+                        floor_pos = get_button_pos(avail_buttons, target_floor_icon_name)
 
                 play_button_pos = floor_pos + play_button_offset
                 self.logger.info(f"Clicking play button at {play_button_pos}")
@@ -841,10 +825,7 @@ class Bot:
             avail_buttons = self.get_current_icons(
                 available=True, new=True, icon_list=["pve_random.png"]
             )
-            if (
-                not avail_buttons.empty
-                and (avail_buttons["icon"] == "pve_random.png").any()
-            ):
+            if not avail_buttons.empty and (avail_buttons["icon"] == "pve_random.png").any():
                 self.logger.info("Found random co-op button. Clicking...")
                 coop_pos = get_button_pos(avail_buttons, "pve_random.png")
                 self.click_button(coop_pos)
@@ -861,9 +842,7 @@ class Bot:
             avail_buttons = self.get_current_icons(available=True)
             if (
                 not avail_buttons.empty
-                and avail_buttons["icon"]
-                .isin(["back_button.png", "fighting.png"])
-                .any()
+                and avail_buttons["icon"].isin(["back_button.png", "fighting.png"]).any()
             ):
                 self.logger.info(f"Match started after {i * 2} seconds.")
                 return
@@ -890,9 +869,7 @@ class Bot:
                 time.sleep(1)
                 return df, "home"
 
-            df_click = df[
-                df["icon"].isin(["back_button.png", "0cont_button.png", "1quit.png"])
-            ]
+            df_click = df[df["icon"].isin(["back_button.png", "0cont_button.png", "1quit.png"])]
             if not df_click.empty:
                 button_pos = df_click["pos [X,Y]"].tolist()[0]
                 self.click_button(button_pos)
@@ -908,10 +885,7 @@ class Bot:
             self.swipe([0, 0], [2, 0])
         self.click(30, 150)
         avail_buttons = self.get_current_icons(available=True)
-        if (
-            not avail_buttons.empty
-            and (avail_buttons["icon"] == "refresh_button.png").any()
-        ):
+        if not avail_buttons.empty and (avail_buttons["icon"] == "refresh_button.png").any():
             pos = get_button_pos(avail_buttons, "refresh_button.png")
             return pos
         return None
@@ -961,8 +935,7 @@ class Bot:
 
         avail_buttons, status = self.battle_screen()
         if status in ["menu", "home"] or (
-            not avail_buttons.empty
-            and (avail_buttons["icon"] == "refresh_button.png").any()
+            not avail_buttons.empty and (avail_buttons["icon"] == "refresh_button.png").any()
         ):
             self.logger.info("FINISHED AD")
         else:
@@ -986,29 +959,27 @@ class Bot:
 # -----------------------------------------------------------------------------
 
 
-def get_grid():
-    """Get fight grid pixel values"""
-    top_box = (153, 945)
-    box_size = (120, 120)
-    gap = 0
-    height = 3
-    width = 5
-    x_cord = list(
-        range(
-            top_box[0], top_box[0] + (box_size[0] + gap) * width, box_size[0] + gap
-        )
-    )
-    y_cord = list(
-        range(
-            top_box[1], top_box[1] + (box_size[1] + gap) * height, box_size[1] + gap
-        )
-    )
-    boxes = []
-    for y_point in y_cord:
-        for x_point in x_cord:
-            boxes.append((x_point, y_point))
-    boxes = np.array(boxes).reshape(height, width, 2)
-    return boxes, box_size
+def get_grid(
+    screen_width: int = 1080,
+    screen_height: int = 1920,
+) -> tuple[np.ndarray, tuple[int, int]]:
+    """Get fight grid pixel coordinates.
+
+    Uses the GridExtractor class to calculate cell positions based on
+    the screen resolution. The grid is 3 rows x 5 columns = 15 cells.
+
+    Args:
+        screen_width: Width of the screenshot in pixels.
+        screen_height: Height of the screenshot in pixels.
+
+    Returns:
+        Tuple of:
+        - boxes: NDArray of shape (3, 5, 2) with [x, y] coordinates
+                 for the top-left corner of each cell.
+        - box_size: Tuple (width, height) of each cell.
+    """
+    extractor = GridExtractor(screen_width, screen_height)
+    return extractor.get_grid()
 
 
 def get_unit_count(grid_df):
