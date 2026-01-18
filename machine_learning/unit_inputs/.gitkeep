@@ -1,0 +1,11 @@
+# This file ensures the directory structure is tracked by Git
+# Unit-specific training input images go in subdirectories (e.g., alchemist/, archer/, etc.)
+# 
+# Directory structure:
+# unit_inputs/
+#   alchemist/
+#   archer/
+#   banner/
+#   ... (one folder per unit type)
+#
+# Each subdirectory contains training images for that specific unit type.

@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Comprehensive `.gitignore` with 200+ patterns covering Python, ML, IDE, OS-specific files
+- `.gitkeep` files to preserve empty directory structure for ML data
+  - `machine_learning/inputs/.gitkeep`
+  - `machine_learning/raw_input/.gitkeep`
+  - `machine_learning/unit_inputs/.gitkeep`
+  - `OCR_inputs/.gitkeep`
+  - `training_data/screenshots/.gitkeep`
+
+### Changed
+- PKL models are now tracked in Git (removed from `.gitignore`)
+- Organized `.gitignore` into 12 logical sections with clear documentation
+- Updated ML data ignore patterns to preserve directory structure while excluding contents
+
+## [0.5.0] - 2026-01-18
+
+### Added
 - Complete commit history documentation in `Commits.md` (241 commits)
 - Icon template organization by menu state (Main_Menu/, Store_Menu/, Cards_Menu/, Clan_Menu/, Event_Menu/, PVE/)
 - New menu navigation icons: Cards_Menu.png, Clan_Menu.png, Event_Menu.png, Store_Menu.png
@@ -132,17 +148,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Undefined variable bugs in exception handlers
 - Import issues in legacy modules
 
+## [0.0.1] - 2024-12-15
+
+### Added
+- Python 3.13.5 upgrade with dependency management
+- Performance monitoring system with metrics tracking
+- Advanced error recovery system with customizable strategies
+- Comprehensive test suite for error recovery and performance
+- CI/CD pipeline with GitHub Actions
+- Pre-commit hooks for code quality
+- Version information display script
+
+### Changed
+- Updated all dependencies for Python 3.13 compatibility
+- Enhanced README with installation verification steps
+- Improved documentation structure
+
+### Fixed
+- Python 3.13 compatibility warnings
+- Dependency version conflicts
+
+## [0.0.0] - 2021-02-07
+
+### Added
+- Initial commit - Rush Royale Bot foundation
+- Basic bot core functionality for Rush Royale automation
+- Unit detection using OpenCV template matching
+- Merge logic for unit management
+- PVE/PVP mode support with chapter/floor selection
+- Dungeon automation with ad watching
+- ADB connection for Android emulator control
+- Configuration file support (config.ini)
+- Rank prediction model for unit quality assessment
+- GUI interface for bot control
+- Store auto-refresh and purchase logic
+- Priest and Dryad special merge handling
+- Demon Hunter rank-up logic
+- Ad watching system for rewards
+- Scrcpy integration for low-latency screen capture
+- Color-based unit detection system
+- Unit preservation logic
+- Knight statue and demon unit support
+- Multiple floor support (Floor 1-10)
+- Matchmaking timeout handling
+- Curse detection via edge color
+- Port scanning for device discovery
+- Live merge logging with colored output
+- Bluestacks emulator support
+
+### Changed
+- N/A (initial release)
+
+### Removed
+- N/A (initial release)
+
 ---
 
 ## Version History Summary
 
+- **Unreleased** - Project hygiene improvements (.gitignore, .gitkeep files)
+- **0.5.0** - Documentation and icon organization
 - **0.4.0** - Loading screen detection & context-aware icons (T014, T017)
 - **0.3.0** - Dungeon automation, mana management, screen state detection (T007-T009)
 - **0.2.0** - Screenshot pipeline, device manager, test coverage, merge logic (T002-T006, T010)
-- **0.1.0** - Initial release with core functionality
+- **0.1.0** - Package restructuring and modernization
+- **0.0.1** - Python 3.13 upgrade and enhanced testing
+- **0.0.0** - Initial Rush Royale Bot release (original AxelBjork project)
 
-[Unreleased]: https://github.com/mleem97/Rush-Royale-Bot/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/mleem97/Rush-Royale-Bot/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/mleem97/Rush-Royale-Bot/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/mleem97/Rush-Royale-Bot/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/mleem97/Rush-Royale-Bot/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/mleem97/Rush-Royale-Bot/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/mleem97/Rush-Royale-Bot/releases/tag/v0.1.0
+[0.1.0]: https://github.com/mleem97/Rush-Royale-Bot/compare/v0.0.1...v0.1.0
+[0.0.1]: https://github.com/mleem97/Rush-Royale-Bot/compare/v0.0.0...v0.0.1
+[0.0.0]: https://github.com/mleem97/Rush-Royale-Bot/releases/tag/v0.0.0

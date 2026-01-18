@@ -1,80 +1,462 @@
-# --- Python ---
+# ============================================================================
+# Rush Royale Bot - Comprehensive .gitignore
+# ============================================================================
+# Generated: 2026-01-18
+# Based on: Python, Visual Studio, Machine Learning, Game Automation
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# Python
+# ----------------------------------------------------------------------------
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 
-# --- Local / generated data ---
-OCR_inputs/
-machine_learning/inputs/
-machine_learning/raw_input/
-screens/
-screenshots/
-units/
-*.bak
-*.tmp
-*.swp
+# C extensions
+*.so
 
-# --- Virtual env ---
-.bot_env/
-bot_env/
-.venv/
-venv/
-ENV/
-
-# --- IDE ---
-.vscode/
-.vs/
-
-# --- Bundled tools / local paths ---
-.scrcpy/
-.python_path
-
-# --- Build artifacts ---
+# Distribution / packaging
+.Python
 build/
+develop-eggs/
 dist/
-bin/
-obj/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# --- Test / type-check caches ---
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
-.ipynb_checkpoints/
-.coverage
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
 htmlcov/
 .tox/
-*.egg-info/
-.eggs/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
 
-# --- Documentation build ---
-site/
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
 docs/_build/
 
-# --- Local environment files ---
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
 .env
 .env.local
 .env.*.local
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.bot_env/
+bot_env/
 
-# --- Local runtime outputs ---
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# ----------------------------------------------------------------------------
+# IDE & Editor
+# ----------------------------------------------------------------------------
+# VS Code
+.vscode/
+.history/
+
+# Visual Studio
+.vs/
+.vsconfig
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+*.user
+*.userprefs
+.vscode/
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# JetBrains (PyCharm, IntelliJ, etc.)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ----------------------------------------------------------------------------
+# Operating System
+# ----------------------------------------------------------------------------
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+*~
+.directory
+.Trash-*
+.nfs*
+
+# ----------------------------------------------------------------------------
+# Project Specific - Bot Runtime
+# ----------------------------------------------------------------------------
+# Log files
 *.log
+RR_bot.log
+bot_*.log
+debug_*.log
+error_*.log
+
+# Screenshots / Debug Images
+screenshots/
+screens/
 bot_feed*.png
+temp_screenshot.png
+debug_*.png
+*_detected.png
+*_debug.png
+screenshot_*.png
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
 ordner.txt
 .backups/
 .logs/
-temp_screenshot.png
-*_detected.png
+temp_*
 
-# --- Training data (user-generated) ---
-training_data/screenshots/
-training_data/units/
-
-# --- ML Models (generated) ---
-models/unit_classifier.pkl
-models/unit_labels.json
-
-# --- Local config ---
+# Local configuration (tracked: .env.example, not tracked: actual configs)
 config.ini
+.python_path
 
-# --- One-off files ---
+# ----------------------------------------------------------------------------
+# Machine Learning & Training Data
+# ----------------------------------------------------------------------------
+# User-generated training data (too large for git, but keep directory structure)
+training_data/screenshots/*
+!training_data/screenshots/.gitkeep
+training_data/units/
+machine_learning/inputs/*
+!machine_learning/inputs/.gitkeep
+machine_learning/raw_input/*
+!machine_learning/raw_input/.gitkeep
+machine_learning/unit_inputs/**/*
+!machine_learning/unit_inputs/.gitkeep
+OCR_inputs/*
+!OCR_inputs/.gitkeep
+
+# Generated ML models (models/*.pkl are tracked in git!)
+# Note: Pre-trained models in models/ directory are versioned
+*.h5
+*.hdf5
+*.pb
+*.onnx
+*.pt
+*.pth
+*.joblib
+
+# ML experiment tracking
+mlruns/
+.mlflow/
+wandb/
+tensorboard/
+runs/
+
+# Data files
+*.csv
+*.tsv
+*.dat
+*.data
+*.parquet
+*.feather
+
+# ----------------------------------------------------------------------------
+# Computer Vision Templates (Tracked)
+# ----------------------------------------------------------------------------
+# Keep template images but ignore generated/debug versions
+# cv-images/ is tracked
+# !cv-images/icons/**/*.png
+# !cv-images/all_units/**/*.png
+# !cv-images/units/**/*.png
+# !cv-images/unit_rank/**/*.png
+
+# ----------------------------------------------------------------------------
+# Build Artifacts & Dependencies
+# ----------------------------------------------------------------------------
+# Build directories
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Compiled files
+*.pyc
+*.pyo
+*.pyd
+*.dll
+*.exe
+*.out
+*.app
+
+# Package manager
+node_modules/
+bower_components/
+
+# ----------------------------------------------------------------------------
+# Testing & Quality Tools
+# ----------------------------------------------------------------------------
+# Test coverage
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Benchmarks
+.benchmarks/
+benchmark_results/
+
+# ----------------------------------------------------------------------------
+# Documentation
+# ----------------------------------------------------------------------------
+# Sphinx build
+docs/_build/
+docs/_static/
+docs/_templates/
+site/
+
+# ----------------------------------------------------------------------------
+# Vendored / Bundled Tools
+# ----------------------------------------------------------------------------
+# Local scrcpy installation
+.scrcpy/
+scrcpy/bin/
+scrcpy/lib/
+
+# ADB tools (if bundled locally)
+platform-tools/
+adb.exe
+fastboot.exe
+
+# ----------------------------------------------------------------------------
+# Database & Cache
+# ----------------------------------------------------------------------------
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite3-journal
+*.cache
+
+# ----------------------------------------------------------------------------
+# Security & Secrets
+# ----------------------------------------------------------------------------
+# Never commit secrets
+*.pem
+*.key
+*.cert
+*.p12
+secrets.json
+.secrets/
+credentials.json
+.credentials/
+
+# ----------------------------------------------------------------------------
+# Miscellaneous
+# ----------------------------------------------------------------------------
+# Wiki (if stored in repo)
+.wiki/
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# Legacy / deprecated files
 Src/old_functions.py
 requirements.py
+*.deprecated
+*.old
+
+# Project-specific Visual Studio files
+Rush-Royale-Bot.pyproj
+Rush-Royale-Bot.sln
+
+# ----------------------------------------------------------------------------
+# Keep Important Files (Force Include)
+# ----------------------------------------------------------------------------
+# These patterns override previous ignores
+!.env.example
+!.gitkeep
+!README.md
+!LICENSE
+!CHANGELOG.md
+!Commits.md
+
+# Keep CI/CD workflows
+!.github/
+!.github/**
+
+# Keep template images (organized structure)
+!cv-images/
+!cv-images/**/*.png
+!cv-images/**/*.jpg
+
+# Keep example/demo files
+!examples/
+!examples/**
+
+# ============================================================================
+# End of .gitignore
+# ============================================================================
