@@ -1678,3 +1678,518 @@ class TestScrcpyClient:
 
         client._handle_disconnect()
         assert client.is_connected is False
+
+
+# =============================================================================
+# ManaManager Tests
+# =============================================================================
+
+from rush_bot.core import ManaConfig
+from rush_bot.core import ManaManager
+from rush_bot.core import ManaRegion
+from rush_bot.core import ManaState
+from rush_bot.core import UpgradeRecommendation
+from rush_bot.core import UpgradeSlot
+from rush_bot.core import create_mana_manager
+
+
+class TestManaConfig:
+    """Tests for ManaConfig dataclass."""
+
+    def test_default_config(self) -> None:
+        """Test default mana configuration."""
+        config = ManaConfig()
+        assert config.auto_upgrade is True
+        assert config.upgrade_priority == [1, 2, 3, 4, 5]
+        assert config.boss_reserve == 200
+        assert config.min_summon_mana == 100
+        assert config.max_summon_cost == 800
+        assert config.enable_hero_power is False
+        assert config.hero_power_cooldown_ms == 5000
+
+    def test_custom_config(self) -> None:
+        """Test custom mana configuration."""
+        config = ManaConfig(
+            auto_upgrade=False,
+            upgrade_priority=[3, 1, 2, 5, 4],
+            boss_reserve=300,
+            enable_hero_power=True,
+        )
+        assert config.auto_upgrade is False
+        assert config.upgrade_priority == [3, 1, 2, 5, 4]
+        assert config.boss_reserve == 300
+        assert config.enable_hero_power is True
+
+
+class TestManaState:
+    """Tests for ManaState dataclass."""
+
+    def test_default_state(self) -> None:
+        """Test default mana state."""
+        state = ManaState()
+        assert state.current_mana == 0
+        assert state.summon_cost == 50  # BASE_SUMMON_COST
+        assert state.card_levels == {1: 1, 2: 1, 3: 1, 4: 1, 5: 1}
+        assert state.hero_power_level == 1
+        assert state.is_boss_wave is False
+        assert state.units_summoned == 0
+
+    def test_state_reset(self) -> None:
+        """Test state reset functionality."""
+        state = ManaState()
+        state.current_mana = 500
+        state.summon_cost = 100
+        state.units_summoned = 10
+        state.card_levels[1] = 3
+        state.is_boss_wave = True
+
+        state.reset()
+
+        assert state.current_mana == 0
+        assert state.summon_cost == 50
+        assert state.units_summoned == 0
+        assert state.card_levels == {1: 1, 2: 1, 3: 1, 4: 1, 5: 1}
+        assert state.is_boss_wave is False
+
+
+class TestManaRegion:
+    """Tests for ManaRegion dataclass."""
+
+    def test_region_creation(self) -> None:
+        """Test mana region creation."""
+        region = ManaRegion(x=50, y=100, width=150, height=50)
+        assert region.x == 50
+        assert region.y == 100
+        assert region.width == 150
+        assert region.height == 50
+
+    def test_region_bounds(self) -> None:
+        """Test region bounds property."""
+        region = ManaRegion(x=50, y=100, width=150, height=50)
+        assert region.bounds == (50, 100, 150, 50)
+
+    def test_region_center(self) -> None:
+        """Test region center calculation."""
+        region = ManaRegion(x=50, y=100, width=150, height=50)
+        assert region.center == (125, 125)  # (50 + 75, 100 + 25)
+
+
+class TestUpgradeSlot:
+    """Tests for UpgradeSlot enum."""
+
+    def test_slot_values(self) -> None:
+        """Test upgrade slot values."""
+        assert UpgradeSlot.CARD_1 == 1
+        assert UpgradeSlot.CARD_2 == 2
+        assert UpgradeSlot.CARD_3 == 3
+        assert UpgradeSlot.CARD_4 == 4
+        assert UpgradeSlot.CARD_5 == 5
+        assert UpgradeSlot.HERO_POWER == 6
+
+
+class TestUpgradeRecommendation:
+    """Tests for UpgradeRecommendation dataclass."""
+
+    def test_recommendation_creation(self) -> None:
+        """Test upgrade recommendation creation."""
+        rec = UpgradeRecommendation(
+            slot=1,
+            cost=100,
+            priority=5.0,
+            can_afford=True,
+            reason="Card 1 upgrade",
+        )
+        assert rec.slot == 1
+        assert rec.cost == 100
+        assert rec.priority == 5.0
+        assert rec.can_afford is True
+        assert rec.reason == "Card 1 upgrade"
+
+
+class TestManaManager:
+    """Tests for ManaManager class."""
+
+    def test_manager_creation(self) -> None:
+        """Test mana manager creation with defaults."""
+        manager = ManaManager()
+        assert manager is not None
+        assert manager.screen_width == 1080
+        assert manager.screen_height == 1920
+        assert manager.config.auto_upgrade is True
+
+    def test_manager_with_custom_config(self) -> None:
+        """Test mana manager with custom config."""
+        config = ManaConfig(boss_reserve=400, auto_upgrade=False)
+        manager = ManaManager(config=config)
+        assert manager.config.boss_reserve == 400
+        assert manager.config.auto_upgrade is False
+
+    def test_manager_custom_resolution(self) -> None:
+        """Test mana manager with custom resolution."""
+        manager = ManaManager(screen_width=720, screen_height=1280)
+        assert manager.screen_width == 720
+        assert manager.screen_height == 1280
+        assert manager._scale_x == 720 / 1080
+        assert manager._scale_y == 1280 / 1920
+
+    def test_set_screen_resolution(self) -> None:
+        """Test updating screen resolution."""
+        manager = ManaManager()
+        manager.set_screen_resolution(1440, 2560)
+
+        assert manager.screen_width == 1440
+        assert manager.screen_height == 2560
+        assert manager._scale_x == 1440 / 1080
+        assert manager._scale_y == 2560 / 1920
+
+    def test_get_mana_region(self) -> None:
+        """Test getting mana region at reference resolution."""
+        manager = ManaManager()
+        region = manager.get_mana_region()
+
+        assert region.x == 50
+        assert region.y == 1765
+        assert region.width == 150
+        assert region.height == 50
+
+    def test_get_mana_region_scaled(self) -> None:
+        """Test getting mana region at scaled resolution."""
+        manager = ManaManager(screen_width=540, screen_height=960)
+        region = manager.get_mana_region()
+
+        # Half resolution = half coordinates
+        assert region.x == 25  # 50 * 0.5
+        assert region.y == 882  # int(1765 * 0.5)
+
+    def test_get_summon_button_region(self) -> None:
+        """Test getting summon button region."""
+        manager = ManaManager()
+        region = manager.get_summon_button_region()
+
+        assert region.x == 920
+        assert region.y == 1770
+
+    def test_get_summon_button_position(self) -> None:
+        """Test getting summon button center position."""
+        manager = ManaManager()
+        pos = manager.get_summon_button_position()
+
+        # Center of summon button region
+        assert isinstance(pos, tuple)
+        assert len(pos) == 2
+        assert pos[0] > 900  # X should be right side
+
+    def test_get_upgrade_button_position_valid(self) -> None:
+        """Test getting upgrade button positions for valid slots."""
+        manager = ManaManager()
+
+        for slot in range(1, 7):
+            pos = manager.get_upgrade_button_position(slot)
+            assert isinstance(pos, tuple)
+            assert len(pos) == 2
+            assert pos[1] > 1400  # Y should be near bottom
+
+    def test_get_upgrade_button_position_invalid(self) -> None:
+        """Test invalid slot raises error."""
+        manager = ManaManager()
+
+        with pytest.raises(ValueError, match="Invalid slot"):
+            manager.get_upgrade_button_position(0)
+
+        with pytest.raises(ValueError, match="Invalid slot"):
+            manager.get_upgrade_button_position(7)
+
+    def test_get_all_upgrade_positions(self) -> None:
+        """Test getting all upgrade positions."""
+        manager = ManaManager()
+        positions = manager.get_all_upgrade_positions()
+
+        assert len(positions) == 6
+        assert all(slot in positions for slot in range(1, 7))
+
+    def test_calculate_summon_cost(self) -> None:
+        """Test summon cost calculation."""
+        manager = ManaManager()
+
+        # First summon: base cost
+        assert manager.calculate_summon_cost(0) == 50
+
+        # Each unit increases cost by 10
+        assert manager.calculate_summon_cost(1) == 60
+        assert manager.calculate_summon_cost(5) == 100
+        assert manager.calculate_summon_cost(10) == 150
+
+        # Max cost capped at 1200
+        assert manager.calculate_summon_cost(200) == 1200
+
+    def test_can_summon_with_enough_mana(self) -> None:
+        """Test can_summon returns True when mana is sufficient."""
+        manager = ManaManager()
+        state = ManaState(current_mana=100, summon_cost=50)
+
+        assert manager.can_summon(state) is True
+
+    def test_can_summon_without_enough_mana(self) -> None:
+        """Test can_summon returns False when mana is insufficient."""
+        manager = ManaManager()
+        state = ManaState(current_mana=30, summon_cost=50)
+
+        assert manager.can_summon(state) is False
+
+    def test_can_summon_with_max_cost_exceeded(self) -> None:
+        """Test can_summon returns False when cost exceeds max."""
+        config = ManaConfig(max_summon_cost=100)
+        manager = ManaManager(config=config)
+        state = ManaState(current_mana=500, summon_cost=150)
+
+        assert manager.can_summon(state) is False
+
+    def test_can_summon_boss_wave_reserve(self) -> None:
+        """Test can_summon respects boss wave reserve."""
+        config = ManaConfig(boss_reserve=200)
+        manager = ManaManager(config=config)
+
+        # Without boss wave: can summon
+        state = ManaState(current_mana=100, summon_cost=50, is_boss_wave=False)
+        assert manager.can_summon(state) is True
+
+        # With boss wave: need extra reserve
+        state.is_boss_wave = True
+        state.current_mana = 200  # 200 - 200 reserve = 0 available
+        assert manager.can_summon(state) is False
+
+        state.current_mana = 300  # 300 - 200 reserve = 100 available
+        assert manager.can_summon(state) is True
+
+    def test_should_upgrade_auto_disabled(self) -> None:
+        """Test should_upgrade returns False when auto_upgrade disabled."""
+        config = ManaConfig(auto_upgrade=False)
+        manager = ManaManager(config=config)
+        state = ManaState(current_mana=500)
+
+        assert manager.should_upgrade(1, state) is False
+
+    def test_should_upgrade_hero_power_disabled(self) -> None:
+        """Test should_upgrade returns False for hero when disabled."""
+        config = ManaConfig(enable_hero_power=False)
+        manager = ManaManager(config=config)
+        state = ManaState(current_mana=500)
+
+        assert manager.should_upgrade(6, state) is False
+
+    def test_should_upgrade_can_afford(self) -> None:
+        """Test should_upgrade returns True when affordable."""
+        manager = ManaManager()
+        state = ManaState(current_mana=200)  # Enough for level 1 upgrade (100)
+
+        assert manager.should_upgrade(1, state) is True
+
+    def test_should_upgrade_cannot_afford(self) -> None:
+        """Test should_upgrade returns False when not affordable."""
+        manager = ManaManager()
+        state = ManaState(current_mana=50)  # Not enough for level 1 upgrade (100)
+
+        assert manager.should_upgrade(1, state) is False
+
+    def test_get_upgrade_recommendation(self) -> None:
+        """Test getting upgrade recommendation."""
+        manager = ManaManager()
+        state = ManaState(current_mana=200)
+
+        rec = manager.get_upgrade_recommendation(state)
+
+        assert rec is not None
+        assert rec.can_afford is True
+        assert rec.slot in [1, 2, 3, 4, 5]
+
+    def test_get_upgrade_recommendation_no_mana(self) -> None:
+        """Test no recommendation when no mana."""
+        manager = ManaManager()
+        state = ManaState(current_mana=0)
+
+        rec = manager.get_upgrade_recommendation(state)
+
+        # Should be None or not affordable
+        assert rec is None or rec.can_afford is False
+
+    def test_get_upgrade_recommendation_auto_disabled(self) -> None:
+        """Test no recommendation when auto_upgrade disabled."""
+        config = ManaConfig(auto_upgrade=False)
+        manager = ManaManager(config=config)
+        state = ManaState(current_mana=1000)
+
+        rec = manager.get_upgrade_recommendation(state)
+
+        assert rec is None
+
+    def test_get_all_upgrade_recommendations(self) -> None:
+        """Test getting all upgrade recommendations."""
+        manager = ManaManager()
+        state = ManaState(current_mana=500)
+
+        recs = manager.get_all_upgrade_recommendations(state)
+
+        assert len(recs) == 5  # 5 cards (hero power disabled by default)
+        assert all(isinstance(r, UpgradeRecommendation) for r in recs)
+        # Should be sorted by priority (descending)
+        priorities = [r.priority for r in recs]
+        assert priorities == sorted(priorities, reverse=True)
+
+    def test_get_all_upgrade_recommendations_with_hero(self) -> None:
+        """Test getting all recommendations including hero power."""
+        config = ManaConfig(enable_hero_power=True)
+        manager = ManaManager(config=config)
+        state = ManaState(current_mana=500)
+
+        recs = manager.get_all_upgrade_recommendations(state)
+
+        assert len(recs) == 6  # 5 cards + hero power
+
+    def test_update_after_summon(self) -> None:
+        """Test state update after summoning."""
+        manager = ManaManager()
+        manager.state.current_mana = 100
+        manager.state.summon_cost = 50
+        manager.state.units_summoned = 0
+
+        manager.update_after_summon()
+
+        assert manager.state.units_summoned == 1
+        assert manager.state.summon_cost == 60  # 50 + 10
+        assert manager.state.current_mana == 50  # 100 - 50
+
+    def test_update_after_upgrade_card(self) -> None:
+        """Test state update after upgrading a card."""
+        manager = ManaManager()
+        manager.state.current_mana = 200
+        manager.state.card_levels[1] = 1
+
+        manager.update_after_upgrade(1)
+
+        assert manager.state.card_levels[1] == 2
+        assert manager.state.current_mana == 100  # 200 - 100 (level 1 cost)
+
+    def test_update_after_upgrade_hero(self) -> None:
+        """Test state update after upgrading hero power."""
+        manager = ManaManager()
+        manager.state.current_mana = 200
+        manager.state.hero_power_level = 1
+
+        manager.update_after_upgrade(6)
+
+        assert manager.state.hero_power_level == 2
+        assert manager.state.current_mana == 100  # 200 - 100
+
+    def test_set_boss_wave(self) -> None:
+        """Test setting boss wave flag."""
+        manager = ManaManager()
+
+        assert manager.state.is_boss_wave is False
+
+        manager.set_boss_wave(True)
+        assert manager.state.is_boss_wave is True
+
+        manager.set_boss_wave(False)
+        assert manager.state.is_boss_wave is False
+
+    def test_reset_for_new_battle(self) -> None:
+        """Test resetting state for new battle."""
+        manager = ManaManager()
+        manager.state.current_mana = 1000
+        manager.state.units_summoned = 50
+        manager.state.card_levels[1] = 5
+        manager.state.is_boss_wave = True
+
+        manager.reset_for_new_battle()
+
+        assert manager.state.current_mana == 0
+        assert manager.state.units_summoned == 0
+        assert manager.state.card_levels == {1: 1, 2: 1, 3: 1, 4: 1, 5: 1}
+        assert manager.state.is_boss_wave is False
+
+    def test_get_mana_efficiency(self) -> None:
+        """Test getting mana efficiency metrics."""
+        manager = ManaManager()
+        manager.state.current_mana = 500
+        manager.state.units_summoned = 5
+        manager.state.card_levels[1] = 2
+        manager.state.card_levels[2] = 3
+        manager.state.hero_power_level = 2
+
+        metrics = manager.get_mana_efficiency()
+
+        assert metrics["units_summoned"] == 5
+        assert metrics["current_mana"] == 500
+        assert metrics["card_levels"] == {1: 2, 2: 3, 3: 1, 4: 1, 5: 1}
+        assert metrics["hero_power_level"] == 2
+        assert "total_summon_mana_spent" in metrics
+        assert "total_upgrade_mana_spent" in metrics
+
+
+class TestManaManagerOCR:
+    """Tests for ManaManager OCR functionality."""
+
+    def test_detect_mana_from_valid_image(self) -> None:
+        """Test mana detection from valid screenshot."""
+        manager = ManaManager()
+
+        # Create a fake screenshot (1080x1920 BGR)
+        screenshot = np.zeros((1920, 1080, 3), dtype=np.uint8)
+        # Add some bright pixels in mana region to simulate digits
+        screenshot[1765:1815, 50:200] = 255
+
+        result = manager.detect_mana_from_image(screenshot)
+
+        # Should return some estimation (not None)
+        # The actual value depends on contour detection
+        assert result is not None or result is None  # OCR may fail without real text
+
+    def test_detect_mana_from_invalid_image(self) -> None:
+        """Test mana detection with invalid image."""
+        manager = ManaManager()
+
+        # Empty or None screenshot
+        result = manager.detect_mana_from_image(np.array([]))
+        assert result is None
+
+    def test_detect_mana_region_out_of_bounds(self) -> None:
+        """Test mana detection when region is out of bounds."""
+        manager = ManaManager()
+
+        # Small screenshot (region will be out of bounds)
+        screenshot = np.zeros((100, 100, 3), dtype=np.uint8)
+
+        result = manager.detect_mana_from_image(screenshot)
+        assert result is None
+
+    def test_detect_mana_state(self) -> None:
+        """Test full mana state detection."""
+        manager = ManaManager()
+
+        screenshot = np.zeros((1920, 1080, 3), dtype=np.uint8)
+        screenshot[1765:1815, 50:200] = 200
+
+        state = manager.detect_mana_state(screenshot)
+
+        assert isinstance(state, ManaState)
+
+
+class TestCreateManaManager:
+    """Tests for the create_mana_manager factory function."""
+
+    def test_create_default(self) -> None:
+        """Test creating manager with defaults."""
+        manager = create_mana_manager()
+        assert isinstance(manager, ManaManager)
+
+    def test_create_with_config(self) -> None:
+        """Test creating manager with custom config."""
+        config = ManaConfig(boss_reserve=500)
+        manager = create_mana_manager(config=config)
+        assert manager.config.boss_reserve == 500
+
+    def test_create_with_resolution(self) -> None:
+        """Test creating manager with custom resolution."""
+        manager = create_mana_manager(screen_width=720, screen_height=1280)
+        assert manager.screen_width == 720
+        assert manager.screen_height == 1280

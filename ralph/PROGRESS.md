@@ -10,9 +10,9 @@
 |-----------|--------|-------|-----------|----------|
 | Kritische Bugs | 3 | 0 | 0 | 3 |
 | Kern-Funktionalität | 3 | 0 | 0 | 3 |
-| Gameplay-Features | 3 | 2 | 0 | 1 |
+| Gameplay-Features | 3 | 1 | 0 | 2 |
 | Qualität & Tooling | 4 | 0 | 0 | 4 |
-| **Gesamt** | **13** | **2** | **0** | **11** |
+| **Gesamt** | **13** | **1** | **0** | **12** |
 
 ---
 
@@ -41,7 +41,7 @@
 | ID | Task | Status | Bearbeiter | Datum |
 |----|------|--------|------------|-------|
 | T007 | PvE-Dungeon-Loop | ⏳ Offen | - | - |
-| T008 | Mana-Management | ⏳ Offen | - | - |
+| T008 | Mana-Management | ✅ Erledigt | Subagent | 2026-01-18 |
 | T009 | Bildschirm-Zustand-Erkennung | ✅ Erledigt | Subagent | 2026-01-18 |
 
 ---
@@ -58,6 +58,47 @@
 ---
 
 ## 📝 Änderungsprotokoll
+
+### [2026-01-18] T008: Mana-Management implementiert
+- **Problem:** Keine automatische Mana-Erkennung, keine Upgrade-Priorisierung
+- **Lösung:** Neues `ManaManager` Modul mit OCR-basierter Erkennung und intelligentem Upgrade-System
+- **Änderungen:**
+  - `src/rush_bot/core/mana.py`: Neue Datei mit ~790 Zeilen Code
+  - `src/rush_bot/core/__init__.py`: 7 neue Exports hinzugefügt
+  - `tests/test_core.py`: 47 neue Unit-Tests für Mana-Management
+- **Features:**
+  - **ManaConfig:** Konfigurierbare Parameter (auto_upgrade, upgrade_priority, boss_reserve, hero_power)
+  - **ManaState:** State-Tracking für current_mana, summon_cost, card_levels, boss_wave
+  - **ManaRegion:** Screen-Koordinaten für Mana-Display und Upgrade-Buttons
+  - **UpgradeSlot Enum:** CARD_1-5 und HERO_POWER für klare Slot-Identifikation
+  - **Resolution-Skalierung:** Automatische Anpassung an verschiedene Bildschirmauflösungen (720p-1440p)
+  - **Summon-Cost-Tracking:** Berechnung steigender Summon-Kosten (50 + 10*n, max 1200)
+  - **Boss-Wave-Reserve:** Konfigurierbare Mana-Reserve für Boss-Wellen
+  - **Upgrade-Priorisierung:** Prioritätsbasierte Empfehlungen mit Kosten-Check
+- **Neue Klassen:**
+  - `ManaManager`: Hauptklasse für Mana-Erkennung und Upgrade-Entscheidungen
+  - `ManaConfig`: Dataclass für Manager-Konfiguration
+  - `ManaState`: Dataclass für Battle-State-Tracking
+  - `ManaRegion`: Dataclass für Screen-Koordinaten
+  - `UpgradeRecommendation`: Dataclass für Upgrade-Empfehlungen
+  - `UpgradeSlot`: IntEnum für Slot-Positionen
+- **Hauptmethoden:**
+  - `detect_mana_from_image()`: OCR-basierte Mana-Erkennung aus Screenshot
+  - `can_summon()`: Prüft ob Summon möglich und sinnvoll ist
+  - `should_upgrade()`: Prüft ob Upgrade für Slot empfohlen wird
+  - `get_upgrade_recommendation()`: Beste Upgrade-Empfehlung basierend auf Priorität
+  - `get_all_upgrade_recommendations()`: Alle möglichen Upgrades sortiert
+  - `get_upgrade_button_position()`: Skalierte Koordinaten für Upgrade-Buttons
+  - `get_summon_button_position()`: Skalierte Koordinaten für Summon-Button
+  - `update_after_summon()`: State-Update nach Unit-Summon
+  - `update_after_upgrade()`: State-Update nach Card/Hero-Upgrade
+  - `set_boss_wave()`: Boss-Wave-Modus aktivieren/deaktivieren
+  - `reset_for_new_battle()`: State zurücksetzen für neuen Kampf
+- **Akzeptanzkriterien:**
+  - [x] Mana-Level-Erkennung (OCR-basiert via `detect_mana_from_image()`)
+  - [x] Upgrade-Priorisierung nach Konfiguration (`get_upgrade_recommendation()`)
+  - [x] Boss-Mana-Reserve (`boss_reserve` in `ManaConfig`)
+- **Tests:** 279 Tests bestehen (47 neue Mana-Management-Tests)
 
 ### [2026-01-18] T006: Screenshot-Pipeline optimiert
 - **Problem:** Screenshot-Capture war langsam (>200ms) und ohne Fallback bei Fehlern

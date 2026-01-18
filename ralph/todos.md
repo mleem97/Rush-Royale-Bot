@@ -78,12 +78,13 @@
   - [ ] Ergebnis-Screen erkannt
 
 ### T008: Mana-Management verbessern
-- **Status:** ⏳ Offen
+- **Status:** ✅ Erledigt
 - **Beschreibung:** Optimales Mana-Upgrade-Timing
+- **Dateien:** `src/rush_bot/core/mana.py`
 - **Akzeptanzkriterien:**
-  - [ ] Mana-Level-Erkennung
-  - [ ] Upgrade-Priorisierung nach Konfiguration
-  - [ ] Boss-Mana-Reserve
+  - [x] Mana-Level-Erkennung
+  - [x] Upgrade-Priorisierung nach Konfiguration
+  - [x] Boss-Mana-Reserve
 
 ### T009: Bildschirm-Zustand-Erkennung
 - **Status:** ✅ Erledigt

@@ -9,6 +9,13 @@ from .device import DeviceNotConnectedError
 from .device import DeviceState
 from .handler import BotHandler
 from .logger import BotLogger
+from .mana import ManaConfig
+from .mana import ManaManager
+from .mana import ManaRegion
+from .mana import ManaState
+from .mana import UpgradeRecommendation
+from .mana import UpgradeSlot
+from .mana import create_mana_manager
 from .merge import MergeCandidate
 from .merge import MergeConfig
 from .merge import MergeLogic
@@ -32,6 +39,10 @@ __all__ = [
     "DeviceNotConnectedError",
     "DeviceState",
     "LatencyStats",
+    "ManaConfig",
+    "ManaManager",
+    "ManaRegion",
+    "ManaState",
     "MergeCandidate",
     "MergeConfig",
     "MergeLogic",
@@ -42,4 +53,7 @@ __all__ = [
     "ScreenshotResult",
     "ScreenshotSource",
     "ScrcpyClient",
+    "UpgradeRecommendation",
+    "UpgradeSlot",
+    "create_mana_manager",
 ]
