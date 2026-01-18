@@ -509,7 +509,9 @@ class Bot:
                 self.logger.debug(
                     f"Icon hit {target}: score={max_val:.3f} thr={threshold:.3f} pos=({best_x},{best_y})"
                 )
-                current_icons.append([target, True, (int(best_x), int(best_y))])
+                current_icons.append(
+                    {"icon": target, "available": True, "pos [X,Y]": (int(best_x), int(best_y))}
+                )
 
         icon_df = pd.DataFrame(current_icons, columns=["icon", "available", "pos [X,Y]"])
         if available and not icon_df.empty:
@@ -1072,7 +1074,9 @@ class Bot:
                 return df, "home"
 
             df_click = df[
-                df["icon"].isin(["back_button.png", "0cont_button.png", "1quit.png", "quit_button.png"])
+                df["icon"].isin(
+                    ["back_button.png", "0cont_button.png", "1quit.png", "quit_button.png"]
+                )
             ]
             if not df_click.empty:
                 button_pos = df_click["pos [X,Y]"].tolist()[0]

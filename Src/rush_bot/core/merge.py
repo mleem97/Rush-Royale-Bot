@@ -153,8 +153,7 @@ class MergeValidator:
             return result
 
         _logger.debug(
-            f"Merge validation passed: {unit1_type}(R{unit1_rank}) + "
-            f"{unit2_type}(R{unit2_rank})"
+            f"Merge validation passed: {unit1_type}(R{unit1_rank}) + {unit2_type}(R{unit2_rank})"
         )
         return True, MergeResult.SUCCESS
 

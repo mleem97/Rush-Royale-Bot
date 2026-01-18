@@ -40,23 +40,23 @@ DATA_DIR = REPO_ROOT / "training_data" / "merge_decisions"
 @dataclass
 class MergeRule:
     """Rule defining what units can merge.
-    
+
     Attributes:
         unit: Unit name this rule applies to.
         merges_with: "any", "same", or list of unit names.
         priority: Priority level for merge decisions (higher = prefer).
     """
-    
+
     unit: str
     merges_with: str | list[str] = "same"
     priority: int = 0
-    
+
     def can_merge_with(self, other_unit: str) -> bool:
         """Check if this unit can merge with another.
-        
+
         Args:
             other_unit: Name of the potential merge target.
-            
+
         Returns:
             True if merge is allowed by this rule.
         """
@@ -72,26 +72,26 @@ class MergeRule:
 @dataclass
 class MergeWhitelist:
     """Collection of merge rules.
-    
+
     Defines which units can merge with what other units.
     Loaded from JSON configuration.
     """
-    
+
     rules: dict[str, MergeRule] = field(default_factory=dict)
-    
+
     @classmethod
     def from_json(cls, path: Path | str) -> MergeWhitelist:
         """Load whitelist from JSON file.
-        
+
         Args:
             path: Path to JSON file with merge rules.
-            
+
         Returns:
             MergeWhitelist instance.
         """
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
-        
+
         rules = {}
         for entry in data.get("rules", []):
             rule = MergeRule(
@@ -100,13 +100,13 @@ class MergeWhitelist:
                 priority=entry.get("priority", 0),
             )
             rules[rule.unit] = rule
-        
+
         return cls(rules=rules)
-    
+
     @classmethod
     def default(cls) -> MergeWhitelist:
         """Create default whitelist with common special units.
-        
+
         Returns:
             MergeWhitelist with default rules.
         """
@@ -114,10 +114,8 @@ class MergeWhitelist:
             # Harlequin (Mime/Joker) can merge with any unit
             "harlequin": MergeRule("harlequin", "any", priority=10),
             "mime": MergeRule("mime", "any", priority=10),
-            
             # Dryad upgrades any unit
             "dryad": MergeRule("dryad", "any", priority=9),
-            
             # Most units merge with same type only
             "demon_hunter": MergeRule("demon_hunter", "same", priority=1),
             "knight_statue": MergeRule("knight_statue", "same", priority=2),
@@ -125,14 +123,14 @@ class MergeWhitelist:
             "shaman": MergeRule("shaman", "same", priority=4),
         }
         return cls(rules=rules)
-    
+
     def can_merge(self, unit1: str, unit2: str) -> bool:
         """Check if two units can merge.
-        
+
         Args:
             unit1: First unit name.
             unit2: Second unit name.
-            
+
         Returns:
             True if merge is allowed.
         """
@@ -140,18 +138,18 @@ class MergeWhitelist:
         rule1 = self.rules.get(unit1)
         if rule1 and rule1.can_merge_with(unit2):
             return True
-        
+
         # Check rule for unit2
         rule2 = self.rules.get(unit2)
         if rule2 and rule2.can_merge_with(unit1):
             return True
-        
+
         # Default: same type only
         return unit1 == unit2
-    
+
     def to_json(self, path: Path | str) -> None:
         """Save whitelist to JSON file.
-        
+
         Args:
             path: Output path.
         """
@@ -165,7 +163,7 @@ class MergeWhitelist:
                 for rule in self.rules.values()
             ]
         }
-        
+
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
@@ -174,10 +172,10 @@ class MergeWhitelist:
 @dataclass
 class MergeModelSpec:
     """Specification for the merge decision ML model.
-    
+
     This defines the features, labels, and architecture for
     training a merge decision model.
-    
+
     Features (per merge candidate):
         - source_unit_type: One-hot encoded unit type
         - source_rank: Normalized rank (0-1)
@@ -186,31 +184,31 @@ class MergeModelSpec:
         - board_state: Flattened 3x5 grid state
         - mana_available: Current mana normalized
         - game_phase: Early/mid/late game indicator
-        
+
     Labels:
         - merge_value: 0-1 score (higher = better merge)
         - should_merge: Binary yes/no
-        
+
     Architecture Options:
         - Simple: Logistic Regression (baseline)
         - MLP: 2-3 layer neural network
         - DQN: Deep Q-Network for sequential decisions
     """
-    
+
     # Feature dimensions
     n_unit_types: int = 80  # ~80 unique units
     n_ranks: int = 8  # Ranks 0-7
     grid_size: int = 15  # 3x5 grid
-    
+
     # Model architecture
     architecture: str = "mlp"  # "logistic", "mlp", "dqn"
     hidden_layers: list[int] = field(default_factory=lambda: [128, 64])
-    
+
     # Training parameters
     batch_size: int = 32
     learning_rate: float = 0.001
     epochs: int = 100
-    
+
     @property
     def feature_dim(self) -> int:
         """Total input feature dimension."""
@@ -220,7 +218,7 @@ class MergeModelSpec:
             + self.grid_size * (self.n_unit_types + 1)  # board state
             + 2  # mana + game phase
         )
-    
+
     def to_json(self, path: Path | str) -> None:
         """Save spec to JSON file."""
         data = {
@@ -234,7 +232,7 @@ class MergeModelSpec:
             "epochs": self.epochs,
             "feature_dim": self.feature_dim,
         }
-        
+
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
@@ -243,7 +241,7 @@ class MergeModelSpec:
 @dataclass
 class MergeDecision:
     """A single merge decision for training data.
-    
+
     Attributes:
         timestamp: When the decision was made.
         source_cell: Grid index of source unit.
@@ -257,7 +255,7 @@ class MergeDecision:
         mana: Mana at time of decision.
         grid_state: Snapshot of grid at decision time.
     """
-    
+
     timestamp: datetime
     source_cell: int
     target_cell: int
@@ -273,28 +271,26 @@ class MergeDecision:
 
 class MergeFeatureExtractor:
     """Extract ML features from game state for merge decisions.
-    
+
     Converts grid state and merge candidates into feature vectors
     suitable for training or inference.
     """
-    
+
     def __init__(
         self,
         unit_labels: list[str] | None = None,
         n_ranks: int = 8,
     ) -> None:
         """Initialize the feature extractor.
-        
+
         Args:
             unit_labels: List of unit type names for one-hot encoding.
             n_ranks: Number of rank levels.
         """
         self.unit_labels = unit_labels or []
         self.n_ranks = n_ranks
-        self._unit_to_idx: dict[str, int] = {
-            u: i for i, u in enumerate(self.unit_labels)
-        }
-    
+        self._unit_to_idx: dict[str, int] = {u: i for i, u in enumerate(self.unit_labels)}
+
     def extract_merge_features(
         self,
         source_unit: str,
@@ -306,7 +302,7 @@ class MergeFeatureExtractor:
         game_phase: float = 0.5,
     ) -> NDArray[np.float32]:
         """Extract feature vector for a merge candidate.
-        
+
         Args:
             source_unit: Source unit type name.
             source_rank: Source unit rank.
@@ -315,95 +311,105 @@ class MergeFeatureExtractor:
             grid_state: List of dicts with unit/rank per cell.
             mana: Current mana amount.
             game_phase: Game progress (0=early, 1=late).
-            
+
         Returns:
             Feature vector as numpy array.
         """
         features: list[NDArray[np.floating[Any]]] = []
-        
+
         # Source unit one-hot
         source_oh = np.zeros(len(self.unit_labels), dtype=np.float32)
         if source_unit in self._unit_to_idx:
             source_oh[self._unit_to_idx[source_unit]] = 1.0
         features.append(source_oh)
-        
+
         # Target unit one-hot
         target_oh = np.zeros(len(self.unit_labels), dtype=np.float32)
         if target_unit in self._unit_to_idx:
             target_oh[self._unit_to_idx[target_unit]] = 1.0
         features.append(target_oh)
-        
+
         # Ranks (normalized)
-        features.append(np.array([
-            source_rank / self.n_ranks,
-            target_rank / self.n_ranks,
-        ], dtype=np.float32))
-        
+        features.append(
+            np.array(
+                [
+                    source_rank / self.n_ranks,
+                    target_rank / self.n_ranks,
+                ],
+                dtype=np.float32,
+            )
+        )
+
         # Grid state encoding
         if grid_state:
             grid_features = self._encode_grid(grid_state)
         else:
             grid_features = np.zeros(15 * (len(self.unit_labels) + 1), dtype=np.float32)
         features.append(grid_features)
-        
+
         # Context features
-        features.append(np.array([
-            mana / 1000.0,  # Normalize mana
-            game_phase,
-        ], dtype=np.float32))
-        
+        features.append(
+            np.array(
+                [
+                    mana / 1000.0,  # Normalize mana
+                    game_phase,
+                ],
+                dtype=np.float32,
+            )
+        )
+
         return np.concatenate(features)
-    
+
     def _encode_grid(
         self,
         grid_state: list[dict[str, Any]],
     ) -> NDArray[np.float32]:
         """Encode grid state as feature vector.
-        
+
         Args:
             grid_state: List of 15 dicts with unit/rank info.
-            
+
         Returns:
             Flattened grid encoding.
         """
         n_units = len(self.unit_labels)
         features = np.zeros(15 * (n_units + 1), dtype=np.float32)
-        
+
         for i, cell in enumerate(grid_state[:15]):
             offset = i * (n_units + 1)
-            
+
             unit_name = cell.get("unit", "empty")
             if unit_name in self._unit_to_idx:
                 features[offset + self._unit_to_idx[unit_name]] = 1.0
-            
+
             rank = cell.get("rank", 0)
             features[offset + n_units] = rank / self.n_ranks
-        
+
         return features
 
 
 class MergeDataCollector:
     """Collect merge decision data during gameplay.
-    
+
     Records merge decisions and outcomes for later training.
     Data is saved incrementally to avoid memory issues.
     """
-    
+
     def __init__(
         self,
         output_dir: Path | str | None = None,
     ) -> None:
         """Initialize the collector.
-        
+
         Args:
             output_dir: Directory to save collected data.
         """
         self.output_dir = Path(output_dir) if output_dir else DATA_DIR
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         self._session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
         self._decisions: list[MergeDecision] = []
-    
+
     def record_decision(
         self,
         source_cell: int,
@@ -418,7 +424,7 @@ class MergeDataCollector:
         grid_state: list[dict[str, Any]] | None = None,
     ) -> None:
         """Record a merge decision.
-        
+
         Args:
             source_cell: Source cell index.
             target_cell: Target cell index.
@@ -445,15 +451,15 @@ class MergeDataCollector:
             grid_state=grid_state or [],
         )
         self._decisions.append(decision)
-    
+
     def save_session(self) -> Path:
         """Save collected decisions to JSON file.
-        
+
         Returns:
             Path to saved file.
         """
         output_path = self.output_dir / f"merge_data_{self._session_id}.json"
-        
+
         data = {
             "session_id": self._session_id,
             "n_decisions": len(self._decisions),
@@ -474,18 +480,18 @@ class MergeDataCollector:
                 for d in self._decisions
             ],
         }
-        
+
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
-        
+
         print(f"Saved {len(self._decisions)} decisions to: {output_path}")
         return output_path
-    
+
     def clear(self) -> None:
         """Clear collected decisions (start new session)."""
         self._decisions = []
         self._session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
+
     @property
     def n_decisions(self) -> int:
         """Number of decisions collected in current session."""

@@ -50,7 +50,7 @@ class TestAugmentImage:
         """Augmented images are different from original."""
         img = np.random.randint(50, 200, (64, 64, 3), dtype=np.uint8)
         result = augment_image(img, n_augmentations=5)
-        
+
         # At least some should be different
         differences = [not np.array_equal(aug, img) for aug in result[1:]]
         assert any(differences), "No augmented images differ from original"
@@ -136,7 +136,7 @@ class TestRankModelTrainerWithData:
         """Training works with mock dataset."""
         trainer = RankModelTrainer(TrainingConfig(max_iter=50))
         result = trainer.train(mock_dataset)
-        
+
         assert isinstance(result, TrainingResult)
         assert trainer.model is not None
         assert len(result.classes) == 3
@@ -147,10 +147,10 @@ class TestRankModelTrainerWithData:
         """Model can be saved to disk."""
         trainer = RankModelTrainer(TrainingConfig(max_iter=50))
         trainer.train(mock_dataset)
-        
+
         model_path = tmp_path / "test_model.pkl"
         saved_path = trainer.save(model_path)
-        
+
         assert saved_path == model_path
         assert model_path.exists()
 
@@ -186,7 +186,7 @@ class TestUnitModelTrainer:
         """Training works with mock unit dataset."""
         trainer = UnitModelTrainer(TrainingConfig(max_iter=50))
         result = trainer.train(mock_unit_dataset)
-        
+
         assert trainer.model is not None
         assert len(result.classes) == 3
         assert len(trainer.label_map) == 3
@@ -253,7 +253,7 @@ class TestMergeWhitelist:
         wl = MergeWhitelist.default()
         json_path = tmp_path / "whitelist.json"
         wl.to_json(json_path)
-        
+
         loaded = MergeWhitelist.from_json(json_path)
         assert "harlequin" in loaded.rules
 
@@ -285,7 +285,7 @@ class TestMergeModelSpec:
         spec = MergeModelSpec()
         json_path = tmp_path / "spec.json"
         spec.to_json(json_path)
-        
+
         assert json_path.exists()
         data = json.loads(json_path.read_text())
         assert data["architecture"] == "mlp"
@@ -323,7 +323,7 @@ class TestMergeFeatureExtractor:
             {"unit": "demon_hunter", "rank": 3},
             {"unit": "dryad", "rank": 2},
         ] + [{"unit": "empty", "rank": 0}] * 13
-        
+
         features = extractor.extract_merge_features(
             source_unit="demon_hunter",
             source_rank=3,
@@ -378,10 +378,10 @@ class TestMergeDataCollector:
             was_executed=True,
             outcome="success",
         )
-        
+
         saved_path = collector.save_session()
         assert saved_path.exists()
-        
+
         data = json.loads(saved_path.read_text())
         assert data["n_decisions"] == 1
         assert len(data["decisions"]) == 1
@@ -399,7 +399,7 @@ class TestMergeDataCollector:
             was_executed=True,
             outcome="success",
         )
-        
+
         collector.clear()
         assert collector.n_decisions == 0
 
@@ -415,6 +415,7 @@ class TestONNXExport:
     def test_check_onnx_available(self):
         """Check if ONNX is available."""
         from rush_bot.ml.onnx_export import check_onnx_available
+
         # Just verify the function runs - result depends on installed packages
         result = check_onnx_available()
         assert isinstance(result, bool)
@@ -429,18 +430,18 @@ class TestONNXExport:
 
         from rush_bot.ml.onnx_export import check_onnx_available
         from rush_bot.ml.onnx_export import export_sklearn_to_onnx
-        
+
         if not check_onnx_available():
             pytest.skip("ONNX not available")
-        
+
         # Create and train simple model
         X = np.random.randn(100, 50).astype(np.float32)
         y = (X[:, 0] > 0).astype(np.int64)
         model = LogisticRegression(max_iter=100)
         model.fit(X, y)
-        
+
         # Export
         onnx_path = tmp_path / "test_model.onnx"
         result = export_sklearn_to_onnx(model, onnx_path, input_shape=(50,))
-        
+
         assert result.exists()

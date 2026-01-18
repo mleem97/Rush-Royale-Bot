@@ -224,7 +224,6 @@ TEMPLATE_STATE_MAP: dict[str, ScreenState] = {
     "PVP_Loading.png": ScreenState.PVP_LOADING,
     "pvp_loading.png": ScreenState.PVP_LOADING,
     "abort_button.png": ScreenState.PVP_LOADING,
-    "pvp_loading.png": ScreenState.PVP_LOADING,
     "Abort_Button.png": ScreenState.PVP_LOADING,
     # Victory/Defeat (Continue/Quit buttons)
     "0cont_button.png": ScreenState.VICTORY,
@@ -235,8 +234,6 @@ TEMPLATE_STATE_MAP: dict[str, ScreenState] = {
     "quest_collect.png": ScreenState.QUEST,
     "quest_done.png": ScreenState.QUEST,
     "Quest_New_Weekly.png": ScreenState.QUEST,
-    "quest_new.png": ScreenState.QUEST,
-    "quest_ad_available.png": ScreenState.QUEST,
     "collect_button.png": ScreenState.QUEST,
     # Friend menu
     "friend_menu.png": ScreenState.FRIEND_MENU,
@@ -329,7 +326,6 @@ ICON_LOCATIONS: dict[str, list[ScreenState]] = {
     # Popups/Overlays
     "x_mark.png": [ScreenState.POPUP, ScreenState.HOME, ScreenState.QUEST],
     "back_button.png": [ScreenState.POPUP, ScreenState.HOME, ScreenState.DUNGEON_SELECT],
-
 }
 
 
@@ -1180,9 +1176,7 @@ class ScreenStateMachine:
         self._logger = __import__("logging").getLogger("screen_state_machine")
 
         # Build transition lookup
-        self._valid_transitions: dict[
-            ScreenState, dict[ScreenState, StateTransition]
-        ] = {}
+        self._valid_transitions: dict[ScreenState, dict[ScreenState, StateTransition]] = {}
         for trans in VALID_TRANSITIONS:
             if trans.from_state not in self._valid_transitions:
                 self._valid_transitions[trans.from_state] = {}

@@ -253,9 +253,7 @@ class CVDebugMode:
         if self.save_images:
             self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    def _extract_grid_cells(
-        self, image: ImageArray
-    ) -> list[ImageArray]:
+    def _extract_grid_cells(self, image: ImageArray) -> list[ImageArray]:
         """Extract cell images from the grid.
 
         Args:
@@ -642,12 +640,8 @@ class CVDebugMode:
         for mc in frame.merge_candidates:
             color = self.COLOR_MERGE_OK if mc.is_allowed else self.COLOR_MERGE_BLOCKED
             # Get pixel positions from grid positions
-            src_center = self._grid_extractor.get_cell_center(
-                mc.source_pos[0], mc.source_pos[1]
-            )
-            tgt_center = self._grid_extractor.get_cell_center(
-                mc.target_pos[0], mc.target_pos[1]
-            )
+            src_center = self._grid_extractor.get_cell_center(mc.source_pos[0], mc.source_pos[1])
+            tgt_center = self._grid_extractor.get_cell_center(mc.target_pos[0], mc.target_pos[1])
             # Draw line between merge candidates
             cv2.line(overlay, src_center, tgt_center, color, 3)
             # Draw arrow

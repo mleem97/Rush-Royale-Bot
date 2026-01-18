@@ -45,7 +45,9 @@ def main() -> None:
     print(f"\nFound {len(icons)} icon(s):")
 
     for icon_data in icons:
-        print(f"  - {icon_data['icon']:20s} | Confidence: {icon_data['confidence']:.2%} | State: {icon_data['state'].name}")
+        print(
+            f"  - {icon_data['icon']:20s} | Confidence: {icon_data['confidence']:.2%} | State: {icon_data['state'].name}"
+        )
 
     # Example 2: Force specific screen state for testing
     print("\n" + "=" * 60)
@@ -73,7 +75,9 @@ def main() -> None:
     print("\n4. Testing false-positive prevention...")
     print("   (Trying to detect 0cont_button.png on HOME screen)")
 
-    continue_icons = detector.detect_icons(screenshot, icon_list=["0cont_button.png"], force_state=ScreenState.HOME)
+    continue_icons = detector.detect_icons(
+        screenshot, icon_list=["0cont_button.png"], force_state=ScreenState.HOME
+    )
 
     if len(continue_icons) == 0:
         print("   ✅ Correctly prevented false positive!")
