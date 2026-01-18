@@ -2808,3 +2808,218 @@ class TestCreateDungeonLoop:
         assert dungeon.config.target_floor == 10
         assert dungeon.config.auto_retry is False
         assert dungeon.config.max_retries == 5
+
+
+# ============================================================================
+# Merge Debugger Tests (T016)
+# ============================================================================
+
+
+class TestMergeDebugger:
+    """Tests for MergeDebugger class."""
+
+    def test_debugger_creation(self) -> None:
+        """Test creating a merge debugger."""
+        from rush_bot.core.merge import MergeDebugger
+
+        debugger = MergeDebugger()
+        assert len(debugger.history) == 0
+
+    def test_log_attempt_success(self) -> None:
+        """Test logging a successful merge attempt."""
+        from rush_bot.core.merge import MergeDebugger
+        from rush_bot.core.merge import MergeResult
+
+        debugger = MergeDebugger()
+        attempt = debugger.log_attempt(
+            source_unit="demon_hunter.png",
+            source_rank=2,
+            source_pos=(0, 0),
+            target_unit="demon_hunter.png",
+            target_rank=2,
+            target_pos=(0, 1),
+            result=MergeResult.SUCCESS,
+        )
+
+        assert attempt.result == MergeResult.SUCCESS
+        assert len(debugger.history) == 1
+        assert debugger.history[0].source_unit == "demon_hunter.png"
+
+    def test_log_attempt_failure(self) -> None:
+        """Test logging a failed merge attempt."""
+        from rush_bot.core.merge import MergeDebugger
+        from rush_bot.core.merge import MergeResult
+
+        debugger = MergeDebugger()
+        attempt = debugger.log_attempt(
+            source_unit="demon_hunter.png",
+            source_rank=2,
+            source_pos=(0, 0),
+            target_unit="archer.png",
+            target_rank=2,
+            target_pos=(0, 1),
+            result=MergeResult.INVALID_TYPE,
+        )
+
+        assert attempt.result == MergeResult.INVALID_TYPE
+        assert len(debugger.history) == 1
+
+    def test_swipe_vector_calculation(self) -> None:
+        """Test swipe vector is calculated correctly."""
+        from rush_bot.core.merge import MergeDebugger
+        from rush_bot.core.merge import MergeResult
+
+        debugger = MergeDebugger()
+        attempt = debugger.log_attempt(
+            source_unit="unit.png",
+            source_rank=1,
+            source_pos=(1, 2),
+            target_unit="unit.png",
+            target_rank=1,
+            target_pos=(1, 4),
+            result=MergeResult.SUCCESS,
+        )
+
+        # Swipe vector should be (target - source)
+        assert attempt.swipe_vector == (0, 2)
+
+    def test_get_failures(self) -> None:
+        """Test getting failed merge attempts."""
+        from rush_bot.core.merge import MergeDebugger
+        from rush_bot.core.merge import MergeResult
+
+        debugger = MergeDebugger()
+
+        # Add some attempts
+        debugger.log_attempt("u1", 1, (0, 0), "u1", 1, (0, 1), MergeResult.SUCCESS)
+        debugger.log_attempt("u1", 1, (0, 0), "u2", 1, (0, 1), MergeResult.INVALID_TYPE)
+        debugger.log_attempt("u1", 1, (0, 0), "u1", 2, (0, 1), MergeResult.INVALID_RANK)
+
+        failures = debugger.get_failures()
+        assert len(failures) == 2
+
+    def test_get_success_rate(self) -> None:
+        """Test success rate calculation."""
+        from rush_bot.core.merge import MergeDebugger
+        from rush_bot.core.merge import MergeResult
+
+        debugger = MergeDebugger()
+
+        # 2 success, 2 failures = 50%
+        debugger.log_attempt("u1", 1, (0, 0), "u1", 1, (0, 1), MergeResult.SUCCESS)
+        debugger.log_attempt("u1", 1, (0, 0), "u1", 1, (0, 1), MergeResult.SUCCESS)
+        debugger.log_attempt("u1", 1, (0, 0), "u2", 1, (0, 1), MergeResult.INVALID_TYPE)
+        debugger.log_attempt("u1", 1, (0, 0), "u1", 2, (0, 1), MergeResult.INVALID_RANK)
+
+        rate = debugger.get_success_rate()
+        assert rate == 50.0
+
+    def test_get_failure_breakdown(self) -> None:
+        """Test failure breakdown by reason."""
+        from rush_bot.core.merge import MergeDebugger
+        from rush_bot.core.merge import MergeResult
+
+        debugger = MergeDebugger()
+
+        debugger.log_attempt("u1", 1, (0, 0), "u2", 1, (0, 1), MergeResult.INVALID_TYPE)
+        debugger.log_attempt("u1", 1, (0, 0), "u2", 1, (0, 1), MergeResult.INVALID_TYPE)
+        debugger.log_attempt("u1", 1, (0, 0), "u1", 2, (0, 1), MergeResult.INVALID_RANK)
+
+        breakdown = debugger.get_failure_breakdown()
+        assert breakdown["invalid_type"] == 2
+        assert breakdown["invalid_rank"] == 1
+
+    def test_clear_history(self) -> None:
+        """Test clearing history."""
+        from rush_bot.core.merge import MergeDebugger
+        from rush_bot.core.merge import MergeResult
+
+        debugger = MergeDebugger()
+        debugger.log_attempt("u1", 1, (0, 0), "u1", 1, (0, 1), MergeResult.SUCCESS)
+
+        assert len(debugger.history) == 1
+        debugger.clear_history()
+        assert len(debugger.history) == 0
+
+    def test_format_summary(self) -> None:
+        """Test summary formatting."""
+        from rush_bot.core.merge import MergeDebugger
+        from rush_bot.core.merge import MergeResult
+
+        debugger = MergeDebugger()
+        debugger.log_attempt("u1", 1, (0, 0), "u1", 1, (0, 1), MergeResult.SUCCESS)
+        debugger.log_attempt("u1", 1, (0, 0), "u2", 1, (0, 1), MergeResult.INVALID_TYPE)
+
+        summary = debugger.format_summary()
+        assert "2 attempts" in summary
+        assert "50" in summary  # 50% success rate
+
+
+class TestMergeAttempt:
+    """Tests for MergeAttempt dataclass."""
+
+    def test_merge_attempt_to_log_string(self) -> None:
+        """Test MergeAttempt log string formatting."""
+        from rush_bot.core.merge import MergeAttempt
+        from rush_bot.core.merge import MergeResult
+
+        attempt = MergeAttempt(
+            timestamp="12:30:45.123",
+            source_unit="demon_hunter.png",
+            source_rank=3,
+            source_pos=(1, 2),
+            target_unit="demon_hunter.png",
+            target_rank=3,
+            target_pos=(1, 3),
+            result=MergeResult.SUCCESS,
+            duration_ms=15.5,
+            swipe_vector=(0, 1),
+        )
+
+        log_str = attempt.to_log_string()
+        assert "demon_hunter.png" in log_str
+        assert "R3" in log_str
+        assert "success" in log_str
+        assert "✓" in log_str
+
+    def test_merge_attempt_failure_log_string(self) -> None:
+        """Test MergeAttempt failure log string."""
+        from rush_bot.core.merge import MergeAttempt
+        from rush_bot.core.merge import MergeResult
+
+        attempt = MergeAttempt(
+            timestamp="12:30:45.123",
+            source_unit="archer.png",
+            source_rank=2,
+            source_pos=(0, 0),
+            target_unit="knight.png",
+            target_rank=2,
+            target_pos=(0, 1),
+            result=MergeResult.INVALID_TYPE,
+            duration_ms=5.0,
+            swipe_vector=(0, 1),
+        )
+
+        log_str = attempt.to_log_string()
+        assert "✗" in log_str
+        assert "invalid_type" in log_str
+
+
+class TestGetMergeDebugger:
+    """Tests for global debugger accessor."""
+
+    def test_get_merge_debugger_returns_instance(self) -> None:
+        """Test that get_merge_debugger returns a MergeDebugger."""
+        from rush_bot.core.merge import MergeDebugger
+        from rush_bot.core.merge import get_merge_debugger
+
+        debugger = get_merge_debugger()
+        assert isinstance(debugger, MergeDebugger)
+
+    def test_get_merge_debugger_returns_same_instance(self) -> None:
+        """Test that get_merge_debugger returns the same instance."""
+        from rush_bot.core.merge import get_merge_debugger
+
+        debugger1 = get_merge_debugger()
+        debugger2 = get_merge_debugger()
+        assert debugger1 is debugger2

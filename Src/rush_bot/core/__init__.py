@@ -23,11 +23,14 @@ from .mana import ManaState
 from .mana import UpgradeRecommendation
 from .mana import UpgradeSlot
 from .mana import create_mana_manager
+from .merge import MergeAttempt
 from .merge import MergeCandidate
 from .merge import MergeConfig
+from .merge import MergeDebugger
 from .merge import MergeLogic
 from .merge import MergeResult
 from .merge import MergeValidator
+from .merge import get_merge_debugger
 from .screenshot import LatencyStats
 from .screenshot import ScrcpyClient
 from .screenshot import ScreenshotConfig
@@ -56,8 +59,10 @@ __all__ = [
     "ManaManager",
     "ManaRegion",
     "ManaState",
+    "MergeAttempt",
     "MergeCandidate",
     "MergeConfig",
+    "MergeDebugger",
     "MergeLogic",
     "MergeResult",
     "MergeValidator",
@@ -70,4 +75,5 @@ __all__ = [
     "UpgradeSlot",
     "create_dungeon_loop",
     "create_mana_manager",
+    "get_merge_debugger",
 ]
