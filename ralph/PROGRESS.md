@@ -12,8 +12,8 @@
 | Kern-Funktionalität | 3 | 0 | 0 | 3 |
 | Gameplay-Features | 3 | 0 | 0 | 3 |
 | Qualität & Tooling | 4 | 0 | 0 | 4 |
-| ML/Training (Neu) | 8 | 8 | 0 | 0 |
-| **Gesamt** | **25** | **10** | **0** | **15** |
+| ML/Training (Neu) | 8 | 7 | 0 | 1 |
+| **Gesamt** | **25** | **9** | **0** | **16** |
 
 ---
 
@@ -73,11 +73,52 @@
 | T022 | Trainings-Tab restrukturieren | ⏳ Offen | - | - |
 | T023 | Unit-Detection-Modell anlegen/trainieren | ⏳ Offen | - | - |
 | T024 | Merge-Logik-Modell planen/aufsetzen | ⏳ Offen | - | - |
-| T025 | CV-Only Mode / Visibility Debug | ⏳ Offen | - | - |
+| T025 | CV-Only Mode / Visibility Debug | ✅ Erledigt | Subagent | 2026-01-19 |
 
 ---
 
 ## 📝 Änderungsprotokoll
+
+### [2026-01-19] T025: CV-Only Debug Mode implementiert
+
+**IMPLEMENTIERUNG:**
+- **Neues Modul:** `src/rush_bot/perception/cv_debug.py` (~700 Zeilen)
+- **Datenklassen:** DetectionResult, PageContext, MergeCandidate, CVDebugFrame
+- **Enum:** CVDebugLevel (MINIMAL, NORMAL, VERBOSE)
+- **Hauptklasse:** CVDebugMode für Visualisierung der Bot-Wahrnehmung
+
+**NEUE METHODEN IN BotPerception:**
+- `match_unit_array()`: Array-akzeptierende Variante von match_unit
+- `match_rank_array()`: Array-akzeptierende Variante von match_rank
+
+**FUNKTIONALITÄT:**
+1. `CVDebugMode.analyze_frame(image)`:
+   - Erkennt Page/Screen-Kontext
+   - Detektiert Icons basierend auf Kontext
+   - Bei Battle-Screen: Units/Ranks im Grid erkennen
+   - Findet potentielle Merge-Kandidaten
+   - Speichert Overlay-Bilder
+
+2. Log-Format: `Viewing {PageName}: Detected_via: [ICON, CONF]`
+
+3. Export-Funktionen:
+   - `export_session()`: JSON-Export aller Frames
+   - `clear_session()`: Session zurücksetzen
+   - `run_cv_debug_on_screenshot()`: Convenience-Funktion
+
+**TESTS:**
+- 26 neue Unit-Tests in `tests/test_cv_debug.py`
+- Alle Tests bestehen (375/375 passed)
+
+**QUALITY-CHECKS:**
+- ✅ `python -m pytest`: 375 passed
+- ✅ `ruff check src/ tests/`: All checks passed
+- ✅ `mypy src/`: Success: no issues found in 37 source files
+
+**COMMITS:**
+- feat(perception): add CV-Only debug mode for visibility T025
+
+---
 
 ### [2026-01-18] T014: False-Positive Icon-Detection behoben
 
