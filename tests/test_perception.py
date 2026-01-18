@@ -1444,3 +1444,233 @@ class TestLoadingScreenDetection:
         assert result is True
 
         detector.find_template = original_find_template  # type: ignore[method-assign]
+
+
+# ============================================================================
+# State Machine Tests (T015)
+# ============================================================================
+
+
+class TestScreenStateMachine:
+    """Tests for ScreenStateMachine class."""
+
+    def test_state_machine_creation(self) -> None:
+        """Test creating a state machine."""
+        from rush_bot.perception import ScreenStateMachine
+
+        machine = ScreenStateMachine()
+        assert machine.current_state.name == "UNKNOWN"
+        assert machine.current_iteration == 0
+
+    def test_state_machine_with_custom_max_iterations(self) -> None:
+        """Test state machine with custom max iterations."""
+        from rush_bot.perception import ScreenStateMachine
+
+        machine = ScreenStateMachine(max_iterations=5)
+        assert machine._max_iterations == 5
+
+    def test_update_same_state_increments_iteration(self) -> None:
+        """Test that same state increments iteration count."""
+        from rush_bot.perception import ScreenState
+        from rush_bot.perception import ScreenStateMachine
+
+        machine = ScreenStateMachine()
+        machine.update(ScreenState.HOME, 0.9)
+        assert machine.current_iteration == 1
+
+        machine.update(ScreenState.HOME, 0.9)
+        assert machine.current_iteration == 2
+
+        machine.update(ScreenState.HOME, 0.9)
+        assert machine.current_iteration == 3
+
+    def test_update_different_state_resets_iteration(self) -> None:
+        """Test that state change resets iteration count."""
+        from rush_bot.perception import ScreenState
+        from rush_bot.perception import ScreenStateMachine
+
+        machine = ScreenStateMachine()
+        machine.update(ScreenState.HOME, 0.9)
+        machine.update(ScreenState.HOME, 0.9)
+        assert machine.current_iteration == 2
+
+        machine.update(ScreenState.DUNGEON_SELECT, 0.9)
+        assert machine.current_iteration == 1
+        assert machine.current_state == ScreenState.DUNGEON_SELECT
+
+    def test_valid_transition_home_to_dungeon(self) -> None:
+        """Test valid transition from HOME to DUNGEON_SELECT."""
+        from rush_bot.perception import ScreenState
+        from rush_bot.perception import ScreenStateMachine
+
+        machine = ScreenStateMachine()
+        machine.update(ScreenState.HOME, 0.9)
+
+        changed, msg = machine.update(ScreenState.DUNGEON_SELECT, 0.9)
+        assert changed is True
+        assert "Valid transition" in msg
+
+    def test_invalid_transition_logs_warning(self) -> None:
+        """Test that invalid transitions still occur but log warning."""
+        from rush_bot.perception import ScreenState
+        from rush_bot.perception import ScreenStateMachine
+
+        machine = ScreenStateMachine()
+        machine.update(ScreenState.BATTLE, 0.9)
+
+        # BATTLE → HOME is not defined, should log unexpected
+        changed, msg = machine.update(ScreenState.HOME, 0.9)
+        assert changed is True
+        assert "Unexpected transition" in msg
+
+    def test_is_stuck_returns_true_after_max_iterations(self) -> None:
+        """Test is_stuck detection after max iterations."""
+        from rush_bot.perception import ScreenState
+        from rush_bot.perception import ScreenStateMachine
+
+        machine = ScreenStateMachine(max_iterations=3)
+        machine.update(ScreenState.HOME, 0.9)
+        assert machine.is_stuck() is False
+
+        machine.update(ScreenState.HOME, 0.9)
+        machine.update(ScreenState.HOME, 0.9)
+        assert machine.is_stuck() is True
+
+    def test_history_tracking(self) -> None:
+        """Test that state history is tracked."""
+        from rush_bot.perception import ScreenState
+        from rush_bot.perception import ScreenStateMachine
+
+        machine = ScreenStateMachine()
+        machine.update(ScreenState.HOME, 0.9)
+        machine.update(ScreenState.DUNGEON_SELECT, 0.8)
+
+        history = machine.history
+        assert len(history) == 2
+        assert history[0].state == ScreenState.HOME
+        assert history[1].state == ScreenState.DUNGEON_SELECT
+
+    def test_reset_clears_state(self) -> None:
+        """Test reset clears the state machine."""
+        from rush_bot.perception import ScreenState
+        from rush_bot.perception import ScreenStateMachine
+
+        machine = ScreenStateMachine()
+        machine.update(ScreenState.HOME, 0.9)
+        machine.update(ScreenState.HOME, 0.9)
+        assert machine.current_iteration == 2
+
+        machine.reset()
+        assert machine.current_state == ScreenState.UNKNOWN
+        assert machine.current_iteration == 0
+        assert len(machine.history) == 0
+
+    def test_get_expected_states(self) -> None:
+        """Test getting expected next states."""
+        from rush_bot.perception import ScreenState
+        from rush_bot.perception import ScreenStateMachine
+
+        machine = ScreenStateMachine()
+        machine.update(ScreenState.HOME, 0.9)
+
+        expected = machine.get_expected_states()
+        assert ScreenState.DUNGEON_SELECT in expected
+        assert ScreenState.PVP_LOADING in expected
+        assert ScreenState.BATTLE not in expected  # Not direct from HOME
+
+    def test_format_history(self) -> None:
+        """Test formatting history for logging."""
+        from rush_bot.perception import ScreenState
+        from rush_bot.perception import ScreenStateMachine
+
+        machine = ScreenStateMachine()
+        machine.update(ScreenState.HOME, 0.9)
+        machine.update(ScreenState.DUNGEON_SELECT, 0.85)
+
+        history_str = machine.format_history()
+        assert "State History" in history_str
+        assert "HOME" in history_str
+        assert "DUNGEON_SELECT" in history_str
+
+
+class TestStateTransition:
+    """Tests for StateTransition dataclass."""
+
+    def test_state_transition_creation(self) -> None:
+        """Test creating a StateTransition."""
+        from rush_bot.perception import ScreenState
+        from rush_bot.perception import StateTransition
+
+        trans = StateTransition(
+            from_state=ScreenState.HOME,
+            to_state=ScreenState.BATTLE,
+        )
+        assert trans.from_state == ScreenState.HOME
+        assert trans.to_state == ScreenState.BATTLE
+        assert trans.max_iterations == 10
+
+    def test_state_transition_with_custom_max_iterations(self) -> None:
+        """Test StateTransition with custom max iterations."""
+        from rush_bot.perception import ScreenState
+        from rush_bot.perception import StateTransition
+
+        trans = StateTransition(
+            from_state=ScreenState.PVP_LOADING,
+            to_state=ScreenState.HOME,
+            max_iterations=30,
+        )
+        assert trans.max_iterations == 30
+
+
+class TestStateHistoryEntry:
+    """Tests for StateHistoryEntry dataclass."""
+
+    def test_history_entry_creation(self) -> None:
+        """Test creating a StateHistoryEntry."""
+        from rush_bot.perception import ScreenState
+        from rush_bot.perception import StateHistoryEntry
+
+        entry = StateHistoryEntry(
+            state=ScreenState.BATTLE,
+            timestamp=12345.0,
+            confidence=0.95,
+            iteration=3,
+        )
+        assert entry.state == ScreenState.BATTLE
+        assert entry.timestamp == 12345.0
+        assert entry.confidence == 0.95
+        assert entry.iteration == 3
+
+
+class TestNewScreenStates:
+    """Tests for new screen states added in T015."""
+
+    def test_new_states_exist(self) -> None:
+        """Test that new states from T015 exist."""
+        from rush_bot.perception import ScreenState
+
+        # New states added in T015
+        assert ScreenState.START_SCREEN is not None
+        assert ScreenState.TRANSIT is not None
+        assert ScreenState.DUNGEON_FLOOR_SELECT is not None
+        assert ScreenState.BATTLE_PREPARATION is not None
+
+    def test_dungeon_floor_select_different_from_dungeon_select(self) -> None:
+        """Test that floor select is a different state from chapter select."""
+        from rush_bot.perception import ScreenState
+
+        assert ScreenState.DUNGEON_FLOOR_SELECT != ScreenState.DUNGEON_SELECT
+        assert ScreenState.DUNGEON_FLOOR_SELECT.value != ScreenState.DUNGEON_SELECT.value
+
+    def test_valid_transitions_contain_new_states(self) -> None:
+        """Test that VALID_TRANSITIONS includes new states."""
+        from rush_bot.perception import VALID_TRANSITIONS
+        from rush_bot.perception import ScreenState
+
+        from_states = {t.from_state for t in VALID_TRANSITIONS}
+        to_states = {t.to_state for t in VALID_TRANSITIONS}
+        all_states = from_states | to_states
+
+        assert ScreenState.START_SCREEN in all_states
+        assert ScreenState.DUNGEON_FLOOR_SELECT in all_states
+        assert ScreenState.BATTLE_PREPARATION in all_states

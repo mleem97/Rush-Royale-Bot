@@ -48,8 +48,14 @@ class ScreenState(Enum):
     BATTLE = auto()
     """In an active battle (PvP or PvE)."""
 
+    BATTLE_PREPARATION = auto()
+    """Battle preparation screen (deck selection, countdown)."""
+
     DUNGEON_SELECT = auto()
-    """Dungeon/floor selection screen."""
+    """Dungeon chapter selection screen."""
+
+    DUNGEON_FLOOR_SELECT = auto()
+    """Dungeon floor selection screen within a chapter."""
 
     POPUP = auto()
     """Generic popup or dialog overlay."""
@@ -66,8 +72,14 @@ class ScreenState(Enum):
     LOADING = auto()
     """Loading screen transition."""
 
+    TRANSIT = auto()
+    """Screen transition in progress."""
+
     PVP_LOADING = auto()
     """PVP loading screen with abort button."""
+
+    START_SCREEN = auto()
+    """App start/splash screen."""
 
     QUEST = auto()
     """Quest completion popup."""
@@ -139,10 +151,13 @@ TEMPLATE_STATE_MAP: dict[str, ScreenState] = {
     "home_screen.png": ScreenState.HOME,
     "battle_icon.png": ScreenState.HOME,
     "pvp_button.png": ScreenState.HOME,
+    "Home_Menu.png": ScreenState.HOME,
+    "PVP_Button.png": ScreenState.HOME,
+    "PVE_Button.png": ScreenState.HOME,
     # Battle screen indicators
     "fighting.png": ScreenState.BATTLE,
     "infight_players_healthbar.png": ScreenState.BATTLE,
-    # Dungeon selection
+    # Dungeon chapter selection (choose chapter 1-6)
     "dungeon_page.png": ScreenState.DUNGEON_SELECT,
     "pve_random.png": ScreenState.DUNGEON_SELECT,
     "chapter_1.png": ScreenState.DUNGEON_SELECT,
@@ -151,20 +166,23 @@ TEMPLATE_STATE_MAP: dict[str, ScreenState] = {
     "chapter_4.png": ScreenState.DUNGEON_SELECT,
     "chapter_5.png": ScreenState.DUNGEON_SELECT,
     "chapter_6.png": ScreenState.DUNGEON_SELECT,
-    "floor_1.png": ScreenState.DUNGEON_SELECT,
-    "floor_2.png": ScreenState.DUNGEON_SELECT,
-    "floor_3.png": ScreenState.DUNGEON_SELECT,
-    "floor_4.png": ScreenState.DUNGEON_SELECT,
-    "floor_5.png": ScreenState.DUNGEON_SELECT,
-    "floor_6.png": ScreenState.DUNGEON_SELECT,
-    "floor_7.png": ScreenState.DUNGEON_SELECT,
-    "floor_8.png": ScreenState.DUNGEON_SELECT,
-    "floor_9.png": ScreenState.DUNGEON_SELECT,
-    "floor_10.png": ScreenState.DUNGEON_SELECT,
-    "floor_11.png": ScreenState.DUNGEON_SELECT,
-    "floor_12.png": ScreenState.DUNGEON_SELECT,
-    "floor_13.png": ScreenState.DUNGEON_SELECT,
-    "floor_14.png": ScreenState.DUNGEON_SELECT,
+    "Dungeon_Bottom_Bar.png": ScreenState.DUNGEON_SELECT,
+    # Dungeon floor selection (choose floor within chapter)
+    "floor_1.png": ScreenState.DUNGEON_FLOOR_SELECT,
+    "floor_2.png": ScreenState.DUNGEON_FLOOR_SELECT,
+    "floor_3.png": ScreenState.DUNGEON_FLOOR_SELECT,
+    "floor_4.png": ScreenState.DUNGEON_FLOOR_SELECT,
+    "floor_5.png": ScreenState.DUNGEON_FLOOR_SELECT,
+    "floor_6.png": ScreenState.DUNGEON_FLOOR_SELECT,
+    "floor_7.png": ScreenState.DUNGEON_FLOOR_SELECT,
+    "floor_8.png": ScreenState.DUNGEON_FLOOR_SELECT,
+    "floor_9.png": ScreenState.DUNGEON_FLOOR_SELECT,
+    "floor_10.png": ScreenState.DUNGEON_FLOOR_SELECT,
+    "floor_11.png": ScreenState.DUNGEON_FLOOR_SELECT,
+    "floor_12.png": ScreenState.DUNGEON_FLOOR_SELECT,
+    "floor_13.png": ScreenState.DUNGEON_FLOOR_SELECT,
+    "floor_14.png": ScreenState.DUNGEON_FLOOR_SELECT,
+    "Dungeon_Modifier_Bottom.png": ScreenState.DUNGEON_FLOOR_SELECT,
     # Popups and overlays
     "x_mark.png": ScreenState.POPUP,
     "back_button.png": ScreenState.POPUP,
@@ -181,6 +199,7 @@ TEMPLATE_STATE_MAP: dict[str, ScreenState] = {
     # Quests
     "quest_collect.png": ScreenState.QUEST,
     "quest_done.png": ScreenState.QUEST,
+    "Quest_New_Weekly.png": ScreenState.QUEST,
     # Friend menu
     "friend_menu.png": ScreenState.FRIEND_MENU,
     # Menu navigation (bottom menu bar)
@@ -830,3 +849,340 @@ class ScreenStateDetector:
         """
         found, _, confidence = self.find_template(screenshot, "AD_Bonus_Button.png")
         return found and confidence >= self.config.template_threshold
+
+
+# ============================================================================
+# State Machine for Screen State Transitions (T015)
+# ============================================================================
+
+
+@dataclass
+class StateHistoryEntry:
+    """A single entry in the state history log.
+
+    Attributes:
+        state: The screen state.
+        timestamp: When the state was detected.
+        confidence: Detection confidence.
+        iteration: Iteration number within this state.
+    """
+
+    state: ScreenState
+    timestamp: float
+    confidence: float
+    iteration: int = 1
+
+
+@dataclass
+class StateTransition:
+    """Defines valid state transitions.
+
+    Attributes:
+        from_state: Source state.
+        to_state: Target state.
+        required_time_ms: Minimum time before transition is valid (ms).
+        max_iterations: Maximum allowed iterations before forced transition.
+    """
+
+    from_state: ScreenState
+    to_state: ScreenState
+    required_time_ms: int = 0
+    max_iterations: int = 10
+
+
+# Valid state transitions in the game flow
+VALID_TRANSITIONS: list[StateTransition] = [
+    # Start screen can go to home or loading
+    StateTransition(ScreenState.START_SCREEN, ScreenState.HOME),
+    StateTransition(ScreenState.START_SCREEN, ScreenState.LOADING),
+    # Home screen transitions
+    StateTransition(ScreenState.HOME, ScreenState.DUNGEON_SELECT),
+    StateTransition(ScreenState.HOME, ScreenState.PVP_LOADING),
+    StateTransition(ScreenState.HOME, ScreenState.LOADING),
+    StateTransition(ScreenState.HOME, ScreenState.QUEST),
+    StateTransition(ScreenState.HOME, ScreenState.POPUP),
+    StateTransition(ScreenState.HOME, ScreenState.STORE_MENU),
+    StateTransition(ScreenState.HOME, ScreenState.CARDS_MENU),
+    StateTransition(ScreenState.HOME, ScreenState.CLAN_MENU),
+    StateTransition(ScreenState.HOME, ScreenState.EVENT_MENU),
+    StateTransition(ScreenState.HOME, ScreenState.ADVERTISEMENT),
+    # Dungeon chapter selection
+    StateTransition(ScreenState.DUNGEON_SELECT, ScreenState.DUNGEON_FLOOR_SELECT),
+    StateTransition(ScreenState.DUNGEON_SELECT, ScreenState.HOME),
+    StateTransition(ScreenState.DUNGEON_SELECT, ScreenState.POPUP),
+    # Dungeon floor selection
+    StateTransition(ScreenState.DUNGEON_FLOOR_SELECT, ScreenState.BATTLE_PREPARATION),
+    StateTransition(ScreenState.DUNGEON_FLOOR_SELECT, ScreenState.LOADING),
+    StateTransition(ScreenState.DUNGEON_FLOOR_SELECT, ScreenState.DUNGEON_SELECT),
+    StateTransition(ScreenState.DUNGEON_FLOOR_SELECT, ScreenState.POPUP),
+    # Battle preparation
+    StateTransition(ScreenState.BATTLE_PREPARATION, ScreenState.BATTLE),
+    StateTransition(ScreenState.BATTLE_PREPARATION, ScreenState.LOADING),
+    StateTransition(ScreenState.BATTLE_PREPARATION, ScreenState.HOME),
+    # PVP loading
+    StateTransition(ScreenState.PVP_LOADING, ScreenState.BATTLE),
+    StateTransition(ScreenState.PVP_LOADING, ScreenState.HOME, max_iterations=30),
+    # Battle transitions
+    StateTransition(ScreenState.BATTLE, ScreenState.VICTORY),
+    StateTransition(ScreenState.BATTLE, ScreenState.DEFEAT),
+    StateTransition(ScreenState.BATTLE, ScreenState.LOADING),
+    # Victory/Defeat
+    StateTransition(ScreenState.VICTORY, ScreenState.HOME),
+    StateTransition(ScreenState.VICTORY, ScreenState.DUNGEON_SELECT),
+    StateTransition(ScreenState.VICTORY, ScreenState.ADVERTISEMENT),
+    StateTransition(ScreenState.VICTORY, ScreenState.QUEST),
+    StateTransition(ScreenState.DEFEAT, ScreenState.HOME),
+    StateTransition(ScreenState.DEFEAT, ScreenState.DUNGEON_SELECT),
+    # Loading transitions (can go anywhere)
+    StateTransition(ScreenState.LOADING, ScreenState.HOME),
+    StateTransition(ScreenState.LOADING, ScreenState.BATTLE),
+    StateTransition(ScreenState.LOADING, ScreenState.DUNGEON_SELECT),
+    StateTransition(ScreenState.LOADING, ScreenState.VICTORY),
+    StateTransition(ScreenState.LOADING, ScreenState.DEFEAT),
+    # Transit screen (temporary)
+    StateTransition(ScreenState.TRANSIT, ScreenState.HOME),
+    StateTransition(ScreenState.TRANSIT, ScreenState.BATTLE),
+    StateTransition(ScreenState.TRANSIT, ScreenState.LOADING),
+    # Popups can return to many states
+    StateTransition(ScreenState.POPUP, ScreenState.HOME),
+    StateTransition(ScreenState.POPUP, ScreenState.BATTLE),
+    StateTransition(ScreenState.POPUP, ScreenState.DUNGEON_SELECT),
+    StateTransition(ScreenState.POPUP, ScreenState.DUNGEON_FLOOR_SELECT),
+    # Quest popup
+    StateTransition(ScreenState.QUEST, ScreenState.HOME),
+    StateTransition(ScreenState.QUEST, ScreenState.POPUP),
+    # Advertisement
+    StateTransition(ScreenState.ADVERTISEMENT, ScreenState.HOME),
+    StateTransition(ScreenState.ADVERTISEMENT, ScreenState.VICTORY),
+    StateTransition(ScreenState.ADVERTISEMENT, ScreenState.POPUP),
+    # Menu transitions
+    StateTransition(ScreenState.STORE_MENU, ScreenState.HOME),
+    StateTransition(ScreenState.CARDS_MENU, ScreenState.HOME),
+    StateTransition(ScreenState.CLAN_MENU, ScreenState.HOME),
+    StateTransition(ScreenState.EVENT_MENU, ScreenState.HOME),
+]
+
+
+class ScreenStateMachine:
+    """State machine for managing screen state transitions.
+
+    Provides state history tracking, transition validation, and
+    timeout handling to prevent the bot from getting stuck.
+
+    Usage:
+        machine = ScreenStateMachine()
+        detector = ScreenStateDetector()
+
+        # In bot loop:
+        result = detector.detect(screenshot)
+        transition = machine.update(result.state, result.confidence)
+
+        if transition.is_timeout:
+            # Handle stuck state
+            pass
+    """
+
+    DEFAULT_MAX_ITERATIONS = 10
+    DEFAULT_HISTORY_SIZE = 100
+
+    def __init__(
+        self,
+        max_iterations: int = DEFAULT_MAX_ITERATIONS,
+        history_size: int = DEFAULT_HISTORY_SIZE,
+    ) -> None:
+        """Initialize the state machine.
+
+        Args:
+            max_iterations: Default max iterations per state before timeout.
+            history_size: Maximum history entries to keep.
+        """
+        self._max_iterations = max_iterations
+        self._history_size = history_size
+        self._current_state = ScreenState.UNKNOWN
+        self._current_iteration = 0
+        self._last_transition_time = 0.0
+        self._history: list[StateHistoryEntry] = []
+        self._logger = __import__("logging").getLogger("screen_state_machine")
+
+        # Build transition lookup
+        self._valid_transitions: dict[
+            ScreenState, dict[ScreenState, StateTransition]
+        ] = {}
+        for trans in VALID_TRANSITIONS:
+            if trans.from_state not in self._valid_transitions:
+                self._valid_transitions[trans.from_state] = {}
+            self._valid_transitions[trans.from_state][trans.to_state] = trans
+
+    @property
+    def current_state(self) -> ScreenState:
+        """Get the current state."""
+        return self._current_state
+
+    @property
+    def current_iteration(self) -> int:
+        """Get iteration count in current state."""
+        return self._current_iteration
+
+    @property
+    def history(self) -> list[StateHistoryEntry]:
+        """Get the state history (read-only copy)."""
+        return list(self._history)
+
+    def update(
+        self,
+        detected_state: ScreenState,
+        confidence: float = 1.0,
+    ) -> tuple[bool, str]:
+        """Update the state machine with a new detection.
+
+        Args:
+            detected_state: The newly detected screen state.
+            confidence: Detection confidence score.
+
+        Returns:
+            Tuple of (state_changed, message).
+        """
+        import time
+
+        now = time.time()
+
+        # Same state - increment iteration
+        if detected_state == self._current_state:
+            self._current_iteration += 1
+            self._add_history(detected_state, now, confidence, self._current_iteration)
+
+            # Check for timeout
+            max_iter = self._max_iterations
+            if self._current_state in self._valid_transitions:
+                # Find the lowest max_iterations for any valid transition
+                for trans in self._valid_transitions[self._current_state].values():
+                    if trans.max_iterations < max_iter:
+                        max_iter = trans.max_iterations
+
+            if self._current_iteration >= max_iter:
+                msg = (
+                    f"State timeout: {self._current_state.name} "
+                    f"after {self._current_iteration} iterations"
+                )
+                self._logger.warning(msg)
+                return False, msg
+
+            return False, f"Same state: {self._current_state.name} (iter {self._current_iteration})"
+
+        # State change - validate transition
+        is_valid = self._is_valid_transition(self._current_state, detected_state)
+        old_state = self._current_state
+
+        # Accept transition (valid or forced)
+        self._current_state = detected_state
+        self._current_iteration = 1
+        self._last_transition_time = now
+        self._add_history(detected_state, now, confidence, 1)
+
+        if is_valid:
+            msg = f"Valid transition: {old_state.name} → {detected_state.name}"
+            self._logger.info(msg)
+        else:
+            msg = f"Unexpected transition: {old_state.name} → {detected_state.name}"
+            self._logger.warning(msg)
+
+        return True, msg
+
+    def _is_valid_transition(
+        self,
+        from_state: ScreenState,
+        to_state: ScreenState,
+    ) -> bool:
+        """Check if a state transition is valid.
+
+        Args:
+            from_state: Current state.
+            to_state: Target state.
+
+        Returns:
+            True if transition is valid.
+        """
+        # Unknown state can transition to anything
+        if from_state == ScreenState.UNKNOWN:
+            return True
+
+        # Check explicit transitions
+        if from_state in self._valid_transitions:
+            if to_state in self._valid_transitions[from_state]:
+                return True
+
+        return False
+
+    def _add_history(
+        self,
+        state: ScreenState,
+        timestamp: float,
+        confidence: float,
+        iteration: int,
+    ) -> None:
+        """Add an entry to the state history.
+
+        Args:
+            state: The screen state.
+            timestamp: Detection timestamp.
+            confidence: Detection confidence.
+            iteration: Iteration number.
+        """
+        entry = StateHistoryEntry(
+            state=state,
+            timestamp=timestamp,
+            confidence=confidence,
+            iteration=iteration,
+        )
+        self._history.append(entry)
+
+        # Trim history if needed
+        if len(self._history) > self._history_size:
+            self._history = self._history[-self._history_size :]
+
+    def reset(self) -> None:
+        """Reset the state machine to initial state."""
+        self._current_state = ScreenState.UNKNOWN
+        self._current_iteration = 0
+        self._last_transition_time = 0.0
+        self._history.clear()
+
+    def is_stuck(self, max_same_state: int | None = None) -> bool:
+        """Check if the bot appears stuck in a state.
+
+        Args:
+            max_same_state: Override for max iterations check.
+
+        Returns:
+            True if state has exceeded max iterations.
+        """
+        threshold = max_same_state or self._max_iterations
+        return self._current_iteration >= threshold
+
+    def get_expected_states(self) -> list[ScreenState]:
+        """Get list of valid next states from current state.
+
+        Returns:
+            List of valid next states.
+        """
+        if self._current_state in self._valid_transitions:
+            return list(self._valid_transitions[self._current_state].keys())
+        return []
+
+    def format_history(self, last_n: int = 10) -> str:
+        """Format recent history for logging.
+
+        Args:
+            last_n: Number of recent entries to include.
+
+        Returns:
+            Formatted history string.
+        """
+        entries = self._history[-last_n:] if self._history else []
+        lines = ["State History:"]
+        for entry in entries:
+            lines.append(
+                f"  [{entry.timestamp:.2f}] {entry.state.name} "
+                f"(conf={entry.confidence:.2f}, iter={entry.iteration})"
+            )
+        return "\n".join(lines)

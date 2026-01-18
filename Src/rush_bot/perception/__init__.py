@@ -12,10 +12,14 @@ from .icon_detection import ContextAwareIconDetector
 from .icon_detection import IconROI
 from .screen_state import ICONS_DIR
 from .screen_state import TEMPLATE_STATE_MAP
+from .screen_state import VALID_TRANSITIONS
 from .screen_state import ScreenState
 from .screen_state import ScreenStateConfig
 from .screen_state import ScreenStateDetector
+from .screen_state import ScreenStateMachine
 from .screen_state import ScreenStateResult
+from .screen_state import StateHistoryEntry
+from .screen_state import StateTransition
 from .vision import GRID_COLS
 from .vision import GRID_ROWS
 from .vision import ML_DIR  # Constants
@@ -55,7 +59,11 @@ __all__ = [
     "ScreenState",
     "ScreenStateConfig",
     "ScreenStateDetector",
+    "ScreenStateMachine",
     "ScreenStateResult",
+    "StateHistoryEntry",
+    "StateTransition",
+    "VALID_TRANSITIONS",
     # Grid Extraction
     "GRID_COLS",
     "GRID_ROWS",
