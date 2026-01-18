@@ -8,11 +8,11 @@
 
 | Kategorie | Gesamt | Offen | In Arbeit | Erledigt |
 |-----------|--------|-------|-----------|----------|
-| Kritische Bugs | 3 | 0 | 0 | 3 |
+| Kritische Bugs | 6 | 2 | 0 | 4 |
 | Kern-Funktionalität | 3 | 0 | 0 | 3 |
 | Gameplay-Features | 3 | 0 | 0 | 3 |
 | Qualität & Tooling | 4 | 0 | 0 | 4 |
-| **Gesamt** | **13** | **0** | **0** | **13** |
+| **Gesamt** | **16** | **2** | **0** | **14** |
 
 ---
 
@@ -23,6 +23,9 @@
 | T001 | Unit-Erkennung reparieren | ✅ Erledigt | Orchestrator | 2026-01-18 |
 | T002 | Grid-Parsing korrigieren | ✅ Erledigt | Subagent | 2026-01-18 |
 | T003 | Merge-Logik stabilisieren | ✅ Erledigt | Subagent | 2026-01-18 |
+| T014 | False-Positive Icon-Detection beheben | ✅ Erledigt | Subagent | 2026-01-18 |
+| T015 | Screen-State-Filtering implementieren | ⏳ Offen | - | - |
+| T016 | Merge-Mechanismus reparieren | ⏳ Offen | - | - |
 
 ---
 
@@ -58,6 +61,130 @@
 ---
 
 ## 📝 Änderungsprotokoll
+
+### [2026-01-18] T014: False-Positive Icon-Detection behoben
+
+**IMPLEMENTIERUNG:**
+- **Context-Aware Icon Detection:** Neues Modul `src/rush_bot/perception/icon_detection.py` (290 Zeilen)
+- **Screen State Erweiterung:** Menu-States hinzugefügt (STORE_MENU, CARDS_MENU, MAIN_MENU, CLAN_MENU, EVENT_MENU)
+- **ROI-Basierte Erkennung:** Icons werden nur noch in ihren definierten Bildschirmbereichen gesucht
+- **Menü-Kontext-Erkennung:** PFLICHT-Prüfung der unteren Menüleiste (Y=1414-1600, min 90% Confidence)
+
+**NEUE KLASSEN/FUNKTIONEN:**
+1. `ContextAwareIconDetector`:
+   - Screen-State-Context ZUERST prüfen
+   - Menü-Kontext-Detection mit 90% Confidence
+   - ROI-Filtering für jedes Icon basierend auf Screen-State
+   - Verhindert False-Positives durch State-Validation
+
+2. `IconROI` Dataclass:
+   - Definition von Region of Interest für Icons
+   - Resolution-Skalierung (wie in ManaManager/DungeonLoop)
+   - Min-Confidence pro Icon (default: 0.85-0.90)
+
+3. `ICON_ROI_MAP`:
+   - PVP/PVE Buttons: NUR auf HOME_SCREEN (Y=1180-1414)
+   - Continue Button: NUR auf VICTORY_SCREEN (Y=1400+)
+   - Floor Buttons: NUR auf DUNGEON_SELECT (Y=400-1600)
+   - Alle mit min 0.85 Confidence
+
+4. ScreenStateDetector Erweiterungen:
+   - `detect_menu_context()`: Untere Menüleiste erkennen (90% min)
+   - `detect_with_roi()`: Template-Matching in spezifischer ROI
+
+**TESTS:**
+- 13 neue Unit-Tests in `tests/test_icon_detection.py`
+- Alle Tests bestehen (335/335 passed)
+- Validierung von ROI-Scaling, State-Filtering, Confidence-Thresholds
+
+**QUALITY-CHECKS:**
+- ✅ `python -m pytest`: 335 passed
+- ✅ `ruff check src/ tests/test_icon_detection.py`: All checks passed
+- ✅ `ruff format`: Code formatiert
+
+**ERGEBNIS:**
+- Icons werden nur noch erkannt, wenn sie im korrekten Screen-State UND ROI liegen
+- False-Positives eliminiert durch Screen-State-Validation
+- Höhere Confidence-Thresholds (0.85-0.90 statt 0.7)
+- Menü-Kontext wird IMMER zuerst geprüft (90% min)
+
+---
+
+### [2026-01-18] Neue Tasks aus Testing identifiziert
+
+**TEST-ERKENNTNISSE:**
+
+**WICHTIGE KOORDINATEN (1600x900 Auflösung):**
+- **Gamemode-Buttons (NUR sichtbar auf HOME_SCREEN, volle Breite, Y=1180 bis Y=1414):**
+  - PVP Button: X=225
+  - PVE Button: X=675
+- **Hauptmenü-Navigation (NUR sichtbar auf HOME_SCREEN, Y=1500 für alle):**
+  - Store: X=90
+  - Cards: X=250
+  - Battle (Startseite/Home): X=460
+  - Clan: X=640
+  - Events: X=810
+- **Untere Menüleiste (PFLICHT-ERKENNUNG):**
+  - **Region:** Y=1414 bis Y=1600 (volle Breite)
+  - **Template-Namen:** `Store_Menu.png`, `Cards_Menu.png`, `Main_Menu.png`, `Clan_Menu.png`, `Event_Menu.png`
+  - **Min. Confidence:** 90% (0.90) - PFLICHT für Menü-Pfad-Bestimmung
+  - **Zweck:** Aktuellen Menü-Kontext vor jeder Icon-Detection bestimmen
+  - **Sichtbarkeit:** Abhängig vom aktuellen Menü-Context
+- **Hinweis:** Diese Koordinaten müssen für andere Auflösungen skaliert werden!
+
+1. **False-Positive Icon-Detection (T014):**
+   - **Problem:** Bot erkennt Icons auf falschen Screens
+     - Home-Screen: `['battle_icon.png', 'chapter_2.png', 'chapter_6.png', 'dungeon_page.png']` erkannt
+     - Menü-Screen: `['0cont_button.png']` erkannt
+     - "Lost" Screen: `['dungeon_page.png', 'chapter_1.png', 'chapter_6.png']` erkannt fälschlicherweise
+   - **Ursache:** Icon-Detection läuft ohne Screen-State-Context, Template-Matching ohne ROI-Einschränkung
+   - **Lösung notwendig:**
+     - **PFLICHT: Menü-Pfad-Erkennung ZUERST (min 90% confidence)**
+       - ROI: Y=1414-1600 (untere Menüleiste)
+       - Templates: `Store_Menu.png`, `Cards_Menu.png`, `Main_Menu.png`, `Clan_Menu.png`, `Event_Menu.png`
+       - Bei Sichtbarkeit IMMER prüfen vor Icon-Detection
+     - Screen-State ZUERST erkennen (via `ScreenStateDetector`)
+     - Dann nur relevante Icons für diesen State prüfen
+     - ROI (Region of Interest) für Icon-Detection definieren
+     - Höherer Confidence-Threshold für Template-Matching (min 0.85)
+     - **PVP/PVE Button-Koordinaten nutzen statt Icon-Detection auf Home-Screen**
+
+2. **Screen-State-Filtering (T015):**
+   - **Problem:** Keine Erkennung von Startseite, Transit/Loading-Screen, verschiedenen Game-States
+   - **LOG-Evidenz:**
+     - "home, wait count: 0" → Erkennt Home, aber trifft falsche Icon-Decisions
+     - "menu, wait count: 1-2" → Menü-State erkannt, aber keine Aktion
+     - "lost, wait count: 3-25" → Stuck im "lost" State, erkennt falsch Icons
+     - "ERROR:bot_logger:Could not find floor 4" → Navigation-Fehler
+   - **Fehlende States:**
+     - START_SCREEN (Initial Launch Screen)
+     - TRANSIT_SCREEN (Loading zwischen PvP/PvE)
+     - DUNGEON_FLOOR_SELECT (Floor-Selection innerhalb Chapter)
+     - BATTLE_PREPARATION (Pre-Battle Deck-Screen)
+   - **Lösung notwendig:**
+     - `ScreenState` Enum erweitern um fehlende States
+     - Template-Mappings für neue States hinzufügen
+     - Bot-Logic überarbeiten: State-Machine statt Icon-Based-Loop
+
+3. **Merge-Mechanismus defekt (T016):**
+   - **Problem:** "Merging funktioniert nicht"
+   - **Mögliche Ursachen:**
+     - Grid-Koordinaten inkorrekt nach T002
+     - Swipe-Direction Berechnung fehlerhaft
+     - Timing-Issues (zu schnelle/langsame Swipes)
+     - Merge-Validierung zu strikt (blockiert valide Merges)
+   - **Lösung notwendig:**
+     - Debug-Logging für Merge-Attempts hinzufügen
+     - Visual Debugging: Grid-Overlay auf Screenshots
+     - Swipe-Timing kalibrieren
+     - Merge-Validierung Logs prüfen
+
+**NÄCHSTE SCHRITTE:**
+- T014: Icon-Detection mit Screen-State-Context verknüpfen
+- T015: Screen-State-Machine implementieren (State-Transitions)
+- T016: Merge-Debugging mit Visual-Overlay
+
+---
 
 ### [2026-01-18] T007: PvE-Dungeon-Loop implementiert
 - **Problem:** Keine automatisierte PvE-Dungeon-Farming-Funktionalität
