@@ -12,7 +12,8 @@
 | Kern-Funktionalität | 3 | 0 | 0 | 3 |
 | Gameplay-Features | 3 | 0 | 0 | 3 |
 | Qualität & Tooling | 4 | 0 | 0 | 4 |
-| **Gesamt** | **17** | **2** | **0** | **15** |
+| ML/Training (Neu) | 8 | 8 | 0 | 0 |
+| **Gesamt** | **25** | **10** | **0** | **15** |
 
 ---
 
@@ -58,6 +59,21 @@
 | T011 | Type Hints vervollständigen | ✅ Erledigt | Subagent | 2026-01-18 |
 | T012 | CI/CD Pipeline | ✅ Erledigt | Orchestrator | 2026-01-18 |
 | T013 | Bug-Fixes in gui.py | ✅ Erledigt | Orchestrator | 2026-01-18 |
+
+---
+
+## 🔵 ML/Training & Tooling (Priorität 5)
+
+| ID | Task | Status | Bearbeiter | Datum |
+|----|------|--------|------------|-------|
+| T018 | Rank-Model-Upgrade (sklearn 1.8.0 + 2 Ranks) | ⏳ Offen | - | - |
+| T019 | Unit-Detection-Upgrade (120x120 Icons) | ⏳ Offen | - | - |
+| T020 | Modellformat-Umstellung auf ONNX | ⏳ Offen | - | - |
+| T021 | Labeling-Integration ins Main Window | ⏳ Offen | - | - |
+| T022 | Trainings-Tab restrukturieren | ⏳ Offen | - | - |
+| T023 | Unit-Detection-Modell anlegen/trainieren | ⏳ Offen | - | - |
+| T024 | Merge-Logik-Modell planen/aufsetzen | ⏳ Offen | - | - |
+| T025 | CV-Only Mode / Visibility Debug | ⏳ Offen | - | - |
 
 ---
 
@@ -321,6 +337,20 @@
         - Beispiel-Whitelist (JSON):
           - `unit: "<unitname>"`
           - `merges_with: "any"` oder `merges_with: ["unitname1", "unitname2"]`
+
+  12. **CV-Only Mode / Visibility Debug (T025):**
+      - **Ziel:** Zeigen, was der Bot sieht und nicht sieht (Units, Ranks, Merge-Paare)
+      - **TODO:**
+        - Modus, der nur CV-Erkennung ausführt und Ergebnisse overlayed/loggt (keine Aktionen)
+        - Visualisierung: erkannte Units + Ranks + mögliche Merges (inkl. Whitelist-Regeln)
+        - Export von Debug-Screens/JSON (Detected Units, Confidences, Merge-Graph)
+        - Toggle im UI (Main Window/Trainings-Tab) und CLI-Switch
+       - **Kontext-Abdeckung:**
+         - Auch außerhalb des Kampfes in Menüs aktiv (PageName/ScreenState ausgeben)
+         - Logging-Strings z.B.: `Viewing {PageName}: Detected_via: [ICON_NAME, CONFIDENCE]`
+         - Units/Rank-Logs z.B.: `Found {UNITNAME}: Detected_Via: [ICON_NAME, CONFIDENCE]`
+         - Merge-Logs analog zu Domain-Regeln (nur eigene Seite, Typ/Stufe, Whitelist-Ausnahmen)
+         - Alle relevanten Entities log-ready machen (Units, Ranks, Merge-Paare, PageContext)
 
 **NÄCHSTE SCHRITTE:**
 - T014: ✅ Icon-Detection mit Screen-State-Context verknüpft (ERLEDIGT)
