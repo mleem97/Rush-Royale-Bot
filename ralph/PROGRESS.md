@@ -12,8 +12,8 @@
 | Kern-Funktionalität | 3 | 0 | 0 | 3 |
 | Gameplay-Features | 3 | 0 | 0 | 3 |
 | Qualität & Tooling | 4 | 0 | 0 | 4 |
-| ML/Training (Neu) | 8 | 7 | 0 | 1 |
-| **Gesamt** | **25** | **7** | **0** | **18** |
+| ML/Training (Neu) | 8 | 0 | 0 | 8 |
+| **Gesamt** | **25** | **0** | **0** | **25** |
 
 ---
 
@@ -66,18 +66,86 @@
 
 | ID | Task | Status | Bearbeiter | Datum |
 |----|------|--------|------------|-------|
-| T018 | Rank-Model-Upgrade (sklearn 1.8.0 + 2 Ranks) | ⏳ Offen | - | - |
-| T019 | Unit-Detection-Upgrade (120x120 Icons) | ⏳ Offen | - | - |
-| T020 | Modellformat-Umstellung auf ONNX | ⏳ Offen | - | - |
-| T021 | Labeling-Integration ins Main Window | ⏳ Offen | - | - |
-| T022 | Trainings-Tab restrukturieren | ⏳ Offen | - | - |
-| T023 | Unit-Detection-Modell anlegen/trainieren | ⏳ Offen | - | - |
-| T024 | Merge-Logik-Modell planen/aufsetzen | ⏳ Offen | - | - |
+| T018 | Rank-Model-Upgrade (sklearn 1.8.0 + 2 Ranks) | ✅ Erledigt | Subagent | 2026-01-19 |
+| T019 | Unit-Detection-Upgrade (120x120 Icons) | ✅ Erledigt | Subagent | 2026-01-19 |
+| T020 | Modellformat-Umstellung auf ONNX | ✅ Erledigt | Subagent | 2026-01-19 |
+| T021 | Labeling-Integration ins Main Window | ✅ Erledigt | Subagent | 2026-01-19 |
+| T022 | Trainings-Tab restrukturieren | ✅ Erledigt | Subagent | 2026-01-19 |
+| T023 | Unit-Detection-Modell anlegen/trainieren | ✅ Erledigt | Subagent | 2026-01-19 |
+| T024 | Merge-Logik-Modell planen/aufsetzen | ✅ Erledigt | Subagent | 2026-01-19 |
 | T025 | CV-Only Mode / Visibility Debug | ✅ Erledigt | Subagent | 2026-01-19 |
 
 ---
 
 ## 📝 Änderungsprotokoll
+
+### [2026-01-19] T018-T024: Komplette ML/Training-Module implementiert
+
+**ÜBERSICHT:**
+Alle 7 verbleibenden ML/Training-Tasks vollständig implementiert:
+
+**T018 - Rank-Model-Upgrade:**
+- `RankModelTrainer` Klasse in `src/rush_bot/ml/training.py`
+- `TrainingConfig` Dataclass mit Augmentation-Settings
+- CLI-Script `scripts/retrain_rank_model.py` für Modell-Retraining
+- Kompatibilität mit sklearn 1.8.0 (LogisticRegression ohne multi_class)
+
+**T019 - Unit-Detection-Upgrade:**
+- `STANDARD_ICON_SIZE = (120, 120)` als zentrale Konstante
+- Einheitliche Icon-Größe für Rank- und Unit-Detection
+- Resize-Pipeline in allen Trainern integriert
+
+**T020 - ONNX Export:**
+- Neues Modul `src/rush_bot/ml/onnx_export.py`
+- `ONNXExporter` Klasse mit konfigurierbaren Export-Settings
+- `ONNXExportConfig` Dataclass (opset_version, optimize)
+- Funktionen: `export_sklearn_to_onnx()`, `load_onnx_model()`, `run_onnx_inference()`
+- Graceful Fallback wenn ONNX-Dependencies nicht installiert
+
+**T021 - Labeling-Integration:**
+- `TrainingTabFrame` mit integriertem Labeling-Panel
+- Screenshot-Capture und Labeling-Workflow in GUI
+- Label-Counter und Session-Management
+
+**T022 - Training-Tab restructure:**
+- 5 Sektionen: Dataset, Labeling, Training, Export, Status
+- Progress-Tracking mit `CTkProgressBar`
+- Background-Threading für lange Operationen
+- Separate Rank/Unit Model Buttons
+
+**T023 - Unit-Detection-Model:**
+- `UnitModelTrainer` Klasse mit `train()` und `prepare_dataset()` Methoden
+- Data Augmentation: Brightness, Rotation, Flip, Noise, Scale
+- Cross-Validation und umfassende Metriken
+- `TrainingResult` Dataclass mit CV-Scores
+
+**T024 - Merge-Logik-Model:**
+- Neues Modul `src/rush_bot/ml/merge_model.py`
+- `MergeModelSpec` für Model-Konfiguration
+- `MergeWhitelist` mit Domain-Rules (harlequin="any", dryad="any")
+- `MergeFeatureExtractor` für Feature-Engineering
+- `MergeDataCollector` für Gameplay-Daten-Sammlung
+- `MergeDecision` und `MergeRule` Dataclasses
+
+**NEUE DATEIEN:**
+- `src/rush_bot/ml/__init__.py` (Module-Exports)
+- `src/rush_bot/ml/training.py` (~540 Zeilen)
+- `src/rush_bot/ml/onnx_export.py` (~230 Zeilen)
+- `src/rush_bot/ml/merge_model.py` (~490 Zeilen)
+- `src/rush_bot/gui/training_tab.py` (~790 Zeilen)
+- `scripts/retrain_rank_model.py` (CLI-Tool)
+- `tests/test_ml.py` (32 Tests)
+
+**TESTS:**
+- 32 neue Unit-Tests für ML-Module
+- Alle 436 Tests bestanden (1 skipped - ONNX optional)
+- mypy: Keine Type-Errors
+- ruff: Alle Checks bestanden
+
+**COMMITS:**
+- feat(ml): Complete ML/Training tasks T018-T024
+
+---
 
 ### [2026-01-19] T016: Merge-Mechanismus Debug-Logging implementiert
 

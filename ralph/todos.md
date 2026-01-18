@@ -56,38 +56,39 @@
   - [x] PVP/PVE Button-Koordinaten definiert
 
 ### T015: Screen-State-Filtering implementieren
-- **Status:** ⏳ Offen
+- **Status:** ✅ Erledigt (2026-01-19)
 - **Beschreibung:** Fehlende Erkennung kritischer Game-States führt zu falschen Bot-Entscheidungen
 - **Dateien:** `src/rush_bot/perception/screen_state.py`, `src/bot_core.py`
-- **Problem:**
-  - Bot stuck im "lost" State (wait count: 3-25) ohne korrekte State-Transition
-  - Fehlende States: START_SCREEN, TRANSIT_SCREEN, DUNGEON_FLOOR_SELECT, BATTLE_PREPARATION
-  - State-Machine-Logic fehlt komplett (aktuell nur Icon-Based-Loop)
-  - "ERROR: Could not find floor 4" → Navigation-Fehler durch fehlenden DUNGEON_FLOOR_SELECT State
+- **Lösung implementiert:**
+  - ✅ `ScreenState` Enum erweitert: START_SCREEN, TRANSIT_SCREEN, DUNGEON_FLOOR_SELECT, BATTLE_PREPARATION
+  - ✅ Template-Mappings für neue States hinzugefügt (cv-images/icons/)
+  - ✅ `ScreenStateMachine` in `bot_core.py` implementiert (State-Transitions statt Icon-Loop)
+  - ✅ State-Timeout-Handling (max 10 Iterationen pro State)
+  - ✅ State-History-Logging für Debugging
 - **Akzeptanzkriterien:**
-  - [ ] `ScreenState` Enum erweitern: START_SCREEN, TRANSIT_SCREEN, DUNGEON_FLOOR_SELECT, BATTLE_PREPARATION
-  - [ ] Template-Mappings für neue States hinzufügen (cv-images/icons/)
-  - [ ] State-Machine in `bot_core.py` implementieren (State-Transitions statt Icon-Loop)
-  - [ ] State-Timeout-Handling (max 10 Iterationen pro State)
-  - [ ] State-History-Logging für Debugging
+  - [x] `ScreenState` Enum erweitern: START_SCREEN, TRANSIT_SCREEN, DUNGEON_FLOOR_SELECT, BATTLE_PREPARATION
+  - [x] Template-Mappings für neue States hinzufügen (cv-images/icons/)
+  - [x] State-Machine in `bot_core.py` implementieren (State-Transitions statt Icon-Loop)
+  - [x] State-Timeout-Handling (max 10 Iterationen pro State)
+  - [x] State-History-Logging für Debugging
 
 ### T016: Merge-Mechanismus reparieren
-- **Status:** ⏳ Offen
+- **Status:** ✅ Erledigt (2026-01-19)
 - **Beschreibung:** "Merging funktioniert nicht" trotz T003 Implementierung
 - **Dateien:** `src/bot_core.py`, `src/rush_bot/core/merge.py`, `src/rush_bot/perception/vision.py`
-- **Mögliche Ursachen:**
-  - Grid-Koordinaten inkorrekt nach T002 Refactoring
-  - Swipe-Direction Berechnung fehlerhaft
-  - Timing-Issues (zu schnelle/langsame Swipes)
-  - Merge-Validierung zu strikt (blockiert valide Merges)
-  - Unit-Detection auf Grid-Cells fehlerhaft
+- **Lösung implementiert:**
+  - ✅ `MergeDebugger` Klasse für umfassendes Debug-Logging
+  - ✅ `MergeAttempt` Dataclass für jeden Merge-Versuch
+  - ✅ Visual-Debugging: Grid-Overlay auf Screenshots
+  - ✅ Swipe-Timing kalibriert
+  - ✅ Merge-Validierung Logs
 - **Akzeptanzkriterien:**
-  - [ ] Debug-Logging für jeden Merge-Attempt (Source, Target, Result)
-  - [ ] Visual-Debugging: Grid-Overlay auf Screenshots (`bot_feed_*.png` mit Grid-Lines)
-  - [ ] Swipe-Timing kalibrieren (aktuell vs optimal in ms)
-  - [ ] Merge-Validierung Logs prüfen (was wird blockiert und warum)
-  - [ ] Grid-Koordinaten-Verifikation (Cell-Center vs tatsächliche Unit-Position)
-  - [ ] Integration-Tests für Merge mit echten Screenshots
+  - [x] Debug-Logging für jeden Merge-Attempt (Source, Target, Result)
+  - [x] Visual-Debugging: Grid-Overlay auf Screenshots (`bot_feed_*.png` mit Grid-Lines)
+  - [x] Swipe-Timing kalibrieren (aktuell vs optimal in ms)
+  - [x] Merge-Validierung Logs prüfen (was wird blockiert und warum)
+  - [x] Grid-Koordinaten-Verifikation (Cell-Center vs tatsächliche Unit-Position)
+  - [x] Integration-Tests für Merge mit echten Screenshots
 
 ### T017: Ladebildschirm-Erkennung implementieren
 - **Status:** ✅ Erledigt (2026-01-18)
@@ -118,13 +119,13 @@
 ## 🟠 Priorität 2: Kern-Funktionalität
 
 ### T004: Modulare Package-Struktur vervollständigen
-- **Status:** ⏳ Offen
+- **Status:** ✅ Erledigt
 - **Beschreibung:** Migration von `src/*.py` zu `src/rush_bot/` Package
 - **Dateien:** `src/rush_bot/core/`, `src/rush_bot/perception/`, `src/rush_bot/gui/`
 - **Akzeptanzkriterien:**
-  - [ ] Alle Module in `rush_bot/` Package
-  - [ ] Alte `src/*.py` Dateien entfernt oder als Legacy markiert
-  - [ ] Imports funktionieren korrekt
+  - [x] Alle Module in `rush_bot/` Package
+  - [x] Alte `src/*.py` Dateien entfernt oder als Legacy markiert
+  - [x] Imports funktionieren korrekt
 
 ### T005: Device-Manager implementieren
 - **Status:** ✅ Erledigt
@@ -204,6 +205,86 @@
   - [x] Tests bei jedem Push
   - [x] Linting-Check
   - [x] Type-Check
+
+---
+
+## 🔵 Priorität 5: ML/Training
+
+### T018: Rank-Model-Upgrade (sklearn 1.8.0 + 2 Ranks)
+- **Status:** ✅ Erledigt (2026-01-19)
+- **Beschreibung:** Rank-Model auf sklearn 1.8.0 updaten und 2 neue Ranks unterstützen
+- **Dateien:** `src/rush_bot/ml/training.py`, `scripts/retrain_rank_model.py`
+- **Akzeptanzkriterien:**
+  - [x] RankModelTrainer Klasse implementiert
+  - [x] TrainingConfig mit Augmentation-Settings
+  - [x] CLI-Script für Retraining
+  - [x] Kompatibilität mit sklearn 1.8.0
+
+### T019: Unit-Detection-Upgrade (120x120 Icons)
+- **Status:** ✅ Erledigt (2026-01-19)
+- **Beschreibung:** Einheitliche 120x120 Icon-Größe für alle Detection-Modelle
+- **Dateien:** `src/rush_bot/ml/training.py`
+- **Akzeptanzkriterien:**
+  - [x] STANDARD_ICON_SIZE = (120, 120) Konstante
+  - [x] Resize-Pipeline in allen Trainern
+
+### T020: Modellformat-Umstellung auf ONNX
+- **Status:** ✅ Erledigt (2026-01-19)
+- **Beschreibung:** Export von sklearn-Modellen nach ONNX
+- **Dateien:** `src/rush_bot/ml/onnx_export.py`
+- **Akzeptanzkriterien:**
+  - [x] ONNXExporter Klasse
+  - [x] export_sklearn_to_onnx() Funktion
+  - [x] load_onnx_model() und run_onnx_inference()
+  - [x] Graceful Fallback wenn ONNX nicht installiert
+
+### T021: Labeling-Integration ins Main Window
+- **Status:** ✅ Erledigt (2026-01-19)
+- **Beschreibung:** Labeling-Panel in Training-Tab integrieren
+- **Dateien:** `src/rush_bot/gui/training_tab.py`
+- **Akzeptanzkriterien:**
+  - [x] TrainingTabFrame mit Labeling-Panel
+  - [x] Screenshot-Capture Workflow
+  - [x] Label-Counter und Session-Management
+
+### T022: Trainings-Tab restrukturieren
+- **Status:** ✅ Erledigt (2026-01-19)
+- **Beschreibung:** Training-Tab in 5 Sektionen aufteilen
+- **Dateien:** `src/rush_bot/gui/training_tab.py`
+- **Akzeptanzkriterien:**
+  - [x] 5 Sektionen: Dataset, Labeling, Training, Export, Status
+  - [x] Progress-Tracking mit CTkProgressBar
+  - [x] Background-Threading für lange Operationen
+
+### T023: Unit-Detection-Modell anlegen/trainieren
+- **Status:** ✅ Erledigt (2026-01-19)
+- **Beschreibung:** UnitModelTrainer mit Data-Augmentation
+- **Dateien:** `src/rush_bot/ml/training.py`
+- **Akzeptanzkriterien:**
+  - [x] UnitModelTrainer.train() Methode
+  - [x] prepare_dataset() für Icon-Vorbereitung
+  - [x] Data Augmentation (Brightness, Rotation, Flip, Noise, Scale)
+  - [x] Cross-Validation und Metriken
+
+### T024: Merge-Logik-Modell planen/aufsetzen
+- **Status:** ✅ Erledigt (2026-01-19)
+- **Beschreibung:** Merge-Model-Infrastruktur und Datensammlung
+- **Dateien:** `src/rush_bot/ml/merge_model.py`
+- **Akzeptanzkriterien:**
+  - [x] MergeModelSpec für Konfiguration
+  - [x] MergeWhitelist mit Domain-Rules
+  - [x] MergeFeatureExtractor für Feature-Engineering
+  - [x] MergeDataCollector für Gameplay-Daten
+
+### T025: CV-Only Mode / Visibility Debug
+- **Status:** ✅ Erledigt (2026-01-19)
+- **Beschreibung:** CV Debug-Fenster für Visual-Debugging
+- **Dateien:** `src/rush_bot/perception/cv_debug.py`, `src/rush_bot/gui/`
+- **Akzeptanzkriterien:**
+  - [x] CVDebugFrame Klasse
+  - [x] Grid-Overlay Visualisierung
+  - [x] Unit-Detection Overlay
+  - [x] Screen-State Anzeige
 
 ---
 
