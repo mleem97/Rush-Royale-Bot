@@ -160,6 +160,11 @@
 
 ---
 
+### [2026-01-18] Asset-Update: Unit-Ranks
+- Added Rank 6 und Rank 7 Assets nach `/cv-images/unit-rank/`
+
+---
+
 ### [2026-01-18] Neue Tasks aus Testing identifiziert
 
 **TEST-ERKENNTNISSE:**
@@ -242,6 +247,15 @@
      - Abort-Button-Erkennung für Timeout-Handling
      - Warte-Loop während Loading-State
      - AD_Bonus-Button-Handling nach PVP-Match
+
+  5. **Rank-Model-Upgrade (T018):**
+     - **Problem:** `rank_model.pkl` wurde mit scikit-learn 1.1.1 trainiert und erzeugt Versionswarnungen unter 1.8.0
+     - **Ziel:** Modell neu trainieren/speichern unter sklearn 1.8.0 und zwei neue Ranks ergänzen
+     - **TODO:**
+       - Datenset um 2 neue Rank-Klassen erweitern (gelabelte Samples)
+       - Training mit aktuellem sklearn 1.8.0 durchführen
+       - `rank_model.pkl` neu speichern und Referenzen prüfen (`vision.py`)
+       - Optional: Tests/Docs für neues Modell ergänzen
 
 **NÄCHSTE SCHRITTE:**
 - T014: ✅ Icon-Detection mit Screen-State-Context verknüpft (ERLEDIGT)
