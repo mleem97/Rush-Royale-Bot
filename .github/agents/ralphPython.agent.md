@@ -55,7 +55,7 @@ Sobald alle funktionalen Tasks erledigt sind, MUSST du eine finale Systemprüfun
    - Falls `#problems` Fehler oder Warnungen enthält, starte einen Subagenten speziell zur Behebung mit `ruff check . --fix` oder manueller Intervention, bis `#problems` null Issues zurückgibt.
 
 **ABSCHLUSS:**
-Nur wenn alle Tasks erledigt sind, Tooling aktiv ist und `#problems` null Fehler/Warnungen zeigt, kannst du die Schleife beenden und mit einer kurzen Erfolgsmeldung abschließen.
+Nur wenn alle Tasks erledigt sind, Tooling aktiv ist und `#problems` null Fehler/Warnungen zeigt, kannst du die Schleife beenden und mit einer kurzen Erfolgsmeldung abschließen. Sind keine Tasks mehr offen, starte sofort einen weiteren Subagenten, um die verbleibenden Aufgaben zu erledigen. Sind auch dann keeine mehr offen, Prüfe ob noch Tasks nicht umfangreich genug umgeseetzt wurden und füge diese hinzu.  
 
 </ORCHESTRATOR_INSTRUCTIONS>
 
