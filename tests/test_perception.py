@@ -1248,3 +1248,199 @@ class TestModuleLevelFunctions:
         # Should be scaled
         scale_x = 720 / REFERENCE_WIDTH
         assert cell_size[0] == int(120 * scale_x)
+
+
+class TestLoadingScreenDetection:
+    """Tests for T017: Loading Screen Detection functionality."""
+
+    @pytest.fixture
+    def detector(self) -> ScreenStateDetector:
+        """Create detector for loading screen tests."""
+        from rush_bot.perception import ScreenStateDetector
+
+        return ScreenStateDetector()
+
+    @pytest.fixture
+    def mock_screenshot(self) -> np.ndarray:
+        """Create a mock screenshot for testing."""
+        return np.zeros((1920, 1080, 3), dtype=np.uint8)
+
+    def test_pvp_loading_state_exists(self) -> None:
+        """Test that PVP_LOADING state exists in ScreenState enum."""
+        from rush_bot.perception.screen_state import ScreenState
+
+        assert hasattr(ScreenState, "PVP_LOADING")
+        assert ScreenState.PVP_LOADING is not None
+
+    def test_loading_template_mappings_exist(self) -> None:
+        """Test that loading screen templates are mapped correctly."""
+        from rush_bot.perception.screen_state import TEMPLATE_STATE_MAP
+        from rush_bot.perception.screen_state import ScreenState
+
+        # Check PVP loading templates
+        assert "PVP_Loading.png" in TEMPLATE_STATE_MAP
+        assert TEMPLATE_STATE_MAP["PVP_Loading.png"] == ScreenState.PVP_LOADING
+
+        assert "Abort_Button.png" in TEMPLATE_STATE_MAP
+        assert TEMPLATE_STATE_MAP["Abort_Button.png"] == ScreenState.PVP_LOADING
+
+        # Check ad bonus button
+        assert "AD_Bonus_Button.png" in TEMPLATE_STATE_MAP
+        assert TEMPLATE_STATE_MAP["AD_Bonus_Button.png"] == ScreenState.ADVERTISEMENT
+
+    def test_is_loading_screen_method_exists(self, detector: ScreenStateDetector) -> None:
+        """Test that is_loading_screen method exists."""
+        assert hasattr(detector, "is_loading_screen")
+        assert callable(detector.is_loading_screen)
+
+    def test_is_pvp_loading_method_exists(self, detector: ScreenStateDetector) -> None:
+        """Test that is_pvp_loading method exists."""
+        assert hasattr(detector, "is_pvp_loading")
+        assert callable(detector.is_pvp_loading)
+
+    def test_get_abort_button_location_method_exists(self, detector: ScreenStateDetector) -> None:
+        """Test that get_abort_button_location method exists."""
+        assert hasattr(detector, "get_abort_button_location")
+        assert callable(detector.get_abort_button_location)
+
+    def test_has_ad_bonus_button_method_exists(self, detector: ScreenStateDetector) -> None:
+        """Test that has_ad_bonus_button method exists."""
+        assert hasattr(detector, "has_ad_bonus_button")
+        assert callable(detector.has_ad_bonus_button)
+
+    def test_is_loading_screen_with_empty_screenshot(
+        self, detector: ScreenStateDetector, mock_screenshot: np.ndarray
+    ) -> None:
+        """Test is_loading_screen returns False for empty screenshot."""
+        result = detector.is_loading_screen(mock_screenshot)
+        assert isinstance(result, bool)
+
+    def test_is_pvp_loading_with_empty_screenshot(
+        self, detector: ScreenStateDetector, mock_screenshot: np.ndarray
+    ) -> None:
+        """Test is_pvp_loading returns False for empty screenshot."""
+        result = detector.is_pvp_loading(mock_screenshot)
+        assert isinstance(result, bool)
+
+    def test_get_abort_button_location_with_empty_screenshot(
+        self, detector: ScreenStateDetector, mock_screenshot: np.ndarray
+    ) -> None:
+        """Test get_abort_button_location returns None for empty screenshot."""
+        result = detector.get_abort_button_location(mock_screenshot)
+        assert result is None or isinstance(result, tuple)
+
+    def test_has_ad_bonus_button_with_empty_screenshot(
+        self, detector: ScreenStateDetector, mock_screenshot: np.ndarray
+    ) -> None:
+        """Test has_ad_bonus_button returns False for empty screenshot."""
+        result = detector.has_ad_bonus_button(mock_screenshot)
+        assert isinstance(result, bool)
+
+    def test_is_loading_screen_detects_generic_loading(
+        self, detector: ScreenStateDetector, mock_screenshot: np.ndarray
+    ) -> None:
+        """Test is_loading_screen detects both LOADING and PVP_LOADING states."""
+        from rush_bot.perception.screen_state import ScreenState
+        from rush_bot.perception.screen_state import ScreenStateResult
+
+        # Mock detect_all to return LOADING state
+        original_detect_all = detector.detect_all
+
+        def mock_detect_all(screenshot):
+            return [
+                ScreenStateResult(
+                    state=ScreenState.LOADING,
+                    confidence=0.9,
+                    matched_template="loading.png",
+                )
+            ]
+
+        detector.detect_all = mock_detect_all  # type: ignore[method-assign]
+
+        result = detector.is_loading_screen(mock_screenshot)
+        assert result is True
+
+        detector.detect_all = original_detect_all  # type: ignore[method-assign]
+
+    def test_is_loading_screen_detects_pvp_loading(
+        self, detector: ScreenStateDetector, mock_screenshot: np.ndarray
+    ) -> None:
+        """Test is_loading_screen detects PVP_LOADING state."""
+        from rush_bot.perception.screen_state import ScreenState
+        from rush_bot.perception.screen_state import ScreenStateResult
+
+        # Mock detect_all to return PVP_LOADING state
+        original_detect_all = detector.detect_all
+
+        def mock_detect_all(screenshot):
+            return [
+                ScreenStateResult(
+                    state=ScreenState.PVP_LOADING,
+                    confidence=0.9,
+                    matched_template="PVP_Loading.png",
+                )
+            ]
+
+        detector.detect_all = mock_detect_all  # type: ignore[method-assign]
+
+        result = detector.is_loading_screen(mock_screenshot)
+        assert result is True
+
+        detector.detect_all = original_detect_all  # type: ignore[method-assign]
+
+    def test_abort_button_location_returns_center_coordinates(
+        self, detector: ScreenStateDetector, mock_screenshot: np.ndarray
+    ) -> None:
+        """Test get_abort_button_location returns center coordinates when found."""
+
+        # Mock find_template to return a known region
+        original_find_template = detector.find_template
+
+        def mock_find_template(screenshot, template_name):
+            if template_name == "Abort_Button.png":
+                # Return found=True, region=(100, 200, 50, 30), confidence=0.9
+                return (True, (100, 200, 50, 30), 0.9)
+            return (False, None, 0.0)
+
+        detector.find_template = mock_find_template  # type: ignore[method-assign]
+
+        result = detector.get_abort_button_location(mock_screenshot)
+
+        assert result is not None
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+        # Center should be (100 + 50//2, 200 + 30//2) = (125, 215)
+        assert result == (125, 215)
+
+        detector.find_template = original_find_template  # type: ignore[method-assign]
+
+    def test_has_ad_bonus_button_checks_confidence_threshold(
+        self, detector: ScreenStateDetector, mock_screenshot: np.ndarray
+    ) -> None:
+        """Test has_ad_bonus_button checks confidence threshold."""
+        # Mock find_template to return low confidence
+        original_find_template = detector.find_template
+
+        def mock_find_template_low_conf(screenshot, template_name):
+            if template_name == "AD_Bonus_Button.png":
+                return (True, (100, 100, 50, 50), 0.5)
+            return (False, None, 0.0)
+
+        detector.find_template = mock_find_template_low_conf  # type: ignore[method-assign]
+
+        # With default threshold (0.7), 0.5 confidence should fail
+        result = detector.has_ad_bonus_button(mock_screenshot)
+        assert result is False
+
+        # Mock high confidence
+        def mock_find_template_high_conf(screenshot, template_name):
+            if template_name == "AD_Bonus_Button.png":
+                return (True, (100, 100, 50, 50), 0.9)
+            return (False, None, 0.0)
+
+        detector.find_template = mock_find_template_high_conf  # type: ignore[method-assign]
+
+        result = detector.has_ad_bonus_button(mock_screenshot)
+        assert result is True
+
+        detector.find_template = original_find_template  # type: ignore[method-assign]

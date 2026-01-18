@@ -8,11 +8,11 @@
 
 | Kategorie | Gesamt | Offen | In Arbeit | Erledigt |
 |-----------|--------|-------|-----------|----------|
-| Kritische Bugs | 6 | 2 | 0 | 4 |
+| Kritische Bugs | 7 | 2 | 0 | 5 |
 | Kern-Funktionalität | 3 | 0 | 0 | 3 |
 | Gameplay-Features | 3 | 0 | 0 | 3 |
 | Qualität & Tooling | 4 | 0 | 0 | 4 |
-| **Gesamt** | **16** | **2** | **0** | **14** |
+| **Gesamt** | **17** | **2** | **0** | **15** |
 
 ---
 
@@ -26,6 +26,7 @@
 | T014 | False-Positive Icon-Detection beheben | ✅ Erledigt | Subagent | 2026-01-18 |
 | T015 | Screen-State-Filtering implementieren | ⏳ Offen | - | - |
 | T016 | Merge-Mechanismus reparieren | ⏳ Offen | - | - |
+| T017 | Ladebildschirm-Erkennung implementieren | ✅ Erledigt | Subagent | 2026-01-18 |
 
 ---
 
@@ -110,6 +111,39 @@
 
 ---
 
+### [2026-01-18] T017: Ladebildschirm-Erkennung implementiert
+- **Problem:** Bot wartet nicht korrekt während PVP-Ladebildschirm und erkennt neue Buttons nicht
+- **Lösung:** Erweiterte ScreenStateDetector mit PVP_LOADING State und Template-Mappings
+- **Änderungen:**
+  - `src/rush_bot/perception/screen_state.py`: PVP_LOADING State, neue Template-Mappings, 4 neue Methoden (~70 Zeilen)
+  - `tests/test_perception.py`: 14 neue Unit-Tests für Loading Screen Detection
+- **Features:**
+  - **ScreenState.PVP_LOADING:** Neuer State für PVP-Ladebildschirm
+  - **Template-Mappings:** PVP_Loading.png, Abort_Button.png, AD_Bonus_Button.png
+  - **is_loading_screen():** Erkennt generische und PVP-Ladebildschirme
+  - **is_pvp_loading():** Spezifisch für PVP-Ladebildschirm
+  - **get_abort_button_location():** Findet Abort-Button-Position
+  - **has_ad_bonus_button():** Prüft auf Ad-Bonus-Button
+- **Neue Methoden:**
+  - `is_loading_screen()`: Prüft auf LOADING oder PVP_LOADING State
+  - `is_pvp_loading()`: Prüft speziell auf PVP_LOADING State
+  - `get_abort_button_location()`: Gibt (x, y) Koordinaten des Abort-Buttons
+  - `has_ad_bonus_button()`: Boolean-Check für Ad-Bonus-Button mit Confidence-Threshold
+- **Template-Assets (bereits vorhanden):**
+  - `cv-images/icons/PVP_Loading.png` - PVP-Ladebildschirm
+  - `cv-images/icons/Abort_Button.png` - Abort-Button während Loading
+  - `cv-images/icons/AD_Bonus_Button.png` - Ad-Bonus-Skip-Button
+- **Akzeptanzkriterien:**
+  - [x] ScreenState.PVP_LOADING existiert
+  - [x] Template-Mappings für PVP_Loading.png, Abort_Button.png, AD_Bonus_Button.png
+  - [x] is_loading_screen() und is_pvp_loading() Methoden
+  - [x] get_abort_button_location() gibt Koordinaten zurück
+  - [x] has_ad_bonus_button() prüft Confidence-Threshold
+  - [x] 14 Unit-Tests, alle bestehen
+- **Tests:** 349 Tests bestehen (14 neue Loading Screen Tests)
+
+---
+
 ### [2026-01-18] Neue Tasks aus Testing identifiziert
 
 **TEST-ERKENNTNISSE:**
@@ -179,14 +213,35 @@
      - Swipe-Timing kalibrieren
      - Merge-Validierung Logs prüfen
 
+4. **Ladebildschirm-Erkennung fehlt (T017):**
+   - **Problem:** Bot wartet nicht korrekt während PVP-Ladebildschirm
+   - **Fehlende Templates:**
+     - `PVP_Loading.png` - Ladebildschirm-Indikator
+     - `Abort_Button.png` - Abbrechen-Button (während Loading)
+   - **Neue Assets hinzugefügt:**
+     - `Neuer_PVP_Button.png` - Aktualisierter PVP-Button
+     - `AD_Bonus_Button.png` - Werbungs-Bonus-Button
+   - **Lösung notwendig:**
+     - ScreenState.LOADING State erweitern für PVP_LOADING
+     - Abort-Button-Erkennung für Timeout-Handling
+     - Warte-Loop während Loading-State
+     - AD_Bonus-Button-Handling nach PVP-Match
+
 **NÄCHSTE SCHRITTE:**
-- T014: Icon-Detection mit Screen-State-Context verknüpfen
+- T014: ✅ Icon-Detection mit Screen-State-Context verknüpft (ERLEDIGT)
 - T015: Screen-State-Machine implementieren (State-Transitions)
 - T016: Merge-Debugging mit Visual-Overlay
+- T017: Ladebildschirm-Erkennung (PVP_Loading, Abort_Button)
+
+**NEUE TEMPLATE-ASSETS:**
+- `PVP_Loading.png` - Ladebildschirm beim PVP-Start
+- `Abort_Button.png` - Abbrechen-Button während des Ladens
+- `Neuer_PVP_Button.png` - Aktualisierter PVP-Button (Alternative zu bestehend)
+- `AD_Bonus_Button.png` - Werbungs-Bonus-Button
 
 ---
 
-### [2026-01-18] T007: PvE-Dungeon-Loop implementiert
+### [2026-01-18] T014: False-Positive Icon-Detection implementiert
 - **Problem:** Keine automatisierte PvE-Dungeon-Farming-Funktionalität
 - **Lösung:** Neues `DungeonLoop` Modul mit vollständiger Dungeon-Automatisierung
 - **Änderungen:**

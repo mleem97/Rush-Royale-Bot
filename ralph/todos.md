@@ -89,6 +89,30 @@
   - [ ] Grid-Koordinaten-Verifikation (Cell-Center vs tatsächliche Unit-Position)
   - [ ] Integration-Tests für Merge mit echten Screenshots
 
+### T017: Ladebildschirm-Erkennung implementieren
+- **Status:** ✅ Erledigt (2026-01-18)
+- **Beschreibung:** Bot wartet nicht korrekt während PVP-Ladebildschirm und erkennt neue Buttons nicht
+- **Dateien:** `src/rush_bot/perception/screen_state.py`, `src/rush_bot/perception/icon_detection.py`, `cv-images/icons/`
+- **Lösung implementiert:**
+  - ✅ ScreenState.PVP_LOADING State hinzugefügt
+  - ✅ Template-Mappings für PVP_Loading.png, Abort_Button.png, AD_Bonus_Button.png
+  - ✅ is_loading_screen() Methode für generische und PVP-Ladebildschirme
+  - ✅ is_pvp_loading() Methode spezifisch für PVP-Ladebildschirm
+  - ✅ get_abort_button_location() gibt (x, y) Koordinaten zurück
+  - ✅ has_ad_bonus_button() prüft Confidence-Threshold
+  - ✅ 14 Unit-Tests, alle bestehen
+- **Neue Template-Assets (bereits vorhanden):**
+  - `PVP_Loading.png` - Ladebildschirm-Indikator beim PVP-Start
+  - `Abort_Button.png` - Abbrechen-Button während des Ladevorgangs
+  - `AD_Bonus_Button.png` - Werbungs-Bonus-Button nach PVP-Match
+- **Akzeptanzkriterien:**
+  - [x] ScreenState.PVP_LOADING State existiert
+  - [x] Template-Mapping für `PVP_Loading.png`, `Abort_Button.png`, `AD_Bonus_Button.png`
+  - [x] is_loading_screen() und is_pvp_loading() Methoden
+  - [x] get_abort_button_location() gibt Koordinaten zurück
+  - [x] has_ad_bonus_button() prüft Confidence-Threshold
+  - [x] 14 Unit-Tests, alle bestehen
+
 ---
 
 ## 🟠 Priorität 2: Kern-Funktionalität
