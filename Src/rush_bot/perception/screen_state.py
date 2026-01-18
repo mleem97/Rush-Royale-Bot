@@ -154,18 +154,42 @@ TEMPLATE_STATE_MAP: dict[str, ScreenState] = {
     "Home_Menu.png": ScreenState.HOME,
     "PVP_Button.png": ScreenState.HOME,
     "PVE_Button.png": ScreenState.HOME,
+    "PVE_Locked.png": ScreenState.HOME,
+    "ad_available.png": ScreenState.HOME,
+    "green_indicator.png": ScreenState.HOME,
+    "red_indicator.png": ScreenState.HOME,
+    "quests_menu.png": ScreenState.HOME,
+    "mm_main_button.png": ScreenState.HOME,
+    "mm_mail_button.png": ScreenState.HOME,
+    "mm_friend_button.png": ScreenState.HOME,
+    "new_available.png": ScreenState.HOME,
+    "quest_new.png": ScreenState.HOME,
+    "quest_ad_available.png": ScreenState.HOME,
+    "expedition_menu.png": ScreenState.HOME,
+    "home_menu.png": ScreenState.HOME,
     # Battle screen indicators
     "fighting.png": ScreenState.BATTLE,
     "infight_players_healthbar.png": ScreenState.BATTLE,
+    "shaman_opponent.png": ScreenState.BATTLE,
+    "witch_opponent.png": ScreenState.BATTLE,
     # Dungeon chapter selection (choose chapter 1-6)
-    "dungeon_page.png": ScreenState.DUNGEON_SELECT,
+    "dungeon_modifier_bottom.png": ScreenState.DUNGEON_SELECT,
+    "Dungeon_Modifier_Bottom.png": ScreenState.DUNGEON_SELECT,
     "pve_random.png": ScreenState.DUNGEON_SELECT,
+    "dungeon_bottombar.png": ScreenState.DUNGEON_SELECT,
+    "dungeon_locked.png": ScreenState.DUNGEON_SELECT,
     "chapter_1.png": ScreenState.DUNGEON_SELECT,
     "chapter_2.png": ScreenState.DUNGEON_SELECT,
     "chapter_3.png": ScreenState.DUNGEON_SELECT,
     "chapter_4.png": ScreenState.DUNGEON_SELECT,
     "chapter_5.png": ScreenState.DUNGEON_SELECT,
     "chapter_6.png": ScreenState.DUNGEON_SELECT,
+    "Chapter_1.png": ScreenState.DUNGEON_SELECT,
+    "Chapter_2.png": ScreenState.DUNGEON_SELECT,
+    "Chapter_3.png": ScreenState.DUNGEON_SELECT,
+    "Chapter_4.png": ScreenState.DUNGEON_SELECT,
+    "Chapter_5.png": ScreenState.DUNGEON_SELECT,
+    "Chapter_6.png": ScreenState.DUNGEON_SELECT,
     "Dungeon_Bottom_Bar.png": ScreenState.DUNGEON_SELECT,
     # Dungeon floor selection (choose floor within chapter)
     "floor_1.png": ScreenState.DUNGEON_FLOOR_SELECT,
@@ -182,7 +206,11 @@ TEMPLATE_STATE_MAP: dict[str, ScreenState] = {
     "floor_12.png": ScreenState.DUNGEON_FLOOR_SELECT,
     "floor_13.png": ScreenState.DUNGEON_FLOOR_SELECT,
     "floor_14.png": ScreenState.DUNGEON_FLOOR_SELECT,
-    "Dungeon_Modifier_Bottom.png": ScreenState.DUNGEON_FLOOR_SELECT,
+    "Floor_12.png": ScreenState.DUNGEON_FLOOR_SELECT,
+    "Floor_13.png": ScreenState.DUNGEON_FLOOR_SELECT,
+    "Floor_14.png": ScreenState.DUNGEON_FLOOR_SELECT,
+    "plus_200_button_on.png": ScreenState.DUNGEON_SELECT,
+    "plus_200_button_off.png": ScreenState.DUNGEON_SELECT,
     # Popups and overlays
     "x_mark.png": ScreenState.POPUP,
     "back_button.png": ScreenState.POPUP,
@@ -190,16 +218,26 @@ TEMPLATE_STATE_MAP: dict[str, ScreenState] = {
     "ad_pve.png": ScreenState.ADVERTISEMENT,
     "ad_season.png": ScreenState.ADVERTISEMENT,
     "AD_Bonus_Button.png": ScreenState.ADVERTISEMENT,
+    "ad_bonus.png": ScreenState.ADVERTISEMENT,
+    "watch_ads_button.png": ScreenState.ADVERTISEMENT,
     # Loading screens
     "PVP_Loading.png": ScreenState.PVP_LOADING,
+    "pvp_loading.png": ScreenState.PVP_LOADING,
+    "abort_button.png": ScreenState.PVP_LOADING,
+    "pvp_loading.png": ScreenState.PVP_LOADING,
     "Abort_Button.png": ScreenState.PVP_LOADING,
     # Victory/Defeat (Continue/Quit buttons)
     "0cont_button.png": ScreenState.VICTORY,
+    "cont_button.png": ScreenState.VICTORY,
     "1quit.png": ScreenState.DEFEAT,
+    "quit_button.png": ScreenState.DEFEAT,
     # Quests
     "quest_collect.png": ScreenState.QUEST,
     "quest_done.png": ScreenState.QUEST,
     "Quest_New_Weekly.png": ScreenState.QUEST,
+    "quest_new.png": ScreenState.QUEST,
+    "quest_ad_available.png": ScreenState.QUEST,
+    "collect_button.png": ScreenState.QUEST,
     # Friend menu
     "friend_menu.png": ScreenState.FRIEND_MENU,
     # Menu navigation (bottom menu bar)
@@ -208,6 +246,90 @@ TEMPLATE_STATE_MAP: dict[str, ScreenState] = {
     "Main_Menu.png": ScreenState.MAIN_MENU,
     "Clan_Menu.png": ScreenState.CLAN_MENU,
     "Event_Menu.png": ScreenState.EVENT_MENU,
+    "store_refresh.png": ScreenState.STORE_MENU,
+    "refresh_button.png": ScreenState.STORE_MENU,
+}
+
+
+# Icon location map: name -> list of ScreenStates where it can be found
+ICON_LOCATIONS: dict[str, list[ScreenState]] = {
+    # Home screen
+    "home_screen.png": [ScreenState.HOME],
+    "Home_Menu.png": [ScreenState.HOME],
+    "battle_icon.png": [ScreenState.HOME],
+    "PVP_Button.png": [ScreenState.HOME],
+    "PVE_Button.png": [ScreenState.HOME],
+    "PVE_Locked.png": [ScreenState.HOME],
+    "ad_available.png": [ScreenState.HOME, ScreenState.ADVERTISEMENT],
+    "quest_new.png": [ScreenState.HOME, ScreenState.QUEST],
+    "quests_menu.png": [ScreenState.HOME],
+    "expedition_menu.png": [ScreenState.HOME],
+    "green_indicator.png": [ScreenState.HOME],
+    "red_indicator.png": [ScreenState.HOME],
+    "new_available.png": [ScreenState.HOME],
+    # Fight screen (battle)
+    "fighting.png": [ScreenState.BATTLE],
+    "infight_players_healthbar.png": [ScreenState.BATTLE],
+    "shaman_opponent.png": [ScreenState.BATTLE],
+    "witch_opponent.png": [ScreenState.BATTLE],
+    # Dungeon selection (chapter/floor)
+    "dungeon_modifier_bottom.png": [ScreenState.DUNGEON_SELECT],
+    "Dungeon_Modifier_Bottom.png": [ScreenState.DUNGEON_SELECT],
+    "pve_random.png": [ScreenState.DUNGEON_SELECT, ScreenState.DUNGEON_FLOOR_SELECT],
+    "chapter_1.png": [ScreenState.DUNGEON_SELECT],
+    "chapter_2.png": [ScreenState.DUNGEON_SELECT],
+    "chapter_3.png": [ScreenState.DUNGEON_SELECT],
+    "chapter_4.png": [ScreenState.DUNGEON_SELECT],
+    "chapter_5.png": [ScreenState.DUNGEON_SELECT],
+    "chapter_6.png": [ScreenState.DUNGEON_SELECT],
+    "floor_1.png": [ScreenState.DUNGEON_FLOOR_SELECT],
+    "floor_2.png": [ScreenState.DUNGEON_FLOOR_SELECT],
+    "floor_3.png": [ScreenState.DUNGEON_FLOOR_SELECT],
+    "floor_4.png": [ScreenState.DUNGEON_FLOOR_SELECT],
+    "floor_5.png": [ScreenState.DUNGEON_FLOOR_SELECT],
+    "floor_6.png": [ScreenState.DUNGEON_FLOOR_SELECT],
+    "floor_7.png": [ScreenState.DUNGEON_FLOOR_SELECT],
+    "floor_8.png": [ScreenState.DUNGEON_FLOOR_SELECT],
+    "floor_9.png": [ScreenState.DUNGEON_FLOOR_SELECT],
+    "floor_10.png": [ScreenState.DUNGEON_FLOOR_SELECT],
+    "floor_11.png": [ScreenState.DUNGEON_FLOOR_SELECT],
+    "floor_12.png": [ScreenState.DUNGEON_FLOOR_SELECT],
+    "floor_13.png": [ScreenState.DUNGEON_FLOOR_SELECT],
+    "floor_14.png": [ScreenState.DUNGEON_FLOOR_SELECT],
+    "plus_200_button_on.png": [ScreenState.DUNGEON_SELECT],
+    "plus_200_button_off.png": [ScreenState.DUNGEON_SELECT],
+    # Ads
+    "ad_pve.png": [ScreenState.ADVERTISEMENT],
+    "ad_season.png": [ScreenState.ADVERTISEMENT],
+    "AD_Bonus_Button.png": [ScreenState.ADVERTISEMENT, ScreenState.PVP_LOADING],
+    "ad_bonus.png": [ScreenState.ADVERTISEMENT],
+    "watch_ads_button.png": [ScreenState.ADVERTISEMENT],
+    # Loading
+    "PVP_Loading.png": [ScreenState.PVP_LOADING],
+    "pvp_loading.png": [ScreenState.PVP_LOADING],
+    "abort_button.png": [ScreenState.PVP_LOADING],
+    "Abort_Button.png": [ScreenState.PVP_LOADING],
+    # Victory/Defeat
+    "0cont_button.png": [ScreenState.VICTORY],
+    "cont_button.png": [ScreenState.VICTORY],
+    "1quit.png": [ScreenState.DEFEAT],
+    "quit_button.png": [ScreenState.DEFEAT],
+    # Quests
+    "quest_collect.png": [ScreenState.QUEST],
+    "quest_done.png": [ScreenState.QUEST],
+    "Quest_New_Weekly.png": [ScreenState.QUEST],
+    "quest_ad_available.png": [ScreenState.QUEST, ScreenState.HOME],
+    "collect_button.png": [ScreenState.QUEST],
+    # Friend menu
+    "friend_menu.png": [ScreenState.FRIEND_MENU],
+    # Store/Shop
+    "Store_Menu.png": [ScreenState.STORE_MENU],
+    "store_refresh.png": [ScreenState.STORE_MENU],
+    "refresh_button.png": [ScreenState.STORE_MENU],
+    # Popups/Overlays
+    "x_mark.png": [ScreenState.POPUP, ScreenState.HOME, ScreenState.QUEST],
+    "back_button.png": [ScreenState.POPUP, ScreenState.HOME, ScreenState.DUNGEON_SELECT],
+
 }
 
 
@@ -238,6 +360,8 @@ class ScreenStateDetector:
         self.config = config or ScreenStateConfig()
         self._templates: dict[str, ImageArray] = {}
         self._template_sizes: dict[str, tuple[int, int]] = {}
+        # Allow dynamic mapping so newly added icons in subfolders get a state
+        self._template_state_map: dict[str, ScreenState] = dict(TEMPLATE_STATE_MAP)
         self._load_templates()
 
     def _load_templates(self) -> None:
@@ -245,17 +369,68 @@ class ScreenStateDetector:
         if not ICONS_DIR.exists():
             return
 
-        for template_file in ICONS_DIR.iterdir():
-            if template_file.suffix.lower() != ".png":
+        # Load all *.png templates recursively so nested /icons subfolders are picked up
+        for template_file in ICONS_DIR.rglob("*.png"):
+            if not template_file.is_file():
+                continue
+
+            # Skip reference screenshots that are not templates
+            if "screenshot" in {p.lower() for p in template_file.parts}:
                 continue
 
             img = cv2.imread(str(template_file))
             if img is None:
                 continue
 
+            # Keep name without folder to remain backward compatible with existing mappings
             name = template_file.name
             self._templates[name] = img
             self._template_sizes[name] = (img.shape[1], img.shape[0])
+
+            # Auto-map state when not explicitly listed
+            if name not in self._template_state_map:
+                inferred = self._infer_state_from_path(template_file)
+                if inferred != ScreenState.UNKNOWN:
+                    self._template_state_map[name] = inferred
+
+    def _infer_state_from_path(self, template_path: Path) -> ScreenState:
+        """Infer screen state from folder/name conventions.
+
+        Folder conventions:
+        - home_screen/*        -> HOME
+        - loading_screen/*     -> PVP_LOADING
+        - pve/*: floor_* -> DUNGEON_FLOOR_SELECT, chapter_* -> DUNGEON_SELECT,
+          dungeon_* / plus_* / pve_random -> DUNGEON_SELECT
+        - pvp/*                -> BATTLE
+        Otherwise UNKNOWN.
+        """
+
+        parent = template_path.parent.name.lower()
+        name = template_path.name.lower()
+
+        if parent == "home_screen":
+            return ScreenState.HOME
+
+        if parent == "loading_screen":
+            return ScreenState.PVP_LOADING
+
+        if parent == "pve":
+            if name.startswith("floor_"):
+                return ScreenState.DUNGEON_FLOOR_SELECT
+            if name.startswith("chapter_"):
+                return ScreenState.DUNGEON_SELECT
+            if name.startswith("dungeon_"):
+                return ScreenState.DUNGEON_SELECT
+            if name.startswith("plus_"):
+                return ScreenState.DUNGEON_SELECT
+            if "pve_random" in name:
+                return ScreenState.DUNGEON_SELECT
+            return ScreenState.DUNGEON_SELECT
+
+        if parent == "pvp":
+            return ScreenState.BATTLE
+
+        return ScreenState.UNKNOWN
 
     def _scale_template(
         self,
@@ -372,7 +547,7 @@ class ScreenStateDetector:
 
         # Determine state from best match
         if best_confidence >= self.config.template_threshold and best_match:
-            state = TEMPLATE_STATE_MAP.get(best_match, ScreenState.UNKNOWN)
+            state = self._template_state_map.get(best_match, ScreenState.UNKNOWN)
             region = (
                 best_location[0],
                 best_location[1],
@@ -420,7 +595,7 @@ class ScreenStateDetector:
             confidence, location = self._match_template(img, template)
 
             if confidence >= self.config.template_threshold:
-                state = TEMPLATE_STATE_MAP.get(name, ScreenState.UNKNOWN)
+                state = self._template_state_map.get(name, ScreenState.UNKNOWN)
                 template_size = self._template_sizes.get(name, (0, 0))
                 region = (
                     location[0],
@@ -692,7 +867,7 @@ class ScreenStateDetector:
 
         # Determine state from best match
         if best_confidence >= min_confidence and best_match:
-            state = TEMPLATE_STATE_MAP.get(best_match, ScreenState.UNKNOWN)
+            state = self._template_state_map.get(best_match, ScreenState.UNKNOWN)
             region = (
                 best_location[0],
                 best_location[1],
@@ -776,7 +951,7 @@ class ScreenStateDetector:
 
         # Determine state from best match
         if best_confidence >= threshold and best_match:
-            state = TEMPLATE_STATE_MAP.get(best_match, ScreenState.UNKNOWN)
+            state = self._template_state_map.get(best_match, ScreenState.UNKNOWN)
             region = (
                 best_location[0],
                 best_location[1],

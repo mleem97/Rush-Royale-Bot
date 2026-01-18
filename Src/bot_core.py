@@ -383,9 +383,24 @@ class Bot:
         return [0, 0]
 
     def get_current_icons(
-        self, new: bool = True, available: bool = False, icon_list=None
+        self,
+        new: bool = True,
+        available: bool = False,
+        icon_list=None,
+        base_threshold: float | None = None,
+        allow_multi_scale: bool = True,
+        allowed_states=None,
     ) -> pd.DataFrame:
-        """Check if any icons are on screen"""
+        """Check if any icons are on screen.
+
+        Recursively scans ``cv-images/icons`` so nested icon sets (e.g. per-screen
+        folders) are detected without manual updates. ``icon_list`` can restrict
+        checks, ``base_threshold`` raises/lowers the default similarity cutoff,
+        ``allow_multi_scale`` toggles the chapter multi-scale search, and
+        ``allowed_states`` filters icons to only those findable in given states.
+        """
+        from rush_bot.perception.screen_state import ICON_LOCATIONS
+
         current_icons: list[dict[str, object]] = []
         if new:
             self.getScreen()
@@ -398,32 +413,61 @@ class Bot:
         img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_BGR2GRAY)
         img_gray_blur = cv2.GaussianBlur(img_gray, (3, 3), 0)
 
+        icons_root = Path("cv-images/icons")
+        if not icons_root.exists():
+            self.logger.warning("Icons directory missing: cv-images/icons")
+            return pd.DataFrame(columns=["icon", "available", "pos [X,Y]"])
+
+        # Build a name->path map (first match wins) and keep base names for matching
+        icon_paths: dict[str, Path] = {}
+        for path in icons_root.rglob("*.png"):
+            # Skip any reference screenshots
+            if any("screenshot" in part.lower() for part in path.parts):
+                continue
+            name = path.name
+            icon_paths.setdefault(name, path)
+
         # Determine which icons to check
         if icon_list is None:
-            icons_to_check = [f for f in os.listdir("cv-images/icons") if f.endswith(".png")]
+            icons_to_check = list(icon_paths.keys())
         else:
-            icons_to_check = icon_list
+            # Accept full file names; ignore unknown entries
+            icons_to_check = [name for name in icon_list if name in icon_paths]
+            missing = set(icon_list) - set(icons_to_check)
+            if missing:
+                self.logger.debug(f"Icons not found on disk: {sorted(missing)}")
+
+        # Filter by allowed states if provided
+        if allowed_states:
+            filtered_icons = []
+            for icon in icons_to_check:
+                valid_states = ICON_LOCATIONS.get(icon, [])
+                if any(state in allowed_states for state in valid_states):
+                    filtered_icons.append(icon)
+            icons_to_check = filtered_icons
 
         for target in icons_to_check:
-            x = 0
-            y = 0
-            imgSrc = f"cv-images/icons/{target}"
-
-            if not os.path.isfile(imgSrc):
+            path = icon_paths.get(target)
+            if path is None:
                 continue
 
-            template = cv2.imread(imgSrc, 0)
-            if template is None:
+            template = cv2.imread(path.as_posix(), 0)
+            if template is None or template.size == 0 or 0 in template.shape:
+                self.logger.debug(f"Invalid/empty icon skipped: {target} @ {path}")
                 continue
 
-            template_blur = cv2.GaussianBlur(template, (3, 3), 0)
+            try:
+                template_blur = cv2.GaussianBlur(template, (3, 3), 0)
+            except cv2.error as e:
+                self.logger.warning(f"Blur failed for icon {target}: {e}")
+                continue
 
             # Per-icon threshold tuning
             is_chapter = "chapter_" in target
-            threshold = 0.8
+            threshold = base_threshold if base_threshold is not None else 0.999
             if is_chapter:
                 threshold = 0.75
-            elif target == "dungeon_page.png":
+            elif target == "dungeon_modifier_bottom.png":
                 threshold = 0.60
             elif "floor_" in target:
                 threshold = 0.95
@@ -437,7 +481,7 @@ class Bot:
             best_x, best_y = 0, 0
             max_val = 0
 
-            scales = [0.9, 1.0, 1.1] if is_chapter else [1.0]
+            scales = [0.9, 1.0, 1.1] if (is_chapter and allow_multi_scale) else [1.0]
             for sc in scales:
                 if sc != 1.0:
                     new_w = max(1, int(template_blur.shape[1] * sc))
@@ -462,15 +506,14 @@ class Bot:
                 found = True
 
             if found:
-                x = int(best_x)
-                y = int(best_y)
-                current_icons.append([target, found, (x, y)])
+                self.logger.debug(
+                    f"Icon hit {target}: score={max_val:.3f} thr={threshold:.3f} pos=({best_x},{best_y})"
+                )
+                current_icons.append([target, True, (int(best_x), int(best_y))])
 
         icon_df = pd.DataFrame(current_icons, columns=["icon", "available", "pos [X,Y]"])
-        if available:
-            # Safe filtering
-            if not icon_df.empty:
-                icon_df = icon_df.loc[icon_df["available"], :].reset_index(drop=True)
+        if available and not icon_df.empty:
+            icon_df = icon_df.loc[icon_df["available"], :].reset_index(drop=True)
 
         if isinstance(icon_df, pd.Series):
             icon_df = icon_df.to_frame().T
@@ -932,12 +975,41 @@ class Bot:
 
         # Wait for match to start
         self.logger.info("Waiting for match to start...")
+        core_icons = [
+            "battle_icon.png",
+            "fighting.png",
+            "infight_players_healthbar.png",
+            "back_button.png",
+            "0cont_button.png",
+            "1quit.png",
+            "quit_button.png",
+        ]
+
         for i in range(30):
             time.sleep(2)
-            avail_buttons = self.get_current_icons(available=True)
+
+            # Stage 1: strict, fast detection
+            avail_buttons = self.get_current_icons(
+                available=True,
+                icon_list=core_icons,
+                base_threshold=0.999,
+                allow_multi_scale=False,
+            )
+
+            # Stage 2: softer fallback if nothing was seen
+            if avail_buttons.empty:
+                avail_buttons = self.get_current_icons(
+                    available=True,
+                    icon_list=core_icons,
+                    base_threshold=0.995,
+                    allow_multi_scale=True,
+                )
+
             if (
                 not avail_buttons.empty
-                and avail_buttons["icon"].isin(["back_button.png", "fighting.png"]).any()
+                and avail_buttons["icon"]
+                .isin(["back_button.png", "fighting.png", "infight_players_healthbar.png"])
+                .any()
             ):
                 self.logger.info(f"Match started after {i * 2} seconds.")
                 return
@@ -946,9 +1018,44 @@ class Bot:
 
     def battle_screen(self, start: bool = False, pve: bool = True, floor: int = 5):
         """Locate game home screen and try to start fight if chosen"""
-        df = self.get_current_icons(available=True)
+        core_icons = [
+            "fighting.png",
+            "infight_players_healthbar.png",
+            "battle_icon.png",
+            "pvp_button.png",
+            "PVP_Button.png",
+            "PVE_Button.png",
+            "PVE_Locked.png",
+            "back_button.png",
+            "0cont_button.png",
+            "1quit.png",
+            "quit_button.png",
+            "friend_menu.png",
+            "pve_button.png",
+            "pve_random.png",
+            "refresh_button.png",
+            "cont_button.png",
+        ]
+
+        # Stage 1: strict
+        df = self.get_current_icons(
+            available=True,
+            icon_list=core_icons,
+            base_threshold=0.999,
+            allow_multi_scale=False,
+        )
+
+        # Stage 2: softer fallback if nothing seen (avoids stuck states)
+        if df.empty:
+            df = self.get_current_icons(
+                available=True,
+                icon_list=core_icons,
+                base_threshold=0.995,
+                allow_multi_scale=True,
+            )
         if not df.empty:
-            if (df["icon"] == "fighting.png").any():
+            battle_markers = {"fighting.png", "infight_players_healthbar.png"}
+            if df["icon"].isin(battle_markers).any():
                 if not (df["icon"] == "0cont_button.png").any():
                     return df, "fighting"
             if (df["icon"] == "friend_menu.png").any():
@@ -964,7 +1071,9 @@ class Bot:
                 time.sleep(1)
                 return df, "home"
 
-            df_click = df[df["icon"].isin(["back_button.png", "0cont_button.png", "1quit.png"])]
+            df_click = df[
+                df["icon"].isin(["back_button.png", "0cont_button.png", "1quit.png", "quit_button.png"])
+            ]
             if not df_click.empty:
                 button_pos = df_click["pos [X,Y]"].tolist()[0]
                 self.click_button(button_pos)

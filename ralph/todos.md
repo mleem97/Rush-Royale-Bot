@@ -118,6 +118,63 @@
 
 ## 🟠 Priorität 2: Kern-Funktionalität
 
+### T018: Icon-Ordner-Logik pro Screen
+- **Status:** ✅ Erledigt (2026-01-18)
+- **Beschreibung:** Icons pro Screen in eigenen Unterordnern ablegen und nur dort laden/prüfen (z.B. `home_screen/`, `fight_screen/`, `pve_screen/` usw.), sodass pro State nur relevante Templates berücksichtigt werden.
+- **Dateien:** `cv-images/icons/`, `src/rush_bot/perception/screen_state.py`, `src/rush_bot/perception/icon_detection.py`, `src/bot_core.py`
+- **Lösung implementiert:**
+  - ✅ `ICON_LOCATIONS` Map: `icon_name → [ScreenState1, ScreenState2, ...]`
+  - ✅ `get_current_icons()` mit `allowed_states` Parameter für State-basiertes Filtering
+  - ✅ Rekursives Scanning bleibt, Icons werden aber nach erlaubten States gefiltert
+  - ✅ False-Positive-Reduktion durch State-Context
+- **Akzeptanzkriterien:**
+  - [x] `ICON_LOCATIONS` Map mit allen Icons und ihren erlaubten ScreenStates
+  - [x] `get_current_icons()` unterstützt `allowed_states` Filtering
+  - [x] Nur Icons der aktuellen State(s) werden geprüft
+  - [x] Tests mit State-Filtering
+
+
+### T019: Unit-Erkennung ohne UnitModel reparieren
+- **Status:** ☐ Offen
+- **Beschreibung:** Unit-Erkennung funktioniert korrekt ohne Abhängigkeit vom trainierten sklearn-Modell (farb-/muster-basierte Erkennung)
+- **Dateien:** `src/rush_bot/perception/vision.py`, `src/bot_perception.py`
+- **Akzeptanzkriterien:**
+  - [ ] Farb-basierte Unit-Klassifizierung funktioniert (ohne UnitModel-Pickle)
+  - [ ] Grid-Zellen werden korrekt auf Units gescannt
+  - [ ] Mindestens 85% Erkennungsrate für 40+ Unit-Typen
+  - [ ] Tests bestehen auch ohne `sklearn`-Modell
+
+### T020: In-Game-Logik reparieren
+- **Status:** ☐ Offen
+- **Beschreibung:** Kampf-Loop, Merge-Sequenzen und State-Transitions funktionieren ohne UnitModel
+- **Dateien:** `src/bot_core.py`, `src/bot_handler.py`, `src/bot_env.py`
+- **Akzeptanzkriterien:**
+  - [ ] Bot erkennt Fighting-State zuverlässig (mit `infight_players_healthbar.png` oder `fighting.png`)
+  - [ ] Merge-Sequenzen werden korrekt ausgelöst
+  - [ ] State-Übergänge (Home → Battle → Home) funktionieren
+  - [ ] Timeout-Handling für feststeckende States
+
+### T021: Merge-Logik reparieren
+- **Status:** ☐ Offen
+- **Beschreibung:** Merge-Mechanismus funktioniert korrekt ohne UnitModel
+- **Dateien:** `src/rush_bot/core/merge.py`, `src/bot_core.py`
+- **Akzeptanzkriterien:**
+  - [ ] Merge-Kandidaten werden korrekt identifiziert (gleiche Unit, gleicher Rank)
+  - [ ] Swipe-Aktion führt zum erfolgreichen Merge
+  - [ ] DPS-Unit-Schutz funktioniert
+  - [ ] Debug-Logging zeigt jeden Merge-Attempt mit Erfolg/Misserfolg
+
+### T022: Rank-Logik auf ONNX umstellen
+- **Status:** ☐ Offen
+- **Beschreibung:** Ersetze sklearn LogisticRegression durch ONNX-Modell für Rank-Prediction
+- **Dateien:** `src/rush_bot/perception/vision.py`, `models/`, `src/bot_perception.py`
+- **Akzeptanzkriterien:**
+  - [ ] ONNX-Modell für Rank-Vorhersage erstellt/trainiert
+  - [ ] `onnx` und `onnxruntime` zu Dependencies hinzugefügt
+  - [ ] Rank-Vorhersage lädt ONNX statt sklearn-Pickle
+  - [ ] Mindestens 90% Genauigkeit behalten
+  - [ ] Tests bestehen mit ONNX-Backend
+
 ### T004: Modulare Package-Struktur vervollständigen
 - **Status:** ✅ Erledigt
 - **Beschreibung:** Migration von `src/*.py` zu `src/rush_bot/` Package
