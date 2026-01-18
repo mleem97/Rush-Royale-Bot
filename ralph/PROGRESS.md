@@ -257,6 +257,71 @@
        - `rank_model.pkl` neu speichern und Referenzen prüfen (`vision.py`)
        - Optional: Tests/Docs für neues Modell ergänzen
 
+  6. **Unit-Detection-Upgrade (T019):**
+     - **Problem:** Unit-Icons besitzen abweichende Dimensionen; Rank-Model-Icons nutzen bereits 120x120
+     - **Ziel:** Unit-Detection auf 120x120 Icon-Basis angleichen, um Konsistenz zwischen Rank- und Unit-Erkennung sicherzustellen
+     - **TODO:**
+       - Unit-Icon-Datensatz auf 120x120 normalisieren (analog Rank Icons)
+       - Pipelines/Loader anpassen, damit beide Modelle identische Input-Dimensionen nutzen
+       - Tests/Validierung für konsistente Erkennung (Rank vs. Unit) ergänzen
+       - Dokumentation zu den vereinheitlichten Icon-Spezifikationen ergänzen
+
+  7. **Modellformat-Umstellung auf ONNX (T020):**
+     - **Problem:** Aktuelle Modelle werden als Pickle gespeichert; das erschwert Portabilität und sicheres Laden
+     - **Ziel:** Alle bestehenden Modelle auf ONNX konvertieren und den Trainings-Workflow auf ONNX-Export umstellen
+     - **TODO:**
+       - Bestehende Pickle-Modelle (inkl. Rank- und Unit-Modelle) in ONNX konvertieren und Versionen ablegen
+       - Trainings-Skripte erweitern, damit sie ONNX-Exports erzeugen (inkl. Input-Shape/Preprocessing-Doku)
+       - Ladepfade und Inferenz-Pipeline auf ONNX Runtime umstellen
+       - Validierung/Tests für ONNX-Lade- und Inferenzpfad ergänzen
+       - Dokumentation der neuen ONNX-basierten Trainings- und Deploy-Workflows aktualisieren
+     - **Konvertierungsschritte (Pickle → ONNX, SB3/PyTorch):**
+       1) Pickle-Modell ein letztes Mal mit dem ursprünglichen Code laden (z.B. SB3 `PPO.load(...)` oder `torch.load(...)`).
+       2) Policy/Netz-Modul extrahieren (`model.policy` bei SB3 bzw. geladenes Modul bei PyTorch) und `model.eval()` setzen.
+       3) Mit passender Dummy-Observation (richtige Shape der Env!) `torch.onnx.export(..., opset_version=11, input_names=["input"], output_names=["output"], dynamic_axes={...})` nach `.onnx` exportieren.
+       4) Optional: Inferenz-Check mit `onnxruntime` und Tests dokumentieren.
+
+  8. **Labeling-Integration ins Main Window (T021):**
+     - **Problem:** Labeling läuft in separatem Fenster, nicht im Haupt-UI integriert
+     - **Ziel:** Labeling-Workflow vollständig im Main Window steuern
+     - **TODO:**
+       - Labeling-Panel als Tab/Section ins Main Window einbetten
+       - Event-/State-Handling vereinheitlichen (kein separates Fenster/Thread)
+       - Shortcuts/UX für schnelles Annotieren ergänzen
+       - Regressionstest für integrierten Labeling-Flow hinzufügen
+
+  9. **Trainings-Tab restrukturieren (T022):**
+     - **Problem:** Aktueller Trainings-Tab erzeugt internen Overflow/Scrolling-Issues
+     - **Ziel:** Klare Sektionen ohne Overflow; responsive Layout
+     - **TODO:**
+       - Layout in logisch getrennte Panels (Dataset, Training, Export, Logs) aufteilen
+       - Scroll/Resize-Handling korrigieren (keine verschachtelten Scrollbars)
+       - Validierung der Formulareingaben und Status-Anzeige
+       - UI-Regressionstest/Snapshot-Test ergänzen
+
+  10. **Unit-Detection-Modell anlegen und trainieren (T023):**
+      - **Ziel:** Eigenes Modell für Unit-Detection mit Screenshot-Daten trainieren
+      - **TODO:**
+        - Dataset aus Screenshots kuratieren/labeln (Icons 120x120, konsistent zu T019)
+        - Trainingsskript erstellen (Preprocessing, Augmentierung, Split)
+        - Modell trainieren, als ONNX exportieren, Inferenzpfad anbinden
+        - Tests/Benchmarks (Accuracy/Latenz) und Doku ergänzen
+
+  11. **Merge-Logik-Modell planen und aufsetzen (T024):**
+      - **Ziel:** ML-Modell für Merge-Entscheidungen vorbereiten
+      - **TODO:**
+        - Trainingsplan ausarbeiten (Features, Labels, Szenarien, Data Collection)
+        - Modellarchitektur wählen und Prototyp erstellen
+        - Evaluationskriterien definieren (Winrate, Fehlmerge-Rate, Latenz)
+        - Export/Integration (ONNX) und Tests planen
+      - **Domain-Regeln:**
+        - Merges nur im eigenen Spielfeld
+        - Standard: nur gleicher Unit-Typ und gleiche Stufe mergebar
+        - Ausnahmen: bestimmte Units dürfen mit beliebigen oder definierten Fremd-Typen mergen (Whitelist-regelbar)
+        - Beispiel-Whitelist (JSON):
+          - `unit: "<unitname>"`
+          - `merges_with: "any"` oder `merges_with: ["unitname1", "unitname2"]`
+
 **NÄCHSTE SCHRITTE:**
 - T014: ✅ Icon-Detection mit Screen-State-Context verknüpft (ERLEDIGT)
 - T015: Screen-State-Machine implementieren (State-Transitions)
