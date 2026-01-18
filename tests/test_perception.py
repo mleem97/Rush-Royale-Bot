@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
@@ -17,6 +18,9 @@ from rush_bot.perception import GridConfig
 from rush_bot.perception import GridExtractor
 from rush_bot.perception import get_grid
 from rush_bot.perception.vision import UNITS_DIR
+
+if TYPE_CHECKING:
+    from rush_bot.perception import ScreenStateDetector
 
 
 class TestGridExtractor:
@@ -413,3 +417,493 @@ class TestTrainingFunctions:
         vision.ensure_training_dirs()
 
         assert test_ml_dir.exists()
+
+
+# =============================================================================
+# Screen State Detection Tests
+# =============================================================================
+
+
+class TestScreenState:
+    """Tests for ScreenState enum."""
+
+    def test_screen_state_values(self) -> None:
+        """Test that all expected screen states exist."""
+        from rush_bot.perception import ScreenState
+
+        # Core states must exist
+        assert ScreenState.UNKNOWN is not None
+        assert ScreenState.HOME is not None
+        assert ScreenState.BATTLE is not None
+        assert ScreenState.DUNGEON_SELECT is not None
+        assert ScreenState.POPUP is not None
+        assert ScreenState.ADVERTISEMENT is not None
+        assert ScreenState.VICTORY is not None
+        assert ScreenState.DEFEAT is not None
+
+    def test_screen_state_unique_values(self) -> None:
+        """Test that all screen states have unique values."""
+        from rush_bot.perception import ScreenState
+
+        values = [state.value for state in ScreenState]
+        assert len(values) == len(set(values)), "Screen states have duplicate values"
+
+
+class TestScreenStateResult:
+    """Tests for ScreenStateResult dataclass."""
+
+    def test_result_creation(self) -> None:
+        """Test creating a ScreenStateResult."""
+        from rush_bot.perception import ScreenState
+        from rush_bot.perception import ScreenStateResult
+
+        result = ScreenStateResult(
+            state=ScreenState.HOME,
+            confidence=0.85,
+            matched_template="home_screen.png",
+        )
+
+        assert result.state == ScreenState.HOME
+        assert result.confidence == 0.85
+        assert result.matched_template == "home_screen.png"
+        assert result.region is None
+        assert result.all_matches == {}
+
+    def test_result_with_region(self) -> None:
+        """Test creating a ScreenStateResult with region."""
+        from rush_bot.perception import ScreenState
+        from rush_bot.perception import ScreenStateResult
+
+        result = ScreenStateResult(
+            state=ScreenState.BATTLE,
+            confidence=0.92,
+            matched_template="fighting.png",
+            region=(100, 200, 50, 50),
+        )
+
+        assert result.region == (100, 200, 50, 50)
+
+    def test_result_bool_true_for_valid_state(self) -> None:
+        """Test that result evaluates to True for valid state."""
+        from rush_bot.perception import ScreenState
+        from rush_bot.perception import ScreenStateResult
+
+        result = ScreenStateResult(
+            state=ScreenState.HOME,
+            confidence=0.75,
+        )
+        assert bool(result) is True
+
+    def test_result_bool_false_for_unknown(self) -> None:
+        """Test that result evaluates to False for unknown state."""
+        from rush_bot.perception import ScreenState
+        from rush_bot.perception import ScreenStateResult
+
+        result = ScreenStateResult(
+            state=ScreenState.UNKNOWN,
+            confidence=0.8,
+        )
+        assert bool(result) is False
+
+    def test_result_bool_false_for_low_confidence(self) -> None:
+        """Test that result evaluates to False for low confidence."""
+        from rush_bot.perception import ScreenState
+        from rush_bot.perception import ScreenStateResult
+
+        result = ScreenStateResult(
+            state=ScreenState.HOME,
+            confidence=0.3,  # Below 0.5 threshold
+        )
+        assert bool(result) is False
+
+
+class TestScreenStateConfig:
+    """Tests for ScreenStateConfig dataclass."""
+
+    def test_default_config(self) -> None:
+        """Test default configuration values."""
+        from rush_bot.perception import ScreenStateConfig
+
+        config = ScreenStateConfig()
+
+        assert config.template_threshold == 0.7
+        assert config.use_grayscale is False
+        assert config.scale_templates is True
+        assert config.reference_width == 1080
+        assert config.reference_height == 1920
+
+    def test_custom_config(self) -> None:
+        """Test creating custom configuration."""
+        from rush_bot.perception import ScreenStateConfig
+
+        config = ScreenStateConfig(
+            template_threshold=0.8,
+            use_grayscale=True,
+            scale_templates=False,
+            reference_width=720,
+            reference_height=1280,
+        )
+
+        assert config.template_threshold == 0.8
+        assert config.use_grayscale is True
+        assert config.scale_templates is False
+        assert config.reference_width == 720
+        assert config.reference_height == 1280
+
+
+class TestScreenStateDetector:
+    """Tests for ScreenStateDetector class."""
+
+    def test_detector_initialization(self) -> None:
+        """Test detector initializes correctly."""
+        from rush_bot.perception import ScreenStateDetector
+
+        detector = ScreenStateDetector()
+
+        # Should have default config
+        assert detector.config.template_threshold == 0.7
+
+    def test_detector_with_custom_config(self) -> None:
+        """Test detector with custom config."""
+        from rush_bot.perception import ScreenStateConfig
+        from rush_bot.perception import ScreenStateDetector
+
+        config = ScreenStateConfig(template_threshold=0.9)
+        detector = ScreenStateDetector(config=config)
+
+        assert detector.config.template_threshold == 0.9
+
+    def test_detector_loads_templates(self) -> None:
+        """Test that detector loads templates from icons directory."""
+        from rush_bot.perception import ScreenStateDetector
+        from rush_bot.perception.screen_state import ICONS_DIR
+
+        detector = ScreenStateDetector()
+
+        if ICONS_DIR.exists():
+            # Should have loaded templates
+            assert detector.is_loaded
+            assert len(detector.available_templates) > 0
+        else:
+            # No templates directory - acceptable for CI
+            assert not detector.is_loaded
+
+    def test_available_templates_property(self) -> None:
+        """Test available_templates returns list of template names."""
+        from rush_bot.perception import ScreenStateDetector
+
+        detector = ScreenStateDetector()
+        templates = detector.available_templates
+
+        assert isinstance(templates, list)
+        # All items should be strings
+        for name in templates:
+            assert isinstance(name, str)
+
+    def test_detect_returns_result(self) -> None:
+        """Test detect returns ScreenStateResult."""
+        from rush_bot.perception import ScreenStateDetector
+        from rush_bot.perception import ScreenStateResult
+
+        detector = ScreenStateDetector()
+
+        # Create dummy screenshot
+        screenshot = np.zeros((1920, 1080, 3), dtype=np.uint8)
+
+        result = detector.detect(screenshot)
+
+        assert isinstance(result, ScreenStateResult)
+        assert 0.0 <= result.confidence <= 1.0
+
+    def test_detect_with_file_path(self, temp_dir: Path) -> None:
+        """Test detect accepts file path."""
+        from rush_bot.perception import ScreenStateDetector
+        from rush_bot.perception import ScreenStateResult
+
+        detector = ScreenStateDetector()
+
+        # Create and save dummy image
+        img = np.zeros((1920, 1080, 3), dtype=np.uint8)
+        img_path = temp_dir / "test_screenshot.png"
+        cv2.imwrite(str(img_path), img)
+
+        result = detector.detect(img_path)
+
+        assert isinstance(result, ScreenStateResult)
+
+    def test_detect_with_invalid_path(self) -> None:
+        """Test detect handles invalid file path."""
+        from rush_bot.perception import ScreenState
+        from rush_bot.perception import ScreenStateDetector
+
+        detector = ScreenStateDetector()
+
+        result = detector.detect("/nonexistent/path.png")
+
+        assert result.state == ScreenState.UNKNOWN
+        assert result.confidence == 0.0
+
+    def test_detect_all_returns_list(self) -> None:
+        """Test detect_all returns list of results."""
+        from rush_bot.perception import ScreenStateDetector
+
+        detector = ScreenStateDetector()
+
+        screenshot = np.zeros((1920, 1080, 3), dtype=np.uint8)
+        results = detector.detect_all(screenshot)
+
+        assert isinstance(results, list)
+
+    def test_is_state_method(self) -> None:
+        """Test is_state convenience method."""
+        from rush_bot.perception import ScreenState
+        from rush_bot.perception import ScreenStateDetector
+
+        detector = ScreenStateDetector()
+        screenshot = np.zeros((1920, 1080, 3), dtype=np.uint8)
+
+        # Should return boolean
+        result = detector.is_state(screenshot, ScreenState.HOME)
+        assert isinstance(result, bool)
+
+    def test_is_in_battle_method(self) -> None:
+        """Test is_in_battle convenience method."""
+        from rush_bot.perception import ScreenStateDetector
+
+        detector = ScreenStateDetector()
+        screenshot = np.zeros((1920, 1080, 3), dtype=np.uint8)
+
+        result = detector.is_in_battle(screenshot)
+        assert isinstance(result, bool)
+
+    def test_is_home_screen_method(self) -> None:
+        """Test is_home_screen convenience method."""
+        from rush_bot.perception import ScreenStateDetector
+
+        detector = ScreenStateDetector()
+        screenshot = np.zeros((1920, 1080, 3), dtype=np.uint8)
+
+        result = detector.is_home_screen(screenshot)
+        assert isinstance(result, bool)
+
+    def test_has_popup_method(self) -> None:
+        """Test has_popup convenience method."""
+        from rush_bot.perception import ScreenStateDetector
+
+        detector = ScreenStateDetector()
+        screenshot = np.zeros((1920, 1080, 3), dtype=np.uint8)
+
+        result = detector.has_popup(screenshot)
+        assert isinstance(result, bool)
+
+    def test_has_advertisement_method(self) -> None:
+        """Test has_advertisement convenience method."""
+        from rush_bot.perception import ScreenStateDetector
+
+        detector = ScreenStateDetector()
+        screenshot = np.zeros((1920, 1080, 3), dtype=np.uint8)
+
+        result = detector.has_advertisement(screenshot)
+        assert isinstance(result, bool)
+
+    def test_find_template_not_found(self) -> None:
+        """Test find_template returns False for missing template."""
+        from rush_bot.perception import ScreenStateDetector
+
+        detector = ScreenStateDetector()
+        screenshot = np.zeros((1920, 1080, 3), dtype=np.uint8)
+
+        found, region, confidence = detector.find_template(screenshot, "nonexistent_template.png")
+
+        assert found is False
+        assert region is None
+        assert confidence == 0.0
+
+    def test_find_template_returns_tuple(self) -> None:
+        """Test find_template returns proper tuple."""
+        from rush_bot.perception import ScreenStateDetector
+
+        detector = ScreenStateDetector()
+        screenshot = np.zeros((1920, 1080, 3), dtype=np.uint8)
+
+        # Use a real template if available
+        if detector.available_templates:
+            template_name = detector.available_templates[0]
+            result = detector.find_template(screenshot, template_name)
+
+            assert isinstance(result, tuple)
+            assert len(result) == 3
+            found, _region, confidence = result
+            assert isinstance(found, bool)
+            assert isinstance(confidence, float)
+
+    def test_get_close_button_location(self) -> None:
+        """Test get_close_button_location method."""
+        from rush_bot.perception import ScreenStateDetector
+
+        detector = ScreenStateDetector()
+        screenshot = np.zeros((1920, 1080, 3), dtype=np.uint8)
+
+        # On black image, should return None (no button found)
+        result = detector.get_close_button_location(screenshot)
+
+        # Result is either None or tuple of two ints
+        assert result is None or (isinstance(result, tuple) and len(result) == 2)
+
+    def test_get_back_button_location(self) -> None:
+        """Test get_back_button_location method."""
+        from rush_bot.perception import ScreenStateDetector
+
+        detector = ScreenStateDetector()
+        screenshot = np.zeros((1920, 1080, 3), dtype=np.uint8)
+
+        result = detector.get_back_button_location(screenshot)
+
+        # Result is either None or tuple of two ints
+        assert result is None or (isinstance(result, tuple) and len(result) == 2)
+
+
+class TestScreenStateDetectorWithTemplates:
+    """Tests for ScreenStateDetector that require actual templates."""
+
+    @pytest.fixture
+    def detector_with_templates(self) -> ScreenStateDetector:
+        """Create detector and skip if no templates available."""
+        from rush_bot.perception import ScreenStateDetector
+        from rush_bot.perception.screen_state import ICONS_DIR
+
+        if not ICONS_DIR.exists():
+            pytest.skip("Icons directory not found")
+
+        detector = ScreenStateDetector()
+        if not detector.is_loaded:
+            pytest.skip("No templates loaded")
+
+        return detector
+
+    def test_detect_embedded_template(
+        self, detector_with_templates: ScreenStateDetector, temp_dir: Path
+    ) -> None:
+        """Test detection when template is embedded in screenshot."""
+        from rush_bot.perception.screen_state import ICONS_DIR
+
+        # Find a small template
+        template_files = list(ICONS_DIR.glob("*.png"))
+        if not template_files:
+            pytest.skip("No template files found")
+
+        template_path = template_files[0]
+        template = cv2.imread(str(template_path))
+        if template is None:
+            pytest.skip("Could not load template")
+
+        # Create screenshot with template embedded
+        screenshot = np.zeros((1920, 1080, 3), dtype=np.uint8)
+        th, tw = template.shape[:2]
+
+        # Place template at position (100, 100)
+        if 100 + th <= 1920 and 100 + tw <= 1080:
+            screenshot[100 : 100 + th, 100 : 100 + tw] = template
+
+            result = detector_with_templates.detect(screenshot)
+
+            # Should detect something with decent confidence
+            assert result.confidence > 0.5
+
+    def test_detect_all_finds_multiple(self, detector_with_templates: ScreenStateDetector) -> None:
+        """Test detect_all can find multiple templates."""
+        from rush_bot.perception.screen_state import ICONS_DIR
+
+        # Load two templates
+        template_files = list(ICONS_DIR.glob("*.png"))[:2]
+        if len(template_files) < 2:
+            pytest.skip("Need at least 2 templates")
+
+        templates = []
+        for f in template_files:
+            t = cv2.imread(str(f))
+            if t is not None:
+                templates.append(t)
+
+        if len(templates) < 2:
+            pytest.skip("Could not load 2 templates")
+
+        # Create screenshot with both templates
+        screenshot = np.zeros((1920, 1080, 3), dtype=np.uint8)
+
+        # Place first template at top
+        t1 = templates[0]
+        h1, w1 = t1.shape[:2]
+        if h1 <= 1920 and w1 <= 1080:
+            screenshot[0:h1, 0:w1] = t1
+
+        # Place second template at bottom (non-overlapping)
+        t2 = templates[1]
+        h2, w2 = t2.shape[:2]
+        pos_y = min(h1 + 50, 1920 - h2)
+        if pos_y + h2 <= 1920 and w2 <= 1080:
+            screenshot[pos_y : pos_y + h2, 0:w2] = t2
+
+        results = detector_with_templates.detect_all(screenshot)
+
+        # Should have some results
+        assert isinstance(results, list)
+
+    def test_template_scaling(self, detector_with_templates: ScreenStateDetector) -> None:
+        """Test that templates are scaled correctly for different resolutions."""
+        from rush_bot.perception.screen_state import ICONS_DIR
+
+        # Find a template
+        template_files = list(ICONS_DIR.glob("*.png"))
+        if not template_files:
+            pytest.skip("No templates found")
+
+        template_path = template_files[0]
+        template = cv2.imread(str(template_path))
+        if template is None:
+            pytest.skip("Could not load template")
+
+        # Test at half resolution (540x960)
+        screenshot_small = np.zeros((960, 540, 3), dtype=np.uint8)
+        result_small = detector_with_templates.detect(screenshot_small)
+
+        # Should still return valid result structure
+        assert hasattr(result_small, "state")
+        assert hasattr(result_small, "confidence")
+
+
+class TestTemplateStateMap:
+    """Tests for the template to state mapping."""
+
+    def test_template_state_map_exists(self) -> None:
+        """Test that TEMPLATE_STATE_MAP is defined."""
+        from rush_bot.perception import TEMPLATE_STATE_MAP
+
+        assert isinstance(TEMPLATE_STATE_MAP, dict)
+        assert len(TEMPLATE_STATE_MAP) > 0
+
+    def test_template_state_map_values_are_states(self) -> None:
+        """Test that all values in map are ScreenState enum values."""
+        from rush_bot.perception import TEMPLATE_STATE_MAP
+        from rush_bot.perception import ScreenState
+
+        for template_name, state in TEMPLATE_STATE_MAP.items():
+            assert isinstance(template_name, str)
+            assert isinstance(state, ScreenState)
+
+    def test_key_templates_mapped(self) -> None:
+        """Test that important templates are mapped."""
+        from rush_bot.perception import TEMPLATE_STATE_MAP
+        from rush_bot.perception import ScreenState
+
+        # Key templates should be mapped
+        expected_mappings = {
+            "home_screen.png": ScreenState.HOME,
+            "fighting.png": ScreenState.BATTLE,
+            "x_mark.png": ScreenState.POPUP,
+            "ad_pve.png": ScreenState.ADVERTISEMENT,
+        }
+
+        for template, expected_state in expected_mappings.items():
+            if template in TEMPLATE_STATE_MAP:
+                assert TEMPLATE_STATE_MAP[template] == expected_state

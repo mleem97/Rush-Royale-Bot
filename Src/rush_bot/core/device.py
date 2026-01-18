@@ -253,8 +253,7 @@ class DeviceManager:
                     self._set_state(DeviceState.CONNECTED)
                     self._reconnect_attempt = 0
                     logger.info(
-                        f"Connected to {self._device_info.model} "
-                        f"({self._device_info.serial})"
+                        f"Connected to {self._device_info.model} ({self._device_info.serial})"
                     )
                     return True
 
@@ -298,8 +297,7 @@ class DeviceManager:
         ):
             self._reconnect_attempt += 1
             logger.info(
-                f"Reconnect attempt {self._reconnect_attempt}/"
-                f"{self.config.max_reconnect_attempts}"
+                f"Reconnect attempt {self._reconnect_attempt}/{self.config.max_reconnect_attempts}"
             )
 
             time.sleep(self.config.reconnect_delay_seconds)
@@ -308,16 +306,11 @@ class DeviceManager:
                 from adbutils import adb
 
                 if ":" in self._last_address:
-                    adb.connect(
-                        self._last_address, timeout=self.config.connection_timeout_seconds
-                    )
+                    adb.connect(self._last_address, timeout=self.config.connection_timeout_seconds)
 
                 devices = adb.device_list()
                 for device in devices:
-                    if (
-                        device.serial == self._last_address
-                        or self._last_address in device.serial
-                    ):
+                    if device.serial == self._last_address or self._last_address in device.serial:
                         with self._lock:
                             self._device = device
                             self._device_info = DeviceInfo.from_device(device)
@@ -385,9 +378,7 @@ class DeviceManager:
             self._handle_operation_error("Tap", e)
             return False
 
-    def swipe(
-        self, x1: int, y1: int, x2: int, y2: int, duration_ms: int = 300
-    ) -> bool:
+    def swipe(self, x1: int, y1: int, x2: int, y2: int, duration_ms: int = 300) -> bool:
         """Swipe from (x1,y1) to (x2,y2).
 
         Args:

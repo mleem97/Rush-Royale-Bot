@@ -333,9 +333,7 @@ class ImitationDataCollector:
         self.data: list[dict] = []
         self.logger = logging.getLogger(__name__)
 
-    def record(
-        self, grid_df: Any, action: int, action_type: str, details: dict | None = None
-    ):
+    def record(self, grid_df: Any, action: int, action_type: str, details: dict | None = None):
         """Record a state-action pair."""
         if grid_df is None:
             return

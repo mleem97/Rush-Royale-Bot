@@ -690,9 +690,7 @@ class Bot:
             if unit_count <= 3:
                 # Protect by removing from candidates
                 result = adv_filter_keys(result, units=protected_unit, remove=True)
-                self.logger.debug(
-                    f"Protecting {protected_unit} (count: {unit_count})"
-                )
+                self.logger.debug(f"Protecting {protected_unit} (count: {unit_count})")
 
         return result
 

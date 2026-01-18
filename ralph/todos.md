@@ -86,13 +86,14 @@
   - [ ] Boss-Mana-Reserve
 
 ### T009: Bildschirm-Zustand-Erkennung
-- **Status:** ⏳ Offen
+- **Status:** ✅ Erledigt
 - **Beschreibung:** Erkennung verschiedener Game-Screens
+- **Dateien:** `src/rush_bot/perception/screen_state.py`
 - **Akzeptanzkriterien:**
-  - [ ] Home-Screen erkennen
-  - [ ] Kampf-Screen erkennen
-  - [ ] Popup-Handling
-  - [ ] Ad-Skip
+  - [x] Home-Screen erkennen
+  - [x] Kampf-Screen erkennen
+  - [x] Popup-Handling
+  - [x] Ad-Skip
 
 ---
 

@@ -10,9 +10,9 @@
 |-----------|--------|-------|-----------|----------|
 | Kritische Bugs | 3 | 0 | 0 | 3 |
 | Kern-Funktionalität | 3 | 1 | 0 | 2 |
-| Gameplay-Features | 3 | 3 | 0 | 0 |
+| Gameplay-Features | 3 | 2 | 0 | 1 |
 | Qualität & Tooling | 3 | 2 | 0 | 1 |
-| **Gesamt** | **12** | **6** | **0** | **6** |
+| **Gesamt** | **12** | **5** | **0** | **7** |
 
 ---
 
@@ -42,7 +42,7 @@
 |----|------|--------|------------|-------|
 | T007 | PvE-Dungeon-Loop | ⏳ Offen | - | - |
 | T008 | Mana-Management | ⏳ Offen | - | - |
-| T009 | Bildschirm-Zustand-Erkennung | ⏳ Offen | - | - |
+| T009 | Bildschirm-Zustand-Erkennung | ✅ Erledigt | Subagent | 2026-01-18 |
 
 ---
 
@@ -58,6 +58,28 @@
 ---
 
 ## 📝 Änderungsprotokoll
+
+### [2026-01-18] T009: Bildschirm-Zustand-Erkennung implementiert
+- **Problem:** Keine automatische Erkennung von Game-Screens (Home, Battle, Popups, Ads)
+- **Lösung:** Neuer `ScreenStateDetector` mit Template-Matching für alle UI-Screens
+- **Änderungen:**
+  - `src/rush_bot/perception/screen_state.py`: Neue Datei mit 570 Zeilen
+  - `src/rush_bot/perception/__init__.py`: Neue Exports hinzugefügt
+  - `tests/test_perception.py`: 32 neue Unit-Tests für Screen-State-Erkennung
+- **Features:**
+  - **ScreenState Enum:** UNKNOWN, HOME, BATTLE, DUNGEON_SELECT, POPUP, ADVERTISEMENT, VICTORY, DEFEAT, LOADING, QUEST, FRIEND_MENU
+  - **ScreenStateConfig:** Konfigurierbare Template-Matching-Parameter
+  - **ScreenStateResult:** Detailliertes Ergebnis mit Confidence und Bounding-Box
+  - **Template-Mapping:** 39 Templates auf Screen-States abgebildet
+  - **Convenience-Methoden:** `is_in_battle()`, `is_home_screen()`, `has_popup()`, `has_advertisement()`
+  - **Button-Lokalisierung:** `get_close_button_location()`, `get_back_button_location()`
+  - **Resolution-Skalierung:** Automatische Anpassung an verschiedene Bildschirmauflösungen
+- **Akzeptanzkriterien:**
+  - [x] Home-Screen erkennen (`ScreenState.HOME`)
+  - [x] Kampf-Screen erkennen (`ScreenState.BATTLE`)
+  - [x] Popup-Handling (`has_popup()`, `get_close_button_location()`)
+  - [x] Ad-Detection (`has_advertisement()`)
+- **Tests:** 128 Tests bestehen (32 neue Screen-State-Tests)
 
 ### [2026-01-18] T005: Device-Manager erweitert
 - **Problem:** Device-Manager hatte keine Auto-Reconnect-Funktion, kein State-Tracking

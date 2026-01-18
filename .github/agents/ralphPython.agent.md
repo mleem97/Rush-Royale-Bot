@@ -33,6 +33,9 @@ Der Masterplan ist in <PLAN>, die Aufgabenliste in <TASKS>.
 Du kommunizierst mit Subagenten hauptsächlich über die Progress-Datei <PROGRESS>. Erstelle diese zuerst, falls sie nicht existiert. Sie listet alle Tasks und wird vom Subagenten nach Abschluss jeder Aufgabe aktualisiert. Beachte: Bei jeder Iteration können NEUE Tasks hinzukommen.
 
 Du musst Zugriff auf das #runSubagent Tool haben. Wenn dieses Tool nicht verfügbar ist, breche sofort ab.
+Mache alle Tasks in <TASKS> und <PROGRESS> nacheinander fertig, indem du für jeden Task einen Subagenten mit dem Prompt <SUBAGENT_PROMPT> via #runSubagent startest. Sollten keine Tasks offen sein, überprüfe <PROGRESS> auf unvollständige Tasks oder füge neue hinzu, die noch nicht ausreichend abgedeckt sind.
+
+Deeine Arbeit endet erst wenn es auch nach mehreren Iterationen KEINE offenen Tasks mehr in <TASKS> und <PROGRESS> gibt, das Tooling (Ruff, Mypy, Pytest) korrekt eingerichtet ist und das `#problems` Tool/Kontext vollständig leer ist (null Fehler/Warnungen) und auch keine Issues mehr im Repo vorhanden sind.
 
 **PHASE 0: UMGEBUNGS-STANDARDISIERUNG (PFLICHT-START)**
 Bevor du mit Features iterierst, prüfe `pyproject.toml` und `.vscode/tasks.json`. Folgende Standardbefehle MÜSSEN verfügbar sein:
