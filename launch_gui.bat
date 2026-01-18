@@ -9,6 +9,5 @@ if not exist ".bot_env\Scripts\python.exe" (
     exit /b 1
 )
 
-REM Use the new rush_bot package entry point
-".bot_env\Scripts\python.exe" -m rush_bot.gui
+".bot_env\Scripts\python.exe" "Src\gui.py"
 if %errorlevel% NEQ 0 pause
