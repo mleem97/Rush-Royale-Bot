@@ -133,6 +133,22 @@
   - `cv-images/icons/PVP_Loading.png` - PVP-Ladebildschirm
   - `cv-images/icons/Abort_Button.png` - Abort-Button während Loading
   - `cv-images/icons/AD_Bonus_Button.png` - Ad-Bonus-Skip-Button
+- **Neue Ordnerstruktur:**
+  - `cv-images/icons/` - Hauptordner für alle Template-Assets
+  - **Unterordner nach Menü-States organisiert:**
+    - `cv-images/icons/Main_Menu/` - Alle Buttons und Icons des Main/Battle-Menüs (ScreenState.MAIN_MENU)
+    - `cv-images/icons/Store_Menu/` - Store-Menü spezifische Icons (ScreenState.STORE_MENU)
+    - `cv-images/icons/Cards_Menu/` - Cards-Menü spezifische Icons (ScreenState.CARDS_MENU)
+    - `cv-images/icons/Clan_Menu/` - Clan-Menü spezifische Icons (ScreenState.CLAN_MENU)
+    - `cv-images/icons/Event_Menu/` - Event-Menü spezifische Icons (ScreenState.EVENT_MENU)
+    - `cv-images/icons/PVE/` - PvE-Dungeon spezifische Icons (chapter_*.png, floor_*.png, dungeon_page.png)
+    - Weitere Unterordner nach Bedarf für andere Screen-States
+  - **Rekursive Template-Suche:** ScreenStateDetector durchsucht alle Unterordner automatisch
+  - **Vorteil:** Jeder Menü-State hat seine eigenen Icons, verhindert False-Positives durch State-Context
+- **Neu hinzugefügte Buttons:**
+  - `PVE_Locked.png` - Gesperrter PVE-Modus Indikator
+  - `Quests_New_Weekly.png` - Neue wöchentliche Quest-Benachrichtigung
+  - `PVE_Button.png` - PVE-Modus Button
 - **Akzeptanzkriterien:**
   - [x] ScreenState.PVP_LOADING existiert
   - [x] Template-Mappings für PVP_Loading.png, Abort_Button.png, AD_Bonus_Button.png
