@@ -204,14 +204,33 @@
   - [x] Docstrings vorhanden für öffentliche Funktionen
 - **Tests:** 198 Tests bestehen weiterhin
 
-### [2026-01-18] T012: CI/CD Pipeline (bereits implementiert)
-- **Hinweis:** CI/CD Pipeline war bereits in `.github/workflows/` vorhanden
-- **Dateien:** `.github/workflows/tests.yml`, `.github/workflows/release.yml`
-- **Features:**
-  - Tests auf ubuntu-latest und windows-latest
-  - Python 3.10, 3.11, 3.12, 3.13 Matrix
-  - Ruff Linting, Mypy Type-Check
-  - Coverage-Report mit Codecov
+### [2026-01-18] T012: CI/CD Pipeline implementiert
+- **Problem:** CI/CD Pipeline existierte bereits, aber mit Verbesserungspotential
+- **Lösung:** Workflows erweitert mit pip-Cache, Coverage-Threshold, Format-Checks
+- **Änderungen:**
+  - `.github/workflows/tests.yml`: Vollständig überarbeitet
+  - `.github/workflows/release.yml`: Erweitert mit Pre-Release-Tests und Changelog
+- **Test-Workflow Features:**
+  - **Multi-Python-Testing:** 3.10, 3.11, 3.12 auf Ubuntu und Windows
+  - **pip-Cache:** `actions/cache@v4` für schnellere Builds
+  - **Lint Job (separiert):** ruff check + ruff format --check + mypy
+  - **Coverage-Threshold:** `--cov-fail-under=50` erzwingt 50% Minimum
+  - **Concurrency:** Cancel-in-Progress für redundante Runs
+  - **Branch-Trigger:** main, develop, 20*.* (Jahr-basierte Branches)
+- **Release-Workflow Features:**
+  - **Pre-Release-Tests:** Tests laufen vor Build
+  - **Package-Verification:** `twine check dist/*` validiert Package
+  - **Changelog-Generation:** Automatisch aus Git-History
+  - **pip-Cache:** Für schnellere Builds
+  - **Tag-Trigger:** v*.*.* und 20*.* (Jahr-basierte Versions)
+  - **Updated Actions:** `softprops/action-gh-release@v2`
+- **Akzeptanzkriterien:**
+  - [x] `.github/workflows/tests.yml` existiert und korrekt konfiguriert
+  - [x] `.github/workflows/release.yml` existiert für Tag-basierte Releases
+  - [x] Workflows validiert (YAML-Syntax korrekt)
+  - [x] Multi-Python-Version Testing (3.10, 3.11, 3.12)
+  - [x] Coverage-Threshold (50% Minimum)
+  - [x] pip-Cache für Dependencies
 
 ### [2026-01-18] T010: Test-Coverage erhöht
 - **Problem:** Test-Coverage lag bei nur 50%, viele Kernmodule unter 70%
