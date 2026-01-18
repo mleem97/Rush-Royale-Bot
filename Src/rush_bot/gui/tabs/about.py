@@ -2,6 +2,7 @@
 RushBot GUI - About Tab
 Application information and credits.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -21,7 +22,7 @@ class AboutTab(ctk.CTkFrame):
     def __init__(self, parent: ctk.CTkFrame, master_content: ContentFrame, **kwargs) -> None:
         super().__init__(parent, fg_color="transparent", **kwargs)
         self.master_content = master_content
-        
+
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
@@ -81,4 +82,5 @@ class AboutTab(ctk.CTkFrame):
     def _open_url(self, url: str) -> None:
         """Open URL in browser."""
         import webbrowser
+
         webbrowser.open(url)

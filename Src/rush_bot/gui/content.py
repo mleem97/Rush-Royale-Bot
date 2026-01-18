@@ -2,6 +2,7 @@
 RushBot GUI - Content Frame
 Main content area with tabbed interface.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -9,15 +10,13 @@ from typing import TYPE_CHECKING
 import customtkinter as ctk
 import pandas as pd
 
+from rush_bot.gui.tabs import AboutTab
+from rush_bot.gui.tabs import CombatTab
+from rush_bot.gui.tabs import ConfigTab
+from rush_bot.gui.tabs import DashboardTab
+from rush_bot.gui.tabs import LogTab
+from rush_bot.gui.tabs import TrainingTab
 from rush_bot.gui.theme import COLORS
-from rush_bot.gui.tabs import (
-    DashboardTab,
-    ConfigTab,
-    TrainingTab,
-    CombatTab,
-    LogTab,
-    AboutTab,
-)
 
 if TYPE_CHECKING:
     from rush_bot.gui.main_window import RushBotApp
@@ -100,11 +99,7 @@ class ContentFrame(ctk.CTkFrame):
         self.log_frame = self.log_tab
 
     def update_grid(
-        self,
-        grid_df: pd.DataFrame | None,
-        combat: int,
-        step: int,
-        output: str
+        self, grid_df: pd.DataFrame | None, combat: int, step: int, output: str
     ) -> None:
         """Update the dashboard grid."""
         self.dashboard_tab.update(grid_df, combat, step, output)

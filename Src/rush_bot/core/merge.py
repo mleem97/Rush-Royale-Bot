@@ -275,7 +275,7 @@ class MergeLogic:
                         target_pos = target_row["grid_pos"]
                         candidate = MergeCandidate(
                             unit_type=f"{special_type}+{target_unit}",
-                            rank=int(rank),
+                            rank=int(str(rank)),
                             positions=[special_pos, target_pos],
                             is_protected=False,
                         )
@@ -288,7 +288,7 @@ class MergeLogic:
                         other_type = other_row["unit"]
                         candidate = MergeCandidate(
                             unit_type=f"{special_type}+{other_type}",
-                            rank=int(rank),
+                            rank=int(str(rank)),
                             positions=[special_pos, other_pos],
                             is_protected=False,
                         )

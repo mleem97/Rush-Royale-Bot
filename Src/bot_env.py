@@ -11,24 +11,27 @@ Usage:
     model = PPO("MlpPolicy", env, verbose=1)
     model.learn(total_timesteps=10000)
 """
+
 from __future__ import annotations
 
 import logging
 import time
 from pathlib import Path
-from typing import Any, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
 try:
     import gymnasium as gym
     from gymnasium import spaces
+
     GYM_AVAILABLE = True
 except ImportError:
     # Fallback for older gym
     try:
         import gym
         from gym import spaces
+
         GYM_AVAILABLE = True
     except ImportError:
         GYM_AVAILABLE = False
@@ -96,9 +99,7 @@ class RushRoyaleEnv:
         step_delay: float = 0.5,
     ):
         if not GYM_AVAILABLE:
-            raise ImportError(
-                "gymnasium or gym required. Install with: pip install gymnasium"
-            )
+            raise ImportError("gymnasium or gym required. Install with: pip install gymnasium")
 
         self.bot = bot_instance
         self.max_steps = max_steps
@@ -122,9 +123,9 @@ class RushRoyaleEnv:
 
     def reset(
         self,
-        seed: Optional[int] = None,
-        options: Optional[dict] = None,
-    ) -> Tuple[np.ndarray, dict]:
+        seed: int | None = None,
+        options: dict | None = None,
+    ) -> tuple[np.ndarray, dict]:
         """Reset environment for new episode."""
         self.current_step = 0
         self._episode_reward = 0
@@ -138,7 +139,7 @@ class RushRoyaleEnv:
 
         return observation, {"combat": self._last_combat}
 
-    def step(self, action: int) -> Tuple[np.ndarray, float, bool, bool, dict]:
+    def step(self, action: int) -> tuple[np.ndarray, float, bool, bool, dict]:
         """Execute action and return (observation, reward, terminated, truncated, info)."""
         self.current_step += 1
         reward = 0.0
@@ -238,6 +239,7 @@ class RushRoyaleEnv:
             # Scan grid
             names = self.bot.scan_grid(new=True)
             import bot_perception
+
             grid_df = bot_perception.grid_status(names, self._last_grid_df)
             self._last_grid_df = grid_df
 
@@ -331,14 +333,16 @@ class ImitationDataCollector:
         self.data: list[dict] = []
         self.logger = logging.getLogger(__name__)
 
-    def record(self, grid_df: Any, action: int, action_type: str, details: dict = None):
+    def record(
+        self, grid_df: Any, action: int, action_type: str, details: dict | None = None
+    ):
         """Record a state-action pair."""
         if grid_df is None:
             return
 
         # Encode state
         state = []
-        for idx, row in grid_df.iterrows():
+        for _idx, row in grid_df.iterrows():
             unit_code = UNIT_ENCODING.get(row["unit"], 0)
             rank = row.get("rank", 0)
             state.append([unit_code, rank])
@@ -365,7 +369,7 @@ class ImitationDataCollector:
         np.savez(path, states=states, actions=actions)
         self.logger.info(f"Saved {len(self.data)} samples to {path}")
 
-    def load(self, filename: str = "imitation_data.npz") -> Tuple[np.ndarray, np.ndarray]:
+    def load(self, filename: str = "imitation_data.npz") -> tuple[np.ndarray, np.ndarray]:
         """Load collected data from file."""
         path = self.save_dir / filename
         data = np.load(path)
@@ -393,7 +397,7 @@ def encode_merge_action(start_pos: list, end_pos: list) -> int:
     return start_idx * 4 + direction
 
 
-def decode_merge_action(action: int) -> Tuple[list, list]:
+def decode_merge_action(action: int) -> tuple[list, list]:
     """Decode action space integer to grid positions."""
     pos = action // 4
     direction = action % 4

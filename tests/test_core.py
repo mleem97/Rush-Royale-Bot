@@ -2,13 +2,21 @@
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+from unittest.mock import patch
+
 import pandas as pd
 import pytest
 
 from rush_bot.core import Bot
 from rush_bot.core import BotHandler
 from rush_bot.core import BotLogger
+from rush_bot.core import DeviceConfig
+from rush_bot.core import DeviceConnectionError
+from rush_bot.core import DeviceInfo
 from rush_bot.core import DeviceManager
+from rush_bot.core import DeviceNotConnectedError
+from rush_bot.core import DeviceState
 from rush_bot.core import MergeCandidate
 from rush_bot.core import MergeConfig
 from rush_bot.core import MergeLogic
@@ -31,6 +39,77 @@ class TestBotLogger:
         assert logger.log_widget is None
 
 
+class TestDeviceConfig:
+    """Tests for the DeviceConfig class."""
+
+    def test_default_config(self) -> None:
+        """Test default device configuration."""
+        config = DeviceConfig()
+        assert config.address == "127.0.0.1:5555"
+        assert config.auto_reconnect is True
+        assert config.max_reconnect_attempts == 5
+        assert config.reconnect_delay_seconds == 2.0
+        assert config.connection_timeout_seconds == 10.0
+        assert config.screenshot_retry_count == 3
+
+    def test_custom_config(self) -> None:
+        """Test custom device configuration."""
+        config = DeviceConfig(
+            address="192.168.1.100:5555",
+            auto_reconnect=False,
+            max_reconnect_attempts=10,
+        )
+        assert config.address == "192.168.1.100:5555"
+        assert config.auto_reconnect is False
+        assert config.max_reconnect_attempts == 10
+
+
+class TestDeviceInfo:
+    """Tests for the DeviceInfo class."""
+
+    def test_device_info_creation(self) -> None:
+        """Test creating DeviceInfo."""
+        info = DeviceInfo(
+            serial="127.0.0.1:5555",
+            model="Pixel 6",
+            android_version="13",
+            screen_width=1080,
+            screen_height=1920,
+            is_emulator=True,
+        )
+        assert info.serial == "127.0.0.1:5555"
+        assert info.model == "Pixel 6"
+        assert info.is_emulator is True
+
+    def test_device_info_from_device(self) -> None:
+        """Test creating DeviceInfo from mock device."""
+        mock_device = MagicMock()
+        mock_device.serial = "emulator-5554"
+        mock_device.prop.get.side_effect = lambda key, default: {
+            "ro.product.model": "sdk_gphone64_x86_64",
+            "ro.build.version.release": "13",
+        }.get(key, default)
+        mock_device.shell.return_value = "Physical size: 1080x1920"
+
+        info = DeviceInfo.from_device(mock_device)
+        assert info.serial == "emulator-5554"
+        assert info.is_emulator is True
+        assert info.screen_width == 1080
+        assert info.screen_height == 1920
+
+
+class TestDeviceState:
+    """Tests for the DeviceState enum."""
+
+    def test_all_states_exist(self) -> None:
+        """Test that all expected states exist."""
+        assert DeviceState.DISCONNECTED.value == "disconnected"
+        assert DeviceState.CONNECTING.value == "connecting"
+        assert DeviceState.CONNECTED.value == "connected"
+        assert DeviceState.RECONNECTING.value == "reconnecting"
+        assert DeviceState.ERROR.value == "error"
+
+
 class TestDeviceManager:
     """Tests for the DeviceManager class."""
 
@@ -39,11 +118,185 @@ class TestDeviceManager:
         manager = DeviceManager()
         assert manager is not None
         assert manager.device is None
+        assert manager.state == DeviceState.DISCONNECTED
+
+    def test_device_manager_with_config(self) -> None:
+        """Test DeviceManager with custom config."""
+        config = DeviceConfig(auto_reconnect=False)
+        manager = DeviceManager(config=config)
+        assert manager.config.auto_reconnect is False
 
     def test_adb_path_set(self) -> None:
         """Test that adb_path is configured."""
         manager = DeviceManager()
         assert hasattr(manager, "adb_path")
+
+    def test_is_connected_property(self) -> None:
+        """Test is_connected property."""
+        manager = DeviceManager()
+        assert manager.is_connected is False
+
+    def test_state_change_callback(self) -> None:
+        """Test state change callback is called."""
+        states_received: list[DeviceState] = []
+
+        def callback(state: DeviceState) -> None:
+            states_received.append(state)
+
+        manager = DeviceManager(on_state_change=callback)
+
+        # Manually trigger state change
+        manager._set_state(DeviceState.CONNECTING)
+        assert DeviceState.CONNECTING in states_received
+
+    def test_list_devices_empty(self) -> None:
+        """Test list_devices with no devices."""
+        with patch("adbutils.adb") as mock_adb:
+            mock_adb.device_list.return_value = []
+            manager = DeviceManager()
+            devices = manager.list_devices()
+            assert devices == []
+
+    def test_connect_success(self) -> None:
+        """Test successful connection."""
+        with patch("adbutils.adb") as mock_adb:
+            mock_device = MagicMock()
+            mock_device.serial = "127.0.0.1:5555"
+            mock_device.prop.get.return_value = "TestDevice"
+            mock_device.shell.return_value = "Physical size: 1080x1920"
+            mock_adb.device_list.return_value = [mock_device]
+
+            manager = DeviceManager()
+            result = manager.connect("127.0.0.1:5555")
+
+            assert result is True
+            assert manager.is_connected is True
+            assert manager.state == DeviceState.CONNECTED
+
+    def test_connect_no_devices(self) -> None:
+        """Test connection with no devices available."""
+        with patch("adbutils.adb") as mock_adb:
+            mock_adb.device_list.return_value = []
+            config = DeviceConfig(auto_reconnect=False)
+
+            manager = DeviceManager(config=config)
+            result = manager.connect()
+
+            assert result is False
+            assert manager.state == DeviceState.DISCONNECTED
+
+    def test_disconnect(self) -> None:
+        """Test disconnect method."""
+        manager = DeviceManager()
+        manager._device = MagicMock()
+        manager._state = DeviceState.CONNECTED
+
+        manager.disconnect()
+
+        assert manager.device is None
+        assert manager.state == DeviceState.DISCONNECTED
+
+    def test_tap_not_connected(self) -> None:
+        """Test tap when not connected."""
+        manager = DeviceManager()
+        result = manager.tap(100, 200)
+        assert result is False
+
+    def test_swipe_not_connected(self) -> None:
+        """Test swipe when not connected."""
+        manager = DeviceManager()
+        result = manager.swipe(100, 200, 300, 400)
+        assert result is False
+
+    def test_screenshot_not_connected(self) -> None:
+        """Test screenshot when not connected."""
+        manager = DeviceManager()
+        result = manager.screenshot()
+        assert result is None
+
+    def test_shell_not_connected(self) -> None:
+        """Test shell when not connected."""
+        manager = DeviceManager()
+        result = manager.shell("echo test")
+        assert result is None
+
+    def test_press_back(self) -> None:
+        """Test press_back calls press_key with correct keycode."""
+        manager = DeviceManager()
+        manager._device = MagicMock()
+        manager._state = DeviceState.CONNECTED
+
+        result = manager.press_back()
+        assert result is True
+        manager._device.shell.assert_called_with("input keyevent 4")
+
+    def test_press_home(self) -> None:
+        """Test press_home calls press_key with correct keycode."""
+        manager = DeviceManager()
+        manager._device = MagicMock()
+        manager._state = DeviceState.CONNECTED
+
+        result = manager.press_home()
+        assert result is True
+        manager._device.shell.assert_called_with("input keyevent 3")
+
+    def test_tap_when_connected(self) -> None:
+        """Test tap when connected."""
+        manager = DeviceManager()
+        manager._device = MagicMock()
+        manager._state = DeviceState.CONNECTED
+
+        result = manager.tap(500, 600)
+
+        assert result is True
+        manager._device.click.assert_called_once_with(500, 600)
+
+    def test_swipe_when_connected(self) -> None:
+        """Test swipe when connected."""
+        manager = DeviceManager()
+        manager._device = MagicMock()
+        manager._state = DeviceState.CONNECTED
+
+        result = manager.swipe(100, 200, 300, 400, 500)
+
+        assert result is True
+        manager._device.swipe.assert_called_once_with(100, 200, 300, 400, 0.5)
+
+    def test_get_all_device_info(self) -> None:
+        """Test getting info for all devices."""
+        with patch("adbutils.adb") as mock_adb:
+            mock_device1 = MagicMock()
+            mock_device1.serial = "device1"
+            mock_device1.prop.get.return_value = "Device1"
+            mock_device1.shell.return_value = "Physical size: 1080x1920"
+
+            mock_device2 = MagicMock()
+            mock_device2.serial = "device2"
+            mock_device2.prop.get.return_value = "Device2"
+            mock_device2.shell.return_value = "Physical size: 1440x2560"
+
+            mock_adb.device_list.return_value = [mock_device1, mock_device2]
+
+            manager = DeviceManager()
+            infos = manager.get_all_device_info()
+
+            assert len(infos) == 2
+            assert infos[0].serial == "device1"
+            assert infos[1].serial == "device2"
+
+
+class TestDeviceExceptions:
+    """Tests for device-related exceptions."""
+
+    def test_device_connection_error(self) -> None:
+        """Test DeviceConnectionError exception."""
+        with pytest.raises(DeviceConnectionError):
+            raise DeviceConnectionError("Connection failed")
+
+    def test_device_not_connected_error(self) -> None:
+        """Test DeviceNotConnectedError exception."""
+        with pytest.raises(DeviceNotConnectedError):
+            raise DeviceNotConnectedError("Device not connected")
 
 
 class TestBot:

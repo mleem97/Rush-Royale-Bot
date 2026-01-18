@@ -61,6 +61,16 @@ bot_feed*.png
 ordner.txt
 .backups/
 .logs/
+temp_screenshot.png
+*_detected.png
+
+# --- Training data (user-generated) ---
+training_data/screenshots/
+training_data/units/
+
+# --- ML Models (generated) ---
+models/unit_classifier.pkl
+models/unit_labels.json
 
 # --- Local config ---
 config.ini

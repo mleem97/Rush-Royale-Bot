@@ -2,6 +2,7 @@
 RushBot GUI - Combat Info Tab
 Display combat statistics and game state.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -20,7 +21,7 @@ class CombatTab(ctk.CTkFrame):
     def __init__(self, parent: ctk.CTkFrame, master_content: ContentFrame, **kwargs) -> None:
         super().__init__(parent, fg_color="transparent", **kwargs)
         self.master_content = master_content
-        
+
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 

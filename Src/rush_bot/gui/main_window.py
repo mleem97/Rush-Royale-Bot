@@ -2,20 +2,19 @@
 RushBot GUI - Main Window
 Modern CustomTkinter Interface with sidebar navigation.
 """
+
 from __future__ import annotations
 
 import configparser
-import logging
 import threading
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import customtkinter as ctk
 
 from rush_bot import PROJECT_ROOT
-from rush_bot.gui.theme import COLORS, setup_theme
-from rush_bot.gui.sidebar import SidebarFrame
 from rush_bot.gui.content import ContentFrame
+from rush_bot.gui.sidebar import SidebarFrame
+from rush_bot.gui.theme import setup_theme
 
 if TYPE_CHECKING:
     from rush_bot.core import Bot
@@ -50,6 +49,9 @@ class RushBotApp(ctk.CTk):
 
         self.logger.debug("Modern GUI started!")
 
+        # Start ADB monitoring after GUI is ready
+        self.after(500, self.sidebar.start_adb_monitoring)
+
     def _setup_window(self) -> None:
         """Configure main window properties."""
         self.title("RushBot - Rush Royale Automation")
@@ -79,9 +81,11 @@ class RushBotApp(ctk.CTk):
         """Initialize logging system."""
         # Import here to avoid circular imports
         from rush_bot.core.logger import BotLogger
-        
+
         self.logger = BotLogger(
-            log_widget=self.content.log_frame.log_text if hasattr(self.content, 'log_frame') else None
+            log_widget=self.content.log_frame.log_text
+            if hasattr(self.content, "log_frame")
+            else None
         )
 
     def _on_closing(self) -> None:
@@ -100,17 +104,76 @@ class RushBotApp(ctk.CTk):
 
         self.stop_flag = False
         self.running = True
-        
-        # Import here to avoid circular imports
-        from rush_bot.core import BotHandler
-        
-        self.thread_run = threading.Thread(
-            target=BotHandler.run,
-            args=(self,),
-            daemon=True
-        )
-        self.thread_run.start()
-        self.logger.info("Bot started!")
+
+        # Use the legacy bot_handler which has full implementation
+        import sys
+
+        from rush_bot import PROJECT_ROOT
+
+        # Add Src to path to use legacy modules
+        src_path = PROJECT_ROOT / "Src"
+        if str(src_path) not in sys.path:
+            sys.path.insert(0, str(src_path))
+
+        try:
+            import bot_handler
+
+            # Get game mode from sidebar
+            game_mode = self.sidebar.game_mode_var.get()
+            floor = self.sidebar.floor_entry.get() or "5"
+
+            # Update config based on GUI selections
+            if game_mode == "PvP":
+                self.config.set("bot", "pve", "false")
+            else:
+                self.config.set("bot", "pve", "true")
+            self.config.set("bot", "floor", floor)
+
+            # Get mana upgrades from checkboxes
+            mana_levels = [str(i + 1) for i, var in enumerate(self.sidebar.mana_vars) if var.get()]
+            self.config.set(
+                "bot", "mana_level", ",".join(mana_levels) if mana_levels else "1,2,3,4,5"
+            )
+
+            # Check ADB connection first
+            if not bot_handler.check_adb_connection(self.logger):
+                self.logger.error("No ADB device found! Make sure emulator is running.")
+                self.running = False
+                self.sidebar.start_button.configure(state="normal")
+                self.sidebar.stop_button.configure(state="disabled")
+                return
+
+            # Select units from config
+            units = [
+                self.config.get("bot", f"unit_{i}", fallback=f"empty_{i}.png") for i in range(1, 6)
+            ]
+            if not bot_handler.select_units(units):
+                self.logger.warning("Some units not found, continuing anyway...")
+
+            # Start the bot
+            self.bot_instance = bot_handler.start_bot_class(self.logger)
+            self.bot_instance.bot_stop = False
+
+            # Run bot loop in thread
+            def run_legacy_bot():
+                try:
+                    bot_handler.bot_loop(self.bot_instance, self.info_ready)
+                except Exception as e:
+                    self.logger.error(f"Bot error: {e}")
+                finally:
+                    self.running = False
+                    self.after(0, lambda: self.sidebar.start_button.configure(state="normal"))
+                    self.after(0, lambda: self.sidebar.stop_button.configure(state="disabled"))
+
+            self.thread_run = threading.Thread(target=run_legacy_bot, daemon=True)
+            self.thread_run.start()
+            self.logger.info(f"Bot started in {game_mode} mode!")
+
+        except ImportError as e:
+            self.logger.error(f"Failed to import legacy modules: {e}")
+            self.running = False
+            self.sidebar.start_button.configure(state="normal")
+            self.sidebar.stop_button.configure(state="disabled")
 
     def stop_bot(self) -> None:
         """Stop the running bot."""
@@ -119,17 +182,16 @@ class RushBotApp(ctk.CTk):
             return
 
         self.stop_flag = True
+
+        # Stop the legacy bot instance
+        if self.bot_instance is not None:
+            self.bot_instance.bot_stop = True
+
         self.logger.info("Stopping bot...")
 
-    def update_grid(
-        self,
-        grid_df,
-        combat: int,
-        step: int,
-        output: str
-    ) -> None:
+    def update_grid(self, grid_df, combat: int, step: int, output: str) -> None:
         """Update the visual grid on the dashboard."""
-        if hasattr(self.content, 'update_grid'):
+        if hasattr(self.content, "update_grid"):
             self.content.update_grid(grid_df, combat, step, output)
 
 

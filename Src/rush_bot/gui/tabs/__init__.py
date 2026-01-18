@@ -1,17 +1,17 @@
 """GUI Tab components for RushBot."""
 
-from .dashboard import DashboardTab
-from .config import ConfigTab
-from .training import TrainingTab
-from .combat import CombatTab
-from .log import LogTab
 from .about import AboutTab
+from .combat import CombatTab
+from .config import ConfigTab
+from .dashboard import DashboardTab
+from .log import LogTab
+from .training import TrainingTab
 
 __all__ = [
-    "DashboardTab",
-    "ConfigTab", 
-    "TrainingTab",
-    "CombatTab",
-    "LogTab",
     "AboutTab",
+    "CombatTab",
+    "ConfigTab",
+    "DashboardTab",
+    "LogTab",
+    "TrainingTab",
 ]

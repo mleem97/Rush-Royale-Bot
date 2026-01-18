@@ -6,7 +6,8 @@ import pathlib
 import shutil
 import time
 from pathlib import Path
-from subprocess import DEVNULL, check_output
+from subprocess import DEVNULL
+from subprocess import check_output
 
 import cv2
 import numpy as np
@@ -132,14 +133,9 @@ def bot_loop(bot, info_event):
     config = bot.config["bot"]
     unit_update = config.getboolean("unit_update", False)
     if unit_update:
-        bot.logger.warning(
-            "Unit Update enabled: starting missing-units capture mode."
-        )
+        bot.logger.warning("Unit Update enabled: starting missing-units capture mode.")
         bot.unit_update_capture_missing_units()
-        bot.logger.info(
-            'Unit Update mode finished. Disable "Unit Update" '
-            "to run the normal bot."
-        )
+        bot.logger.info('Unit Update mode finished. Disable "Unit Update" to run the normal bot.')
         return
 
     user_pve = config.getboolean("pve", True)
@@ -201,8 +197,8 @@ def bot_loop(bot, info_event):
                 continue
 
             # Combat Section
-            grid_df, bot.unit_series, bot.merge_series, bot.df_groups, bot.info = (
-                combat_loop(bot, grid_df, user_level, user_target)
+            grid_df, bot.unit_series, bot.merge_series, bot.df_groups, bot.info = combat_loop(
+                bot, grid_df, user_level, user_target
             )
 
             bot.grid_df = grid_df.copy() if grid_df is not None else None
@@ -227,15 +223,13 @@ def bot_loop(bot, info_event):
 
             # Debug: Show detected icons
             if hasattr(output[0], "values") and len(output[0]) > 0:
-                detected = (
-                    output[0]["icon"].unique() if "icon" in output[0].columns else []
-                )
+                detected = output[0]["icon"].unique() if "icon" in output[0].columns else []
                 bot.logger.debug(f"Detected icons: {list(detected)}")
             else:
                 bot.logger.debug("No icons detected on screen")
 
                 # Check screenshot validity
-                screenshot_path = f'bot_feed_{bot.device.split(":")[-1]}.png'
+                screenshot_path = f"bot_feed_{bot.device.split(':')[-1]}.png"
                 if os.path.exists(screenshot_path):
                     file_size = os.path.getsize(screenshot_path)
                     bot.logger.debug(f"Screenshot exists: {file_size} bytes")

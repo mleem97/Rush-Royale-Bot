@@ -6,17 +6,12 @@ Enhanced logging with modern Python features and type hints
 from __future__ import annotations
 
 import logging
-
-from tkinter import *
-
 import re
-
-from typing import Optional, Dict, Any, List, Union
+from tkinter import *
 
 
 # Logger classes
 class TextHandler(logging.StreamHandler):
-
     def __init__(self, textctrl):
         logging.StreamHandler.__init__(self)  # initialize parent
         self.textctrl = textctrl
@@ -46,12 +41,8 @@ class TextHandler(logging.StreamHandler):
         # regular expressionto find ansi codes in string
         self.ansi_regexp = re.compile(r"\x1b\[((\d+;)*\d+)m")
 
-        self.textctrl.tag_configure(
-            "foreground default", foreground=self.textctrl["fg"]
-        )
-        self.textctrl.tag_configure(
-            "background default", background=self.textctrl["bg"]
-        )
+        self.textctrl.tag_configure("foreground default", foreground=self.textctrl["fg"])
+        self.textctrl.tag_configure("background default", background=self.textctrl["bg"])
         for i, (col_dark, col_light) in enumerate(
             zip(self.ansi_colors_dark, self.ansi_colors_light)
         ):
@@ -60,23 +51,15 @@ class TextHandler(logging.StreamHandler):
             self.ansi_color_bg[40 + i] = "background " + col_dark
             self.ansi_color_bg[100 + i] = "background " + col_light
             # tag configuration
-            self.textctrl.tag_configure(
-                "foreground " + col_dark, foreground=col_dark
-            )
-            self.textctrl.tag_configure(
-                "background " + col_dark, background=col_dark
-            )
-            self.textctrl.tag_configure(
-                "foreground " + col_light, foreground=col_light
-            )
-            self.textctrl.tag_configure(
-                "background " + col_light, background=col_light
-            )
+            self.textctrl.tag_configure("foreground " + col_dark, foreground=col_dark)
+            self.textctrl.tag_configure("background " + col_dark, background=col_dark)
+            self.textctrl.tag_configure("foreground " + col_light, foreground=col_light)
+            self.textctrl.tag_configure("background " + col_light, background=col_light)
 
     def emit(self, record):
         msg = self.format(record)
         self.textctrl.config(state="normal")
-        self.insert_ansi(msg, "" "end")
+        self.insert_ansi(msg, "end")
         # self.textctrl.insert("end", "\n")
         self.flush()
         # scroll to the bottom
@@ -122,18 +105,14 @@ class TextHandler(logging.StreamHandler):
                 opened_tags[self.ansi_color_bg[code]] = code_index
 
         def find_ansi(line_txt, line_nb, char_offset):
-            delta = (
-                -char_offset
-            )  # difference between the character position in the original line and in the text widget
+            delta = -char_offset  # difference between the character position in the original line and in the text widget
             # (initial offset due to insertion position if first line + extra offset due to deletion of ansi codes)
             for match in self.ansi_regexp.finditer(line_txt):
                 codes = [int(c) for c in match.groups()[0].split(";")]
                 start, end = match.span()
                 for code in codes:
-                    apply_formatting(code, "{}.{}".format(line_nb, start - delta))
-                delta += (
-                    end - start
-                )  # take into account offste due to deletion of ansi code
+                    apply_formatting(code, f"{line_nb}.{start - delta}")
+                delta += end - start  # take into account offste due to deletion of ansi code
 
         find_ansi(
             lines[0], first_line, first_char
@@ -146,7 +125,6 @@ class TextHandler(logging.StreamHandler):
 
 
 class CustomFormatter(logging.Formatter):
-
     grey = "\x1b[38;20m"
     blue = "\x1b[36;20m"
     yellow = "\x1b[33;20m"

@@ -2,6 +2,7 @@
 RushBot GUI Theme - Colors and styling configuration.
 WCAG-compliant color palette with Dark/Light mode support.
 """
+
 from __future__ import annotations
 
 import customtkinter as ctk
@@ -20,17 +21,14 @@ COLORS: dict[str, tuple[str, str]] = {
     "sidebar_bg": ("#e8e8e8", "#1e1e2e"),
     "content_bg": ("#f5f5f5", "#16213e"),
     "card_bg": ("#ffffff", "#2d3250"),
-    
     # Semantic colors
     "accent": ("#3b82f6", "#60a5fa"),
     "success": ("#16a34a", "#4ade80"),
     "warning": ("#d97706", "#fbbf24"),
     "danger": ("#dc2626", "#f87171"),
-    
     # Text colors
     "text_primary": ("#1f2937", "#f1f5f9"),
     "text_secondary": ("#6b7280", "#94a3b8"),
-    
     # Unit colors for grid visualization
     "unit_empty": ("#d1d5db", "#374151"),
     "unit_demon_hunter": ("#7c3aed", "#a78bfa"),

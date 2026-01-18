@@ -2,11 +2,11 @@
 RushBot Core - Bot Logic
 Main bot class handling game automation.
 """
+
 from __future__ import annotations
 
-import time
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+from typing import Any
 
 import pandas as pd
 
@@ -19,16 +19,17 @@ class Bot:
 
     def __init__(self, gui: RushBotApp | None = None) -> None:
         """Initialize the bot.
-        
+
         Args:
             gui: Optional GUI instance for visual feedback.
         """
         self.gui = gui
         self.running = False
         self.grid_df: pd.DataFrame | None = None
-        
+
         # Import device manager
         from rush_bot.core.device import DeviceManager
+
         self.device = DeviceManager()
 
     def start(self) -> None:
@@ -42,21 +43,16 @@ class Bot:
 
     def tap(self, x: int, y: int) -> None:
         """Tap at screen coordinates.
-        
+
         Args:
             x: X coordinate.
             y: Y coordinate.
         """
         self.device.tap(x, y)
 
-    def swipe(
-        self,
-        start: tuple[int, int],
-        end: tuple[int, int],
-        duration_ms: int = 300
-    ) -> None:
+    def swipe(self, start: tuple[int, int], end: tuple[int, int], duration_ms: int = 300) -> None:
         """Swipe from start to end coordinates.
-        
+
         Args:
             start: Start (x, y) coordinates.
             end: End (x, y) coordinates.
@@ -66,7 +62,7 @@ class Bot:
 
     def screenshot(self) -> Any:
         """Capture current screen.
-        
+
         Returns:
             Screenshot as numpy array or PIL Image.
         """

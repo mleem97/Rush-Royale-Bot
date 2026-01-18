@@ -3,10 +3,11 @@ from __future__ import annotations
 import os
 import socket
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from subprocess import DEVNULL, Popen, check_output
-from typing import Optional
-
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import as_completed
+from subprocess import DEVNULL
+from subprocess import Popen
+from subprocess import check_output
 
 # Cross-Platform ADB path: Windows uses vendored binary, Unix uses system adb
 ADB_PATH = ".scrcpy\\adb" if os.name == "nt" else "adb"
@@ -35,7 +36,7 @@ def _adb_devices() -> list[str]:
     return devices
 
 
-def get_adb_device() -> Optional[str]:
+def get_adb_device() -> str | None:
     devices = _adb_devices()
     return devices[0] if devices else None
 
@@ -64,7 +65,7 @@ def scan_ports(
     port_start: int,
     port_end: int,
     batch: int = 3,
-) -> Optional[str]:
+) -> str | None:
     if batch <= 0:
         raise ValueError("batch must be > 0")
 
@@ -84,7 +85,41 @@ def scan_ports(
     return get_adb_device()
 
 
-def get_device() -> Optional[str]:
+def get_device(force_scan: bool = False) -> str | None:
+    """Get connected ADB device.
+
+    Args:
+        force_scan: If True, will scan ports even if already connected.
+                    If False, uses existing connection first.
+    """
+    # First: Try to get already connected device via adbutils (fast path)
+    try:
+        from adbutils import adb
+
+        devices = adb.device_list()
+        if devices:
+            serial = devices[0].serial
+            print(f"[INFO] Found connected device via adbutils: {serial}")
+            return serial
+    except Exception:
+        pass
+
+    # Second: Check existing ADB connections without killing server
+    device = get_adb_device()
+    if device and not force_scan:
+        print(f"[INFO] Found existing ADB device: {device}")
+        return device
+
+    # Third: Try common local emulator ports (fast path, no server kill)
+    for p in (5555, 5554, 5565, 62001, 21503, 5556, 5557):
+        _try_adb_connect("127.0.0.1", p)
+        device = get_adb_device()
+        if device:
+            print(f"[INFO] Connected to device on port {p}: {device}")
+            return device
+
+    # Fourth: Only if nothing else works, restart server and scan
+    print("[INFO] No device found, restarting ADB server...")
     Popen([ADB_PATH, "kill-server"], stdout=DEVNULL, stderr=DEVNULL).wait()
     Popen([ADB_PATH, "devices"], stdout=DEVNULL, stderr=DEVNULL).wait()
 
@@ -92,12 +127,5 @@ def get_device() -> Optional[str]:
     if device:
         return device
 
-    # Try common local emulator ports first (fast path)
-    for p in (5555, 5554, 5565, 62001):
-        _try_adb_connect("127.0.0.1", p)
-        device = get_adb_device()
-        if device:
-            return device
-
-    # Fallback: bounded scan (still slower)
+    # Fallback: bounded scan (slower)
     return scan_ports("127.0.0.1", 48000, 65000, batch=10)

@@ -2,13 +2,12 @@
 RushBot GUI - Log Tab
 Real-time log display with filtering.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
 import customtkinter as ctk
-
-from rush_bot.gui.theme import COLORS
 
 if TYPE_CHECKING:
     from rush_bot.gui.content import ContentFrame
@@ -20,7 +19,7 @@ class LogTab(ctk.CTkFrame):
     def __init__(self, parent: ctk.CTkFrame, master_content: ContentFrame, **kwargs) -> None:
         super().__init__(parent, fg_color="transparent", **kwargs)
         self.master_content = master_content
-        
+
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 

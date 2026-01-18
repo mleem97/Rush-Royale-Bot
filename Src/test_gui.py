@@ -1,7 +1,12 @@
 import configparser
 import tkinter as tk
+
 import pytest
-from gui import create_options, create_combat_info, write_to_widget
+
+from gui import create_combat_info
+from gui import create_options
+from gui import write_to_widget
+
 
 def _make_root():
     try:

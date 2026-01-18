@@ -511,12 +511,21 @@ class Bot:
             names.append(file_name)
         return names
 
-    def merge_unit(self, df_split, merge_series):
-        """Pick a random unit and merge two of them."""
-        if len(merge_series) > 0:
-            merge_target = merge_series.sample().index[0]
-        else:
+    def merge_unit(self, df_split, merge_series, validate: bool = True):
+        """Pick a random unit and merge two of them.
+
+        Args:
+            df_split: Grouped DataFrame by (unit, rank).
+            merge_series: Series of unit counts indexed by (unit, rank).
+            validate: If True, validate that units have same type and rank.
+
+        Returns:
+            DataFrame of merged units, or None if merge failed.
+        """
+        if len(merge_series) <= 0:
             return merge_series
+
+        merge_target = merge_series.sample().index[0]
 
         # Access group safely
         try:
@@ -524,10 +533,26 @@ class Bot:
         except KeyError:
             return None
 
-        if len(merge_df) > 1:
-            merge_df = merge_df.sample(n=2)
-        else:
+        if len(merge_df) < 2:
             return merge_df
+
+        # Sample two units for merging
+        merge_df = merge_df.sample(n=2)
+
+        # Validate that both units have same type and rank
+        if validate:
+            units = merge_df["unit"].tolist()
+            ranks = merge_df["rank"].tolist()
+            if units[0] != units[1]:
+                self.logger.warning(
+                    f"Merge validation failed: different types {units[0]} vs {units[1]}"
+                )
+                return None
+            if ranks[0] != ranks[1]:
+                self.logger.warning(
+                    f"Merge validation failed: different ranks {ranks[0]} vs {ranks[1]}"
+                )
+                return None
 
         self.log_merge(merge_df)
         unit_chosen = merge_df["grid_pos"].tolist()
@@ -536,7 +561,18 @@ class Bot:
         return merge_df
 
     def merge_special_unit(self, df_split, merge_series, special_type):
-        """Merge special units like harlequin, dryad, mime, scrapper"""
+        """Merge special units like harlequin, dryad, mime, scrapper.
+
+        Special units can merge with different unit types at the same rank.
+
+        Args:
+            df_split: Grouped DataFrame by (unit, rank).
+            merge_series: Series of unit counts indexed by (unit, rank).
+            special_type: The special unit type (e.g., "harlequin.png").
+
+        Returns:
+            DataFrame of merged units, or None if merge failed.
+        """
         special_unit = adv_filter_keys(merge_series, units=special_type, remove=False)
         normal_unit = adv_filter_keys(merge_series, units=special_type, remove=True)
 
@@ -613,17 +649,75 @@ class Bot:
                     break
         return merge_df
 
-    def try_merge(self, rank: int = 1, prev_grid=None, merge_target: str = "zealot.png"):
-        """Try to find a merge target and merge it"""
+    def _get_protected_units(self) -> list[str]:
+        """Get list of units to protect from merging based on config.
 
+        Returns:
+            List of unit filenames that should be protected.
+        """
+        protected: list[str] = []
+
+        if self.config and self.config.has_section("bot"):
+            # DPS unit is always protected
+            dps_unit = self.config.get("bot", "dps_unit", fallback="")
+            if dps_unit:
+                # Normalize to filename format
+                if not dps_unit.endswith(".png"):
+                    dps_unit = f"{dps_unit}.png"
+                protected.append(dps_unit)
+
+        return protected
+
+    def _apply_dps_protection(
+        self, merge_series: pd.Series, protected_units: list[str]
+    ) -> pd.Series:
+        """Remove protected DPS units from merge candidates.
+
+        Args:
+            merge_series: Series of unit counts indexed by (unit, rank).
+            protected_units: List of unit filenames to protect.
+
+        Returns:
+            Filtered merge series with protected units removed.
+        """
+        if not protected_units:
+            return merge_series
+
+        result = merge_series.copy()
+        for protected_unit in protected_units:
+            # Only protect if we have few of this unit
+            unit_count = sum(adv_filter_keys(result, units=protected_unit))
+            if unit_count <= 3:
+                # Protect by removing from candidates
+                result = adv_filter_keys(result, units=protected_unit, remove=True)
+                self.logger.debug(
+                    f"Protecting {protected_unit} (count: {unit_count})"
+                )
+
+        return result
+
+    def try_merge(self, rank: int = 1, prev_grid=None, merge_target: str = "zealot.png"):
+        """Try to find a merge target and merge it.
+
+        Args:
+            rank: Minimum rank to consider for merging.
+            prev_grid: Previous grid state for tracking unit age.
+            merge_target: DPS unit to prioritize for special merges.
+
+        Returns:
+            Tuple of (grid_df, unit_series, merge_series, df_groups, info).
+        """
         info = ""
         names = self.scan_grid(new=False)
         grid_df = bot_perception.grid_status(names, prev_grid=prev_grid)
-        df_split, unit_series, df_groups, group_keys = grid_meta_info(grid_df)
+        df_split, unit_series, df_groups, _group_keys = grid_meta_info(grid_df)
 
         merge_series = unit_series.copy()
         merge_series = adv_filter_keys(merge_series, units="empty.png", remove=True)
         self.special_merge(df_split, merge_series, merge_target)
+
+        # Get protected units from config
+        protected_units = self._get_protected_units()
 
         if merge_target == "demon_hunter.png":
             self.harley_merge(df_split, merge_series, target=merge_target)
@@ -639,6 +733,9 @@ class Bot:
                     merge_series = adv_filter_keys(
                         merge_series, units="demon_hunter.png", remove=True
                     )
+
+        # Apply DPS protection
+        merge_series = self._apply_dps_protection(merge_series, protected_units)
 
         merge_series = preserve_unit(merge_series, target="chemist.png")
         for _ in range(4):
@@ -666,14 +763,14 @@ class Bot:
         )
         if not merge_prio.empty:
             info = "Merging High Priority!"
-            self.merge_unit(df_split, merge_prio)
+            self.merge_unit(df_split, merge_prio, validate=True)
 
         # General Merge Logic
         if df_groups.get("empty.png", 0) <= 2:
             info = "Merging!"
             low_series = adv_filter_keys(merge_series, ranks=rank, remove=False)
             if not low_series.empty:
-                self.merge_unit(df_split, low_series)
+                self.merge_unit(df_split, low_series, validate=True)
             else:
                 info = "Merging high level!"
                 merge_series = adv_filter_keys(
@@ -683,7 +780,7 @@ class Bot:
                     remove=True,
                 )
                 if not merge_series.empty:
-                    self.merge_unit(df_split, merge_series)
+                    self.merge_unit(df_split, merge_series, validate=True)
         else:
             info = "need more units!"
 
@@ -902,7 +999,7 @@ class Bot:
         self.click_button(pos_arr - [300, 820])
         self.click(400, 1165)
         self.click(30, 150)
-        self.click_button(pos_arr + [400, -400])
+        self.click_button([*pos_arr, 400, -400])
         self.click(400, 1165)
         self.click(30, 150)
         self.logger.warning("Bought store units!")

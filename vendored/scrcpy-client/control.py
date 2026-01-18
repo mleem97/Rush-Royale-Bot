@@ -1,13 +1,9 @@
 import functools
-
 import socket
-
 import struct
-
 from time import sleep
 
 import scrcpy
-
 from scrcpy import const
 
 
@@ -38,9 +34,7 @@ class ControlSender:
         self.parent = parent
 
     @inject(const.TYPE_INJECT_KEYCODE)
-    def keycode(
-        self, keycode: int, action: int = const.ACTION_DOWN, repeat: int = 0
-    ) -> bytes:
+    def keycode(self, keycode: int, action: int = const.ACTION_DOWN, repeat: int = 0) -> bytes:
         """
         Send keycode to device
 

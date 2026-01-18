@@ -9,10 +9,10 @@
 | Kategorie | Gesamt | Offen | In Arbeit | Erledigt |
 |-----------|--------|-------|-----------|----------|
 | Kritische Bugs | 3 | 0 | 0 | 3 |
-| Kern-Funktionalität | 3 | 3 | 0 | 0 |
+| Kern-Funktionalität | 3 | 1 | 0 | 2 |
 | Gameplay-Features | 3 | 3 | 0 | 0 |
 | Qualität & Tooling | 3 | 2 | 0 | 1 |
-| **Gesamt** | **12** | **8** | **0** | **4** |
+| **Gesamt** | **12** | **6** | **0** | **6** |
 
 ---
 
@@ -30,8 +30,8 @@
 
 | ID | Task | Status | Bearbeiter | Datum |
 |----|------|--------|------------|-------|
-| T004 | Modulare Package-Struktur | ⏳ Offen | - | - |
-| T005 | Device-Manager implementieren | ⏳ Offen | - | - |
+| T004 | Modulare Package-Struktur | ✅ Erledigt | Orchestrator | 2026-01-18 |
+| T005 | Device-Manager implementieren | ✅ Erledigt | Orchestrator | 2026-01-18 |
 | T006 | Screenshot-Pipeline optimieren | ⏳ Offen | - | - |
 
 ---
@@ -58,6 +58,28 @@
 ---
 
 ## 📝 Änderungsprotokoll
+
+### [2026-01-18] T005: Device-Manager erweitert
+- **Problem:** Device-Manager hatte keine Auto-Reconnect-Funktion, kein State-Tracking
+- **Lösung:** Komplette Überarbeitung des `DeviceManager` mit Auto-Reconnect und Error-Handling
+- **Änderungen:**
+  - `src/rush_bot/core/device.py`: Erweitert mit 400+ Zeilen Code
+  - `src/rush_bot/core/__init__.py`: Neue Exports (`DeviceConfig`, `DeviceState`, `DeviceInfo`, etc.)
+  - `tests/test_core.py`: 23 neue Unit-Tests für Device-Manager
+- **Features:**
+  - **DeviceState Enum:** DISCONNECTED, CONNECTING, CONNECTED, RECONNECTING, ERROR
+  - **DeviceConfig:** Konfigurierbare Parameter (auto_reconnect, max_attempts, timeouts)
+  - **DeviceInfo:** Detaillierte Geräteinformationen (Modell, Android-Version, Auflösung)
+  - **Auto-Reconnect:** Automatischer Wiederverbindungsversuch bei Verbindungsverlust
+  - **State-Callback:** Benachrichtigung bei Zustandsänderungen
+  - **Screenshot-Retry:** Automatischer Retry bei Screenshot-Fehlern
+  - **Thread-Safe:** Lock für thread-sichere Operationen
+- **Neue Methoden:**
+  - `shell()`: Shell-Befehle ausführen
+  - `input_text()`: Text eingeben
+  - `press_key()`, `press_back()`, `press_home()`: Tasten drücken
+  - `get_all_device_info()`: Info aller verbundenen Geräte
+- **Tests:** 96 Tests bestehen (23 neue Device-Manager-Tests)
 
 ### [2026-01-18] T003: Merge-Logik stabilisiert
 - **Problem:** Merge-Validierung fehlte, DPS-Schutz war inkonsistent, keine Typen-Prüfung

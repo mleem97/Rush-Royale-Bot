@@ -2,6 +2,7 @@
 RushBot Core - Custom Logger
 Colored logging with GUI integration.
 """
+
 from __future__ import annotations
 
 import logging
@@ -17,37 +18,35 @@ class BotLogger:
 
     def __init__(self, log_widget: ctk.CTkTextbox | None = None) -> None:
         """Initialize logger.
-        
+
         Args:
             log_widget: Optional CTkTextbox for GUI output.
         """
         self.log_widget = log_widget
-        
+
         # Setup Python logger
         self.logger = logging.getLogger("RushBot")
         self.logger.setLevel(logging.DEBUG)
-        
+
         # Console handler
         if not self.logger.handlers:
             handler = logging.StreamHandler()
-            handler.setFormatter(
-                logging.Formatter("[%(levelname)s] %(message)s")
-            )
+            handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
             self.logger.addHandler(handler)
 
     def _log(self, level: str, message: str) -> None:
         """Internal log method.
-        
+
         Args:
             level: Log level name.
             message: Log message.
         """
         timestamp = datetime.now().strftime("%H:%M:%S")
         formatted = f"[{timestamp}] [{level}] {message}"
-        
+
         # Console output
         getattr(self.logger, level.lower(), self.logger.info)(message)
-        
+
         # GUI output
         if self.log_widget:
             try:

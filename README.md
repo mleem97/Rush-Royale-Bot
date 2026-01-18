@@ -281,6 +281,4 @@ The following units are **not fully supported** by the bot and may cause unexpec
 ## 🙏 Acknowledgments
 
 - **AxelBjork** for the original Rush Royale bot implementation
-- **mleem97** for improving and fixing the original codebase  
-- **Frikadellental** for the AI-focused redesign
 - **leng-yue** for the [py-scrcpy-client](https://github.com/leng-yue/py-scrcpy-client) library

@@ -2,6 +2,7 @@
 RushBot GUI - Config Tab
 Unit selection and bot configuration.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -22,7 +23,7 @@ class ConfigTab(ctk.CTkFrame):
     def __init__(self, parent: ctk.CTkFrame, master_content: ContentFrame, **kwargs) -> None:
         super().__init__(parent, fg_color="transparent", **kwargs)
         self.master_content = master_content
-        
+
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
@@ -49,10 +50,13 @@ class ConfigTab(ctk.CTkFrame):
 
         # Load current selection from config
         config = self.master_content.master.config
-        current_units = config.get(
-            "bot", "units",
-            fallback="demon_hunter,dryad,harlequin,chemist,knight_statue"
-        ).replace(" ", "").split(",")
+        current_units = (
+            config.get(
+                "bot", "units", fallback="demon_hunter,dryad,harlequin,chemist,knight_statue"
+            )
+            .replace(" ", "")
+            .split(",")
+        )
 
         # Extend to 5 slots
         while len(current_units) < 5:
@@ -61,8 +65,7 @@ class ConfigTab(ctk.CTkFrame):
         # Create 5 unit dropdowns
         self.unit_vars: list[ctk.StringVar] = []
         unit_labels = [
-            f"Slot {i+1}: {u.replace('_', ' ').title()}"
-            for i, u in enumerate(current_units[:5])
+            f"Slot {i + 1}: {u.replace('_', ' ').title()}" for i, u in enumerate(current_units[:5])
         ]
 
         for i in range(5):
@@ -110,31 +113,29 @@ class ConfigTab(ctk.CTkFrame):
         if not units_dir.exists():
             # Fallback to old location
             units_dir = Path("all_units")
-        
+
         if units_dir.exists():
-            units = [
-                f.stem for f in units_dir.glob("*.png")
-                if not f.stem.startswith(".")
-            ]
+            units = [f.stem for f in units_dir.glob("*.png") if not f.stem.startswith(".")]
             return sorted(units)
         return ["demon_hunter", "dryad", "harlequin", "chemist", "knight_statue"]
 
     def _save_config(self) -> None:
         """Save unit configuration to config.ini."""
         config = self.master_content.master.config
-        
+
         # Get selected units
         units = [var.get() for var in self.unit_vars]
         units_str = ", ".join(units)
-        
+
         if "bot" not in config:
             config.add_section("bot")
         config.set("bot", "units", units_str)
-        
+
         # Write to file
         from rush_bot import PROJECT_ROOT
+
         with open(PROJECT_ROOT / "config.ini", "w") as f:
             config.write(f)
-        
+
         # Show success message
         self.master_content.master.logger.info(f"Configuration saved: {units_str}")

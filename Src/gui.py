@@ -8,14 +8,12 @@ Features:
 - ML training interface
 - WCAG-compliant accessibility
 """
+
 from __future__ import annotations
 
 import configparser
-import logging
-import os
 import threading
 from pathlib import Path
-from typing import Any
 
 import customtkinter as ctk
 import numpy as np
@@ -165,7 +163,7 @@ class RushBotApp(ctk.CTk):
     def _update_units(self):
         """Load and validate unit selection from config."""
         self.selected_units = self.config["bot"]["units"].replace(" ", "").split(",")
-        self.logger.info(f'Selected units: {", ".join(self.selected_units)}')
+        self.logger.info(f"Selected units: {', '.join(self.selected_units)}")
 
         if not bot_handler.select_units([unit + ".png" for unit in self.selected_units]):
             all_units_dir = Path("cv-images/all_units")
@@ -230,7 +228,10 @@ class RushBotApp(ctk.CTk):
                 self.logger.warning("Exiting main loop...")
                 thread_bot.join(timeout=10)
 
-                if hasattr(self.bot_instance, "scrcpy_process") and self.bot_instance.scrcpy_process:
+                if (
+                    hasattr(self.bot_instance, "scrcpy_process")
+                    and self.bot_instance.scrcpy_process
+                ):
                     self.bot_instance.stop_scrcpy()
 
                 self.logger.info("Bot stopped!")
@@ -683,10 +684,20 @@ class ContentFrame(ctk.CTkFrame):
 
         # Get units from config (same as sidebar)
         config = self.master.config
-        config_units = config.get("bot", "units", fallback="demon_hunter,dryad,harlequin,chemist,knight_statue").replace(" ", "").split(",")
+        config_units = (
+            config.get(
+                "bot", "units", fallback="demon_hunter,dryad,harlequin,chemist,knight_statue"
+            )
+            .replace(" ", "")
+            .split(",")
+        )
         # Ensure we have 5 units for legend
-        legend_units = config_units[:5] if len(config_units) >= 5 else config_units + ["empty"] * (5 - len(config_units))
-        
+        legend_units = (
+            config_units[:5]
+            if len(config_units) >= 5
+            else config_units + ["empty"] * (5 - len(config_units))
+        )
+
         for i, unit in enumerate(legend_units):
             color = UNIT_COLORS.get(unit, COLORS["unit_default"])
             lbl = ctk.CTkLabel(
@@ -738,7 +749,13 @@ class ContentFrame(ctk.CTkFrame):
 
         # Load current selection from config
         config = self.master.config
-        current_units = config.get("bot", "units", fallback="demon_hunter,dryad,harlequin,chemist,knight_statue").replace(" ", "").split(",")
+        current_units = (
+            config.get(
+                "bot", "units", fallback="demon_hunter,dryad,harlequin,chemist,knight_statue"
+            )
+            .replace(" ", "")
+            .split(",")
+        )
 
         # Extend to 5 slots
         while len(current_units) < 5:
@@ -747,7 +764,9 @@ class ContentFrame(ctk.CTkFrame):
         # Create 5 unit dropdowns
         self.unit_vars = []
         # Show actual unit names from config instead of generic slot names
-        unit_labels = [f"Slot {i+1}: {u.replace('_', ' ').title()}" for i, u in enumerate(current_units[:5])]
+        unit_labels = [
+            f"Slot {i + 1}: {u.replace('_', ' ').title()}" for i, u in enumerate(current_units[:5])
+        ]
 
         for i in range(5):
             row_frame = ctk.CTkFrame(units_frame, fg_color="transparent")
@@ -1073,7 +1092,9 @@ class ContentFrame(ctk.CTkFrame):
         self._display_preview(self._current_unlabeled_file)
 
         remaining = len(self._unlabeled_files)
-        self.progress_label.configure(text=f"Loaded: {self._current_unlabeled_file.name} ({remaining} remaining)")
+        self.progress_label.configure(
+            text=f"Loaded: {self._current_unlabeled_file.name} ({remaining} remaining)"
+        )
 
     def _display_preview(self, image_path: Path):
         """Display image preview using CTkImage."""
@@ -1112,6 +1133,7 @@ class ContentFrame(ctk.CTkFrame):
 
         try:
             import shutil
+
             shutil.move(str(self._current_unlabeled_file), str(target_path))
             self.progress_label.configure(text=f"Saved as: {target_path.name}")
 
@@ -1147,6 +1169,7 @@ class ContentFrame(ctk.CTkFrame):
         """Open missing_units folder in file explorer (cross-platform)."""
         import subprocess
         import sys
+
         missing_dir = Path("cv-images/all_units/missing_units").resolve()
         missing_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1164,6 +1187,7 @@ class ContentFrame(ctk.CTkFrame):
         if model_path.exists():
             try:
                 import pickle
+
                 with open(model_path, "rb") as f:
                     model = pickle.load(f)
                 classes = getattr(model, "classes_", [])
@@ -1189,7 +1213,9 @@ class ContentFrame(ctk.CTkFrame):
             # Count files matching pattern
             flat_count = len(list(ml_dir.glob("*_input_*.png")))
             # Count files in subdirectories
-            sub_count = sum(len(list(sub.glob("*.png"))) for sub in ml_dir.iterdir() if sub.is_dir())
+            sub_count = sum(
+                len(list(sub.glob("*.png"))) for sub in ml_dir.iterdir() if sub.is_dir()
+            )
             total = flat_count + sub_count
             self.dataset_info_label.configure(text=f"Dataset samples: {total}")
         else:
@@ -1205,14 +1231,18 @@ class ContentFrame(ctk.CTkFrame):
                 self.training_progress.set(0.2)
 
                 import bot_perception
+
                 bot_perception.ensure_training_dirs()
 
                 # Check if OCR_inputs has data
                 ocr_dir = Path("OCR_inputs")
                 if not ocr_dir.exists() or not list(ocr_dir.glob("*.png")):
-                    self.master.after(0, lambda: self.progress_label.configure(
-                        text="No OCR_inputs found. Start bot first to capture grid."
-                    ))
+                    self.master.after(
+                        0,
+                        lambda: self.progress_label.configure(
+                            text="No OCR_inputs found. Start bot first to capture grid."
+                        ),
+                    )
                     return
 
                 self.training_progress.set(0.5)
@@ -1221,15 +1251,15 @@ class ContentFrame(ctk.CTkFrame):
                 bot_perception.add_grid_to_dataset()
 
                 self.training_progress.set(1.0)
-                self.master.after(0, lambda: self.progress_label.configure(
-                    text="✅ Grid added to dataset!"
-                ))
+                self.master.after(
+                    0, lambda: self.progress_label.configure(text="✅ Grid added to dataset!")
+                )
                 self.master.after(0, self._update_dataset_info)
 
             except Exception as e:
-                self.master.after(0, lambda: self.progress_label.configure(
-                    text=f"Error: {e}"
-                ))
+                self.master.after(
+                    0, lambda err=e: self.progress_label.configure(text=f"Error: {err}")
+                )
             finally:
                 self.master.after(500, lambda: self.training_progress.set(0))
 
@@ -1246,13 +1276,14 @@ class ContentFrame(ctk.CTkFrame):
                 self.training_progress.set(0.1)
 
                 import bot_perception
+
                 bot_perception.ensure_training_dirs()
 
                 ml_dir = Path("machine_learning/inputs")
                 if not ml_dir.exists():
-                    self.master.after(0, lambda: self.progress_label.configure(
-                        text="Dataset folder not found!"
-                    ))
+                    self.master.after(
+                        0, lambda: self.progress_label.configure(text="Dataset folder not found!")
+                    )
                     return
 
                 self.training_progress.set(0.3)
@@ -1263,20 +1294,23 @@ class ContentFrame(ctk.CTkFrame):
                 self.training_progress.set(0.7)
 
                 # Save model
-                saved_path = bot_perception.save_rank_model(model)
+                bot_perception.save_rank_model(model)
 
                 self.training_progress.set(1.0)
 
                 classes = list(model.classes_)
-                self.master.after(0, lambda: self.progress_label.configure(
-                    text=f"✅ Model trained! Classes: {classes}"
-                ))
+                self.master.after(
+                    0,
+                    lambda: self.progress_label.configure(
+                        text=f"✅ Model trained! Classes: {classes}"
+                    ),
+                )
                 self.master.after(0, self._check_model_status)
 
             except Exception as e:
-                self.master.after(0, lambda: self.progress_label.configure(
-                    text=f"Training error: {e}"
-                ))
+                self.master.after(
+                    0, lambda err=e: self.progress_label.configure(text=f"Training error: {err}")
+                )
             finally:
                 self.master.after(500, lambda: self.training_progress.set(0))
 
@@ -1287,6 +1321,7 @@ class ContentFrame(ctk.CTkFrame):
         """Open machine_learning/inputs folder in file explorer."""
         import subprocess
         import sys
+
         ml_dir = Path("machine_learning/inputs").resolve()
         ml_dir.mkdir(parents=True, exist_ok=True)
 

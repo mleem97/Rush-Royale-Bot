@@ -3,27 +3,30 @@ import socket
 import struct
 import threading
 import time
+from collections.abc import Callable
 from time import sleep
-from typing import Any, Callable, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
-from adbutils import AdbConnection, AdbDevice, AdbError, Network, adb
+from adbutils import AdbConnection
+from adbutils import AdbDevice
+from adbutils import AdbError
+from adbutils import Network
+from adbutils import adb
 from av.codec import CodecContext
 from av.error import InvalidDataError
 
-from .const import (
-    EVENT_DISCONNECT,
-    EVENT_FRAME,
-    EVENT_INIT,
-    LOCK_SCREEN_ORIENTATION_UNLOCKED,
-)
+from .const import EVENT_DISCONNECT
+from .const import EVENT_FRAME
+from .const import EVENT_INIT
+from .const import LOCK_SCREEN_ORIENTATION_UNLOCKED
 from .control import ControlSender
 
 
 class Client:
     def __init__(
         self,
-        device: Optional[Union[AdbDevice, str, any]] = None,
+        device: AdbDevice | str | any | None = None,
         max_width: int = 0,
         bitrate: int = 8000000,
         max_fps: int = 0,
@@ -32,8 +35,8 @@ class Client:
         stay_awake: bool = False,
         lock_screen_orientation: int = LOCK_SCREEN_ORIENTATION_UNLOCKED,
         connection_timeout: int = 3000,
-        encoder_name: Optional[str] = None,
-        codec_name: Optional[str] = None,
+        encoder_name: str | None = None,
+        codec_name: str | None = None,
     ):
         """
         Create a scrcpy client, this client won't be started until you call the start function
@@ -55,12 +58,10 @@ class Client:
         assert max_width >= 0, "max_width must be greater than or equal to 0"
         assert bitrate >= 0, "bitrate must be greater than or equal to 0"
         assert max_fps >= 0, "max_fps must be greater than or equal to 0"
-        assert (
-            -1 <= lock_screen_orientation <= 3
-        ), "lock_screen_orientation must be LOCK_SCREEN_ORIENTATION_*"
-        assert (
-            connection_timeout >= 0
-        ), "connection_timeout must be greater than or equal to 0"
+        assert -1 <= lock_screen_orientation <= 3, (
+            "lock_screen_orientation must be LOCK_SCREEN_ORIENTATION_*"
+        )
+        assert connection_timeout >= 0, "connection_timeout must be greater than or equal to 0"
         assert encoder_name in [
             None,
             "OMX.google.h264.encoder",
@@ -92,16 +93,16 @@ class Client:
         self.listeners = dict(frame=[], init=[], disconnect=[])
 
         # User accessible
-        self.last_frame: Optional[np.ndarray] = None
-        self.resolution: Optional[Tuple[int, int]] = None
-        self.device_name: Optional[str] = None
+        self.last_frame: np.ndarray | None = None
+        self.resolution: tuple[int, int] | None = None
+        self.device_name: str | None = None
         self.control = ControlSender(self)
 
         # Need to destroy
         self.alive = False
-        self.__server_stream: Optional[AdbConnection] = None
-        self.__video_socket: Optional[socket.socket] = None
-        self.control_socket: Optional[socket.socket] = None
+        self.__server_stream: AdbConnection | None = None
+        self.__video_socket: socket.socket | None = None
+        self.control_socket: socket.socket | None = None
         self.control_socket_lock = threading.Lock()
 
         # Available if start with threaded or daemon_threaded
@@ -128,9 +129,7 @@ class Client:
         if not len(dummy_byte) or dummy_byte != b"\x00":
             raise ConnectionError("Did not receive Dummy Byte!")
 
-        self.control_socket = self.device.create_connection(
-            Network.LOCAL_ABSTRACT, "scrcpy"
-        )
+        self.control_socket = self.device.create_connection(Network.LOCAL_ABSTRACT, "scrcpy")
         self.device_name = self.__video_socket.recv(64).decode("utf-8").rstrip("\x00")
         if not len(self.device_name):
             raise ConnectionError("Did not receive Device Name!")
@@ -144,9 +143,7 @@ class Client:
         Deploy server to android device
         """
         jar_name = "scrcpy-server.jar"
-        server_file_path = os.path.join(
-            os.path.abspath(os.path.dirname(__file__)), jar_name
-        )
+        server_file_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), jar_name)
         self.device.sync.push(server_file_path, f"/data/local/tmp/{jar_name}")
         commands = [
             f"CLASSPATH=/data/local/tmp/{jar_name}",
