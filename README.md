@@ -3,6 +3,11 @@
 | ![RushBot Logo](https://github.com/user-attachments/assets/621d866c-864e-42bb-a28a-c8dca66425a0) | RushBot is an advanced Python-based automation bot for Rush Royale that combines computer vision, machine learning, and Android device control. Using OpenCV for real-time game state recognition and scikit-learn for strategic decision-making, the bot can autonomously play Rush Royale on Android devices or emulators. Built with a robust architecture featuring ADB integration for device communication, advanced screenshot processing, and a vendored scrcpy client for efficient screen capture. |
 | --- | --- |
 
+
+## [WARNING] THE BOT IS CURRENTLY IN NON WORKING STATE DUE TO COMPREHENSIVE RESTRUCTURING!
+
+## [NOTICE] I DO NOT OFFER SUPPORT OUTSIDE OF GITHUB! ALL ISSUES WILL BE DONE IN TIMELY MANNER.
+ 
 ## 🔗 Project History & Related Work
 
 This project builds upon the foundation of several Rush Royale bot implementations:
