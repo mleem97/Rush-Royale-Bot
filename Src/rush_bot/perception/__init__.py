@@ -1,5 +1,8 @@
 """Computer Vision and Machine Learning module."""
 
+from .icon_detection import ICON_ROI_MAP
+from .icon_detection import ContextAwareIconDetector
+from .icon_detection import IconROI
 from .screen_state import ICONS_DIR
 from .screen_state import TEMPLATE_STATE_MAP
 from .screen_state import ScreenState
@@ -27,6 +30,10 @@ from .vision import save_rank_model
 from .vision import train_rank_model
 
 __all__ = [
+    # Icon Detection (Context-Aware)
+    "ContextAwareIconDetector",
+    "ICON_ROI_MAP",
+    "IconROI",
     # Screen State Detection
     "ICONS_DIR",
     "TEMPLATE_STATE_MAP",

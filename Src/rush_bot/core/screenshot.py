@@ -755,12 +755,12 @@ class ScrcpyClient:
             )
 
             # Register frame callback
-            self._client.add_listener("frame", self._handle_frame)
-            self._client.add_listener("init", self._handle_init)
-            self._client.add_listener("disconnect", self._handle_disconnect)
+            self._client.add_listener("frame", self._handle_frame)  # type: ignore[union-attr]
+            self._client.add_listener("init", self._handle_init)  # type: ignore[union-attr]
+            self._client.add_listener("disconnect", self._handle_disconnect)  # type: ignore[union-attr]
 
             # Start in daemon thread
-            self._client.start(daemon_threaded=True)
+            self._client.start(daemon_threaded=True)  # type: ignore[union-attr]
 
             # Wait for connection
             start_time = time.time()

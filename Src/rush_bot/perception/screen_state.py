@@ -66,11 +66,29 @@ class ScreenState(Enum):
     LOADING = auto()
     """Loading screen transition."""
 
+    PVP_LOADING = auto()
+    """PVP loading screen with abort button."""
+
     QUEST = auto()
     """Quest completion popup."""
 
     FRIEND_MENU = auto()
     """Friend/social menu."""
+
+    STORE_MENU = auto()
+    """Store menu navigation."""
+
+    CARDS_MENU = auto()
+    """Cards menu navigation."""
+
+    MAIN_MENU = auto()
+    """Main/Battle menu navigation."""
+
+    CLAN_MENU = auto()
+    """Clan menu navigation."""
+
+    EVENT_MENU = auto()
+    """Event menu navigation."""
 
 
 @dataclass
@@ -153,6 +171,10 @@ TEMPLATE_STATE_MAP: dict[str, ScreenState] = {
     # Advertisements
     "ad_pve.png": ScreenState.ADVERTISEMENT,
     "ad_season.png": ScreenState.ADVERTISEMENT,
+    "AD_Bonus_Button.png": ScreenState.ADVERTISEMENT,
+    # Loading screens
+    "PVP_Loading.png": ScreenState.PVP_LOADING,
+    "Abort_Button.png": ScreenState.PVP_LOADING,
     # Victory/Defeat (Continue/Quit buttons)
     "0cont_button.png": ScreenState.VICTORY,
     "1quit.png": ScreenState.DEFEAT,
@@ -161,6 +183,12 @@ TEMPLATE_STATE_MAP: dict[str, ScreenState] = {
     "quest_done.png": ScreenState.QUEST,
     # Friend menu
     "friend_menu.png": ScreenState.FRIEND_MENU,
+    # Menu navigation (bottom menu bar)
+    "Store_Menu.png": ScreenState.STORE_MENU,
+    "Cards_Menu.png": ScreenState.CARDS_MENU,
+    "Main_Menu.png": ScreenState.MAIN_MENU,
+    "Clan_Menu.png": ScreenState.CLAN_MENU,
+    "Event_Menu.png": ScreenState.EVENT_MENU,
 }
 
 
@@ -566,3 +594,239 @@ class ScreenStateDetector:
             True if at least one template is loaded.
         """
         return len(self._templates) > 0
+
+    def detect_menu_context(
+        self,
+        screenshot: ImageArray | str | Path,
+        min_confidence: float = 0.90,
+    ) -> ScreenStateResult:
+        """Detect current menu context from bottom menu bar.
+
+        CRITICAL: This should be called FIRST before any icon detection
+        to determine the current menu context.
+
+        Args:
+            screenshot: Screenshot to analyze.
+            min_confidence: Minimum confidence threshold (default 0.90).
+
+        Returns:
+            ScreenStateResult with menu state (STORE_MENU, CARDS_MENU, etc.)
+            or UNKNOWN if no menu detected.
+        """
+        # Load image if path provided
+        if isinstance(screenshot, (str, Path)):
+            img = cv2.imread(str(screenshot))
+            if img is None:
+                return ScreenStateResult(
+                    state=ScreenState.UNKNOWN,
+                    confidence=0.0,
+                )
+        else:
+            img = screenshot
+
+        screen_h, _screen_w = img.shape[:2]
+
+        # Calculate ROI for bottom menu bar
+        # Reference: Y=1414-1600 for 1080x1920 resolution
+        roi_y_start_ref = 1414
+        roi_y_end_ref = 1600
+        ref_height = 1920
+
+        scale_y = screen_h / ref_height
+        roi_y_start = int(roi_y_start_ref * scale_y)
+        roi_y_end = int(roi_y_end_ref * scale_y)
+
+        # Ensure ROI is within screen bounds
+        roi_y_start = max(0, roi_y_start)
+        roi_y_end = min(screen_h, roi_y_end)
+
+        # Extract ROI (bottom menu bar)
+        roi = img[roi_y_start:roi_y_end, :]
+
+        # Menu templates to check (in priority order)
+        menu_templates = [
+            "Store_Menu.png",
+            "Cards_Menu.png",
+            "Main_Menu.png",
+            "Clan_Menu.png",
+            "Event_Menu.png",
+        ]
+
+        best_match = ""
+        best_confidence = 0.0
+        best_location = (0, 0)
+        best_template_size = (0, 0)
+
+        for template_name in menu_templates:
+            if template_name not in self._templates:
+                continue
+
+            template = self._templates[template_name]
+            confidence, location = self._match_template(roi, template)
+
+            if confidence > best_confidence:
+                best_confidence = confidence
+                best_match = template_name
+                # Adjust location to full screenshot coordinates
+                best_location = (location[0], location[1] + roi_y_start)
+                best_template_size = self._template_sizes.get(template_name, (0, 0))
+
+        # Determine state from best match
+        if best_confidence >= min_confidence and best_match:
+            state = TEMPLATE_STATE_MAP.get(best_match, ScreenState.UNKNOWN)
+            region = (
+                best_location[0],
+                best_location[1],
+                best_template_size[0],
+                best_template_size[1],
+            )
+        else:
+            state = ScreenState.UNKNOWN
+            region = None
+
+        return ScreenStateResult(
+            state=state,
+            confidence=best_confidence,
+            matched_template=best_match,
+            region=region,
+        )
+
+    def detect_with_roi(
+        self,
+        screenshot: ImageArray | str | Path,
+        roi: tuple[int, int, int, int] | None = None,
+        min_confidence: float | None = None,
+    ) -> ScreenStateResult:
+        """Detect screen state within a specific Region of Interest.
+
+        Args:
+            screenshot: Screenshot to analyze.
+            roi: Region of interest as (x, y, width, height). If None, uses full image.
+            min_confidence: Custom confidence threshold. Uses config default if None.
+
+        Returns:
+            ScreenStateResult with detected state.
+        """
+        # Load image if path provided
+        if isinstance(screenshot, (str, Path)):
+            img = cv2.imread(str(screenshot))
+            if img is None:
+                return ScreenStateResult(
+                    state=ScreenState.UNKNOWN,
+                    confidence=0.0,
+                )
+        else:
+            img = screenshot
+
+        # Extract ROI if specified
+        roi_offset_x = 0
+        roi_offset_y = 0
+
+        if roi is not None:
+            x, y, w, h = roi
+            screen_h, screen_w = img.shape[:2]
+
+            # Validate ROI bounds
+            x = max(0, min(x, screen_w - 1))
+            y = max(0, min(y, screen_h - 1))
+            w = max(1, min(w, screen_w - x))
+            h = max(1, min(h, screen_h - y))
+
+            img = img[y : y + h, x : x + w]
+            roi_offset_x = x
+            roi_offset_y = y
+
+        # Match templates
+        threshold = min_confidence or self.config.template_threshold
+        all_matches: dict[str, float] = {}
+        best_match = ""
+        best_confidence = 0.0
+        best_location = (0, 0)
+        best_template_size = (0, 0)
+
+        for name, template in self._templates.items():
+            confidence, location = self._match_template(img, template)
+            all_matches[name] = confidence
+
+            if confidence > best_confidence:
+                best_confidence = confidence
+                best_match = name
+                # Adjust location to full screenshot coordinates
+                best_location = (location[0] + roi_offset_x, location[1] + roi_offset_y)
+                best_template_size = self._template_sizes.get(name, (0, 0))
+
+        # Determine state from best match
+        if best_confidence >= threshold and best_match:
+            state = TEMPLATE_STATE_MAP.get(best_match, ScreenState.UNKNOWN)
+            region = (
+                best_location[0],
+                best_location[1],
+                best_template_size[0],
+                best_template_size[1],
+            )
+        else:
+            state = ScreenState.UNKNOWN
+            region = None
+
+        return ScreenStateResult(
+            state=state,
+            confidence=best_confidence,
+            matched_template=best_match,
+            region=region,
+            all_matches=all_matches,
+        )
+
+    def is_loading_screen(self, screenshot: ImageArray | str | Path) -> bool:
+        """Check if any loading screen is visible.
+
+        Args:
+            screenshot: Screenshot to check.
+
+        Returns:
+            True if loading screen (generic or PVP) is detected.
+        """
+        results = self.detect_all(screenshot)
+        return any(r.state in (ScreenState.LOADING, ScreenState.PVP_LOADING) for r in results)
+
+    def is_pvp_loading(self, screenshot: ImageArray | str | Path) -> bool:
+        """Check if PVP loading screen is visible.
+
+        Args:
+            screenshot: Screenshot to check.
+
+        Returns:
+            True if PVP loading screen is detected.
+        """
+        return self.is_state(screenshot, ScreenState.PVP_LOADING)
+
+    def get_abort_button_location(
+        self,
+        screenshot: ImageArray | str | Path,
+    ) -> tuple[int, int] | None:
+        """Find the location of the abort button on PVP loading screen.
+
+        Args:
+            screenshot: Screenshot to search.
+
+        Returns:
+            (x, y) center coordinates of abort button, or None if not found.
+        """
+        found, region, _ = self.find_template(screenshot, "Abort_Button.png")
+
+        if found and region is not None:
+            x, y, w, h = region
+            return (x + w // 2, y + h // 2)
+
+        return None
+
+    def has_ad_bonus_button(self, screenshot: ImageArray | str | Path) -> bool:
+        """Check if the ad bonus button is visible.
+
+        Args:
+            screenshot: Screenshot to check.
+
+        Returns:
+            True if ad bonus button is detected.
+        """
+        found, _, confidence = self.find_template(screenshot, "AD_Bonus_Button.png")
+        return found and confidence >= self.config.template_threshold
