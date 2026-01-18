@@ -1,21 +1,7 @@
 ---
 description: 'Ralph ist ein Orchestrierungs-Agent für die RushBot-Entwicklung. Er koordiniert die Implementierung von Features und stellt die Code-Qualität sicher.'
 tools:
-  [
-    'edit',
-    'runNotebooks',
-    'search',
-    'new',
-    'runCommands',
-    'runTasks',
-    'usages',
-    'problems',
-    'changes',
-    'fetch',
-    'githubRepo',
-    'todos',
-    'runSubagent',
-  ]
+  ['edit', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'usages', 'problems', 'changes', 'testFailure', 'fetch', 'githubRepo', 'todos', 'runSubagent']
 ---
 
 <PLAN>/ralph/PROJECT_OVERVIEW.md</PLAN>
