@@ -1,154 +1,129 @@
-# RushBot 🎮🤖
+# RushBot
 
-| <img width="1024" height="1024" alt="20250803_2330_RushBot App Logo_simple_compose_01k1rxd9atf21b3v5gkrpyxt0f" src="https://github.com/user-attachments/assets/621d866c-864e-42bb-a28a-c8dca66425a0" /> | RushBot is an advanced Python 3.13-based automation bot for Rush Royale that combines computer vision, machine learning, and Android device control. Using OpenCV for real-time game state recognition and scikit-learn for strategic decision-making, the bot can autonomously play Rush Royale on Android devices or emulators. Built with a robust architecture featuring ADB integration for device communication, advanced screenshot processing, and comprehensive analytics tracking, RushBot represents the evolution of Rush Royale automation - building upon the foundational work of AxelBjork, mleem97, and Frikadellental's previous implementations while pushing the boundaries with modern AI techniques and reliable cross-platform compatibility. |
-|------|-------------|
+RushBot automates parts of Rush Royale through computer vision, a logistic-regression rank classifier, and Android Debug Bridge (ADB) input commands.
 
-## 🔗 Project History & Related Work
+> This project is intended for education and research. Check the game's terms before using automation.
 
-This project builds upon the foundation of several Rush Royale bot implementations:
-- **Original Project**: [AxelBjork/Rush-Royale-Bot](https://github.com/AxelBjork/Rush-Royale-Bot) - The pioneering work that started it all
-- **Fixed Version**: [mleem97/Rush-Royale-Bot](https://github.com/mleem97/Rush-Royale-Bot) - Improved stability and bug fixes
-- **AI Redesign**: [Frikadellental/Rush-Royale-AI](https://github.com/Frikadellental/Rush-Royale-AI) - Complete redesign with modern AI approaches
+## Supported platforms
 
-This repository represents the next evolution, focusing on advanced reinforcement learning techniques and autonomous gameplay.
+| Platform | Python | Device backend | Validation |
+|---|---:|---|---|
+| Windows 10/11 | 3.11-3.13 | Official Android Platform Tools (`adb.exe`) | CI matrix |
+| Linux | 3.11-3.13 | Official Android Platform Tools (`adb`) | CI matrix |
 
-## 🚀 Features
+The bot no longer depends on a third-party Python implementation of the ADB protocol. A small compatibility layer calls Google's official `adb` executable on both operating systems. This supports USB devices, emulators, and TCP/IP serials such as `192.168.1.20:5555`.
 
-- **Computer Vision Integration**: Advanced OpenCV-based image recognition for game state analysis
-- **Android Device Control**: Direct communication with Android devices via ADB
-- **Machine Learning Analytics**: Scikit-learn powered pattern recognition and decision making
-- **Real-time Screenshot Processing**: Fast image capture and analysis pipeline
-- **Data-Driven Insights**: Comprehensive gameplay analytics and performance tracking
-- **Cross-Platform Compatibility**: Works with Android emulators (physical devices are not tested yet)
-- **Development Tools**: Jupyter notebook integration for analysis and debugging
+## Installation
 
-## 🏗️ Architecture
+### Windows
 
-### Computer Vision Pipeline
-- **OpenCV Integration**: Advanced image processing for game state recognition
-- **Template Matching**: Precise identification of game elements and UI components
-- **Color Analysis**: Strategic decision making based on visual game information
-- **Screenshot Processing**: Optimized real-time image capture and analysis
+1. Install Python 3.11 or newer.
+2. Run:
 
-### Machine Learning Components
-- **Scikit-learn Models**: Pattern recognition for optimal gameplay strategies  
-- **Data Analytics**: Performance tracking and strategic improvement recommendations
-- **Feature Extraction**: Automated identification of key game state indicators
+```bat
+install.bat
+launch_gui.bat
+```
 
-### Device Communication
-- **ADB Integration**: Direct Android device control and automation
-- **Cross-Platform Support**: Compatible with emulators and physical devices
-- **Reliable Input Simulation**: Precise touch and gesture automation
+When ADB is missing and `winget` is available, `install.bat` installs the official scrcpy package. Scrcpy includes the required ADB dependency. You can instead install [Android SDK Platform Tools](https://developer.android.com/tools/releases/platform-tools) yourself or extract the official [scrcpy Windows release](https://github.com/Genymobile/scrcpy/blob/master/doc/windows.md) into `.scrcpy`.
 
-## 📋 Requirements
+### Linux
 
-- Python 3.13+
-- OpenCV 4.10+
-- NumPy 1.24+
-- Pandas 2.0+
-- Scikit-learn 1.5+
-- Pure Python ADB
-- Pillow 10.0+
-- Matplotlib 3.7+
+Install Python, Tk, and ADB through the distribution package manager. Examples:
 
-## 🛠️ Installation
-
-1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/rushbot.git
-cd rushbot
+# Debian/Ubuntu
+sudo apt install python3 python3-venv python3-tk adb
+
+# Fedora
+sudo dnf install python3 python3-tkinter android-tools
+
+# Arch Linux
+sudo pacman -S python tk android-tools
 ```
 
-2. Create a virtual environment:
+Then run:
+
 ```bash
-python -m venv rushbot_env
-source rushbot_env/bin/activate  # On Windows: rushbot_env\Scripts\activate
+bash install.sh
+bash launch_gui.sh
 ```
 
-3. Install dependencies:
+For the newest Platform Tools rather than the distribution package, download Google's current Linux archive and set `ADB_PATH` to its `adb` executable. See [Linux ADB setup](docs/linux-adb.md).
+
+## Connect a device
+
+Enable USB debugging on the Android device, then verify the connection:
+
 ```bash
-pip install -r requirements.txt
+adb start-server
+adb devices
 ```
 
-## 🎯 Usage
+RushBot uses the first online device by default. Select one explicitly when several devices are attached:
 
-### Training the Bot
 ```bash
-python main.py --mode train --device emulator-5554
+# Linux
+export RUSHBOT_DEVICE=emulator-5554
+
+# Windows PowerShell
+$env:RUSHBOT_DEVICE = "emulator-5554"
 ```
 
-### Running the Bot
+The standard `ANDROID_SERIAL` environment variable is also supported. Local emulator ports are discovered automatically with a bounded scanner. Override its range with `RUSHBOT_SCAN_PORT_RANGE`, for example `5555-5600`.
+
+## scikit-learn model compatibility
+
+scikit-learn does not guarantee that pickled estimators can be loaded across library versions. The bundled `rank_model.pkl` was created with an older scikit-learn release, so RushBot now performs a one-time migration:
+
+1. the trusted bundled pickle is loaded with the version warning contained;
+2. only the fitted classes, coefficients, intercepts, and inference mode are copied;
+3. those numerical values are stored in `rank_model.npz` using a versioned NumPy format;
+4. all subsequent predictions use RushBot's small version-neutral predictor instead of an sklearn pickle.
+
+This migration does not require the original training dataset. The generated `rank_model.npz` is ignored by Git. Do not replace `rank_model.pkl` with an untrusted file: Python pickle files can execute code while loading.
+
+When training PNG files are available in `machine_learning/inputs`, a fresh stable model can be generated explicitly:
+
 ```bash
-python main.py --mode play --device 
+.bot_env/bin/python Src/train_rank_model.py          # Linux
+.bot_env\Scripts\python.exe Src\train_rank_model.py  # Windows
 ```
 
-### Analysis Mode
+## Optional scrcpy diagnostics
+
+[scrcpy](https://github.com/Genymobile/scrcpy) is optional. It is useful for checking the device view and ADB connection, but screenshots and touch input are performed through ADB directly:
+
 ```bash
-python analyze.py --log-file gameplay_data.json
+scrcpy --serial emulator-5554 --no-audio
 ```
 
-## 📊 Performance Metrics
+## Dependency policy
 
-The bot tracks various performance indicators:
-- Win rate progression over time
-- Average game completion time
-- Decision accuracy and response time
-- Screenshot processing efficiency
-- ADB command success rates
-- Pattern recognition confidence scores
+`requirements.txt` pins a tested runtime set for reproducible Windows and Linux installations. NumPy stays on the newest release line that still supports Python 3.11. `requirements-dev.txt` adds Jupyter, Matplotlib, and pytest.
 
-## 🔧 Configuration
+## Development
 
-Customize bot behavior through `config.ini`:
-```ini
-[DEVICE]
-device_id = emulator-5554
-screenshot_method = adb
-resolution = 1920x1080
-
-[GAMEPLAY]
-action_delay = 0.5
-confidence_threshold = 0.8
-max_game_duration = 300
-
-[ANALYSIS]
-save_screenshots = true
-log_level = INFO
-data_retention_days = 30
+```bash
+python -m pip install -r requirements-dev.txt
+python -m compileall -q Src tests
+python -m pytest -q
 ```
 
-## 📈 Development Progress
+GitHub Actions runs these checks on Windows and Linux with Python 3.11 and 3.13.
 
-The bot development includes:
-1. **Setup Phase**: Device connection and screenshot capture implementation
-2. **Vision Development**: Template matching and game state recognition
-3. **Automation**: Touch input simulation and game interaction
-4. **Analytics Integration**: Performance tracking and data analysis
-5. **Optimization**: Speed improvements and reliability enhancements
+## Configuration
 
-## 🤝 Contributing
+The existing `config.ini` controls the floor, deck, mana targets, PvE mode, and optional Shaman requirement. Launchers always change to the repository root first, so relative image paths behave the same on Windows and Linux.
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+## Project history
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+RushBot builds on work from:
 
-## 📝 License
+- [AxelBjork/Rush-Royale-Bot](https://github.com/AxelBjork/Rush-Royale-Bot)
+- [mleem97/Rush-Royale-Bot](https://github.com/mleem97/Rush-Royale-Bot)
+- [Frikadellental/Rush-Royale-AI](https://github.com/Frikadellental/Rush-Royale-AI)
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## License
 
-## ⚠️ Disclaimer
-
-This bot is created for educational and research purposes. Please ensure compliance with Rush Royale's Terms of Service when using automated tools.
-
-## 🙏 Acknowledgments
-
-- **AxelBjork** for the original Rush Royale bot implementation
-- **mleem97** for improving and fixing the original codebase
-- **Frikadellental** for the AI-focused redesign and modern approach
-- Rush Royale developers for creating an engaging strategic game
-- OpenAI and DeepMind for pioneering reinforcement learning techniques
-- The open-source community for providing essential ML libraries
+MIT — see [LICENSE](LICENSE).
