@@ -9,7 +9,7 @@ import numpy as np
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "Src"))
 
-from bot_perception import load_dataset, quick_train_model
+from bot_perception import load_dataset, load_rank_model_artifact, quick_train_model
 
 
 def test_training_uses_platform_independent_paths(tmp_path):
@@ -22,7 +22,14 @@ def test_training_uses_platform_independent_paths(tmp_path):
     assert x_train.shape == (4, 16)
     assert sorted(set(y_train.tolist())) == [0, 1]
 
-    model_path = tmp_path / "rank_model.pkl"
-    model = quick_train_model(tmp_path, model_path=model_path, save=True)
-    assert model_path.exists()
-    assert model.classes_.tolist() == [0, 1]
+    model_path = tmp_path / "rank_model.npz"
+    sklearn_model = quick_train_model(tmp_path, model_path=model_path, save=True)
+    frozen_model = load_rank_model_artifact(model_path)
+
+    assert frozen_model.classes_.tolist() == [0, 1]
+    np.testing.assert_allclose(
+        frozen_model.predict_proba(x_train),
+        sklearn_model.predict_proba(x_train),
+        rtol=1e-12,
+        atol=1e-12,
+    )
