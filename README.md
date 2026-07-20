@@ -1,17 +1,17 @@
 # RushBot
 
-RushBot automates parts of Rush Royale through computer vision, a small scikit-learn rank classifier, and Android Debug Bridge (ADB) input commands.
+RushBot automates parts of Rush Royale through computer vision, a logistic-regression rank classifier, and Android Debug Bridge (ADB) input commands.
 
 > This project is intended for education and research. Check the game's terms before using automation.
 
 ## Supported platforms
 
-| Platform | Python | Device backend | Status |
+| Platform | Python | Device backend | Validation |
 |---|---:|---|---|
-| Windows 10/11 | 3.11-3.13 | Official Android Platform Tools (`adb.exe`) | CI tested |
-| Linux | 3.11-3.13 | Official Android Platform Tools (`adb`) | CI tested |
+| Windows 10/11 | 3.11-3.13 | Official Android Platform Tools (`adb.exe`) | CI matrix |
+| Linux | 3.11-3.13 | Official Android Platform Tools (`adb`) | CI matrix |
 
-The bot no longer depends on a third-party Python implementation of the ADB protocol. A small compatibility layer calls Google's official `adb` executable on both operating systems. This also supports USB devices, emulators, and TCP/IP serials such as `192.168.1.20:5555`.
+The bot no longer depends on a third-party Python implementation of the ADB protocol. A small compatibility layer calls Google's official `adb` executable on both operating systems. This supports USB devices, emulators, and TCP/IP serials such as `192.168.1.20:5555`.
 
 ## Installation
 
@@ -74,21 +74,21 @@ The standard `ANDROID_SERIAL` environment variable is also supported. Local emul
 
 ## scikit-learn model compatibility
 
-scikit-learn does not guarantee that pickled estimators can be loaded across library versions. RushBot therefore:
+scikit-learn does not guarantee that pickled estimators can be loaded across library versions. The bundled `rank_model.pkl` was created with an older scikit-learn release, so RushBot now performs a one-time migration:
 
-1. loads `rank_model.pkl` only once instead of once per grid cell;
-2. treats `InconsistentVersionWarning` as an incompatibility;
-3. retrains from `machine_learning/inputs` using the installed scikit-learn version;
-4. replaces the old model atomically.
+1. the trusted bundled pickle is loaded with the version warning contained;
+2. only the fitted classes, coefficients, intercepts, and inference mode are copied;
+3. those numerical values are stored in `rank_model.npz` using a versioned NumPy format;
+4. all subsequent predictions use RushBot's small version-neutral predictor instead of an sklearn pickle.
 
-Manual retraining remains available:
+This migration does not require the original training dataset. The generated `rank_model.npz` is ignored by Git. Do not replace `rank_model.pkl` with an untrusted file: Python pickle files can execute code while loading.
+
+When training PNG files are available in `machine_learning/inputs`, a fresh stable model can be generated explicitly:
 
 ```bash
 .bot_env/bin/python Src/train_rank_model.py          # Linux
 .bot_env\Scripts\python.exe Src\train_rank_model.py  # Windows
 ```
-
-Do not load model files from untrusted sources: Python pickle files can execute code while loading.
 
 ## Optional scrcpy diagnostics
 
@@ -100,7 +100,7 @@ scrcpy --serial emulator-5554 --no-audio
 
 ## Dependency policy
 
-`requirements.txt` pins a tested runtime set so the serialized model and numerical stack are reproducible. `requirements-dev.txt` adds Jupyter, Matplotlib, and pytest. Dependency updates should update these pins together with cross-platform CI.
+`requirements.txt` pins a tested runtime set for reproducible Windows and Linux installations. NumPy stays on the newest release line that still supports Python 3.11. `requirements-dev.txt` adds Jupyter, Matplotlib, and pytest.
 
 ## Development
 
@@ -110,7 +110,7 @@ python -m compileall -q Src tests
 python -m pytest -q
 ```
 
-GitHub Actions runs the checks on Windows and Linux with Python 3.11 and 3.13.
+GitHub Actions runs these checks on Windows and Linux with Python 3.11 and 3.13.
 
 ## Configuration
 
