@@ -1,4 +1,4 @@
-"""Retrain rank_model.pkl with the currently installed scikit-learn version."""
+"""Create the version-neutral rank model with the installed scikit-learn."""
 from __future__ import annotations
 
 from sklearn import __version__ as sklearn_version
