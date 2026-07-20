@@ -1,37 +1,21 @@
 @echo off
-:: Rush Royale Bot Launcher - Python 3.13 Compatible
-title Rush Royale Bot
+setlocal EnableExtensions
+cd /d "%~dp0"
+title RushBot
 
-echo Starting Rush Royale Bot...
-echo ============================
-
-:: Check if virtual environment exists
-if not exist ".bot_env\Scripts\activate.bat" (
-    echo ERROR: Virtual environment not found!
-    echo Please run install.bat first
-    pause
+if not exist ".bot_env\Scripts\python.exe" (
+    echo ERROR: Virtual environment not found. Run install.bat first.
     exit /b 1
 )
-
-:: Activate virtual environment
-echo Activating virtual environment...
-call .bot_env\Scripts\activate.bat
-
-:: Check if GUI files exist
 if not exist "Src\gui.py" (
-    echo ERROR: GUI files not found!
-    echo Please ensure all files are in the correct directory
-    pause
+    echo ERROR: Src\gui.py was not found.
     exit /b 1
 )
 
-:: Launch the bot GUI
-echo Launching bot GUI...
-python Src\gui.py
-
-:: Keep window open if there's an error
-if %ERRORLEVEL% NEQ 0 (
+.bot_env\Scripts\python.exe Src\gui.py
+if errorlevel 1 (
     echo.
-    echo Bot exited with error code %ERRORLEVEL%
+    echo RushBot exited with error code %ERRORLEVEL%.
     pause
 )
+endlocal
