@@ -1,145 +1,207 @@
-"""
-Rush Royale Bot Perception - Python 3.13 Compatible
-Computer vision and machine learning for unit recognition
-"""
+"""Computer vision and machine-learning helpers for unit recognition."""
 from __future__ import annotations
 
 import os
-import numpy as np
-import pandas as pd
-import cv2
-from sklearn.linear_model import LogisticRegression
 import pickle
-from typing import Optional, Dict, Any, List, Tuple, Union
+import warnings
+from functools import lru_cache
 from pathlib import Path
 
-# internal
+import cv2
+import numpy as np
+import pandas as pd
+from sklearn.exceptions import InconsistentVersionWarning
+from sklearn.linear_model import LogisticRegression
 
-####
-#### Unit type recognition
-###
+REPO_ROOT = Path(__file__).resolve().parents[1]
+MODEL_PATH = REPO_ROOT / "rank_model.pkl"
+DATASET_DIR = REPO_ROOT / "machine_learning" / "inputs"
+OCR_INPUT_DIR = REPO_ROOT / "OCR_inputs"
+UNITS_DIR = REPO_ROOT / "units"
 
 
-# Get most common pixel RGB value in image
-def get_color(filename, crop=False):
-    unit_img = cv2.imread(filename)
+def get_color(filename: str | os.PathLike[str], crop: bool = False) -> np.ndarray:
+    unit_img = cv2.imread(str(filename))
+    if unit_img is None:
+        raise FileNotFoundError(f"Could not read image: {filename}")
     if crop:
-        unit_img = unit_img[15:15 + 90, 17:17 + 90]
+        unit_img = unit_img[15:105, 17:107]
     unit_img = cv2.cvtColor(unit_img, cv2.COLOR_BGR2RGB)
-    # Flatten to pixel values
     flat_img = unit_img.reshape(-1, unit_img.shape[2])
     flat_img_round = flat_img // 20 * 20
     unique, counts = np.unique(flat_img_round, axis=0, return_counts=True)
     colors = np.zeros((5, 3), dtype=int)
     if len(unique) < 10:
         return colors
-    # Sort list
     sorted_count = np.sort(counts)[::-1]
-    # Get index of the most common colors
-    for i in range(0, 5):
-        index = np.where(counts == sorted_count[i])[0][0]
-        colors[i] = unique[index]
+    for index in range(5):
+        color_index = np.where(counts == sorted_count[index])[0][0]
+        colors[index] = unique[color_index]
     return colors
 
 
-# Match unit based on color
 def match_unit(filename, ref_colors, ref_units):
     unit_colors = get_color(filename, crop=True)
-    # Find closest match (mean squared error)
     for color in unit_colors:
-        mse = np.sum((ref_colors - color)**2, axis=1)
-        # Dryad sometimes needs 2000 to match
+        mse = np.sum((ref_colors - color) ** 2, axis=1)
         if mse[mse.argmin()] <= 2000:
             return ref_units[mse.argmin()], round(mse[mse.argmin()])
-    return ['empty.png', 2001]
+    return ["empty.png", 2001]
 
 
-# Get status of current grid
-# Currently 0.082 seconds call, multithreading is about 0.64 seconds
 def grid_status(names, prev_grid=None):
-    ref_units = os.listdir("units")
-    ref_colors = [get_color('units/' + unit)[0] for unit in ref_units]
+    ref_units = sorted(path.name for path in UNITS_DIR.glob("*.png"))
+    ref_colors = [get_color(UNITS_DIR / unit)[0] for unit in ref_units]
     grid_stats = []
     for filename in names:
         rank, rank_prob = match_rank(filename)
-        unit_guess = match_unit(filename, ref_colors, ref_units) if rank != 0 else ['empty.png', 0]
-        # Curse does not work well for different ranks
-        #unit_guess = unit_guess if not is_cursed(filename) else ['cursed.png',0]
+        unit_guess = (
+            match_unit(filename, ref_colors, ref_units)
+            if rank != 0
+            else ["empty.png", 0]
+        )
         grid_stats.append([*unit_guess, rank, rank_prob])
-    grid_df = pd.DataFrame(grid_stats, columns=['unit', 'u_prob', 'rank', 'r_prob'])
-    # Add grid position
-    box_id = [[(i // 5) % 5, i % 5] for i in range(15)]
-    grid_df.insert(0, 'grid_pos', box_id)
-    if not prev_grid is None:
-        # Check Consistency
-        consistency = grid_df[['grid_pos', 'unit', 'rank']] == prev_grid[['grid_pos', 'unit', 'rank']]
+    grid_df = pd.DataFrame(grid_stats, columns=["unit", "u_prob", "rank", "r_prob"])
+    box_id = [[(index // 5) % 5, index % 5] for index in range(15)]
+    grid_df.insert(0, "grid_pos", box_id)
+    if prev_grid is not None:
+        consistency = grid_df[["grid_pos", "unit", "rank"]] == prev_grid[
+            ["grid_pos", "unit", "rank"]
+        ]
         consistency = consistency.all(axis=1)
-        # Update age from previous grid
-        grid_df['Age'] = prev_grid['Age'] * consistency
-        grid_df['Age'] += consistency
+        grid_df["Age"] = prev_grid["Age"] * consistency
+        grid_df["Age"] += consistency
     else:
-        grid_df['Age'] = np.zeros(len(grid_df))
+        grid_df["Age"] = np.zeros(len(grid_df))
     return grid_df
 
 
+def _load_pickled_model(model_path: Path) -> LogisticRegression:
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", InconsistentVersionWarning)
+        with model_path.open("rb") as model_file:
+            model = pickle.load(model_file)
+    if not hasattr(model, "predict_proba") or not hasattr(model, "classes_"):
+        raise TypeError(f"Unsupported rank model type: {type(model).__name__}")
+    return model
+
+
+def _save_model(model: LogisticRegression, model_path: Path) -> None:
+    model_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = model_path.with_suffix(model_path.suffix + ".tmp")
+    with temporary_path.open("wb") as model_file:
+        pickle.dump(model, model_file, protocol=pickle.HIGHEST_PROTOCOL)
+    temporary_path.replace(model_path)
+
+
+@lru_cache(maxsize=1)
+def load_rank_model(
+    model_path: Path = MODEL_PATH,
+    dataset_dir: Path = DATASET_DIR,
+) -> LogisticRegression:
+    """Load the rank model once and retrain it when its sklearn version is stale."""
+    try:
+        return _load_pickled_model(model_path)
+    except FileNotFoundError:
+        reason = "rank_model.pkl is missing"
+    except InconsistentVersionWarning as exc:
+        reason = str(exc)
+    except (AttributeError, EOFError, pickle.UnpicklingError, TypeError, ValueError) as exc:
+        reason = f"rank_model.pkl cannot be loaded: {exc}"
+
+    warnings.warn(
+        f"{reason}. Retraining the rank model with the installed scikit-learn version.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
+    try:
+        return quick_train_model(dataset_dir, model_path=model_path, save=True)
+    except Exception as exc:
+        raise RuntimeError(
+            "The bundled rank model is incompatible and automatic retraining failed. "
+            f"Verify that training PNG files exist in '{dataset_dir}' and run "
+            "'python Src/train_rank_model.py'."
+        ) from exc
+
+
 def match_rank(filename):
-    img = cv2.imread(filename, 0)
-    edges = cv2.Canny(img, 50, 100)
-    with open('rank_model.pkl', 'rb') as f:
-        logreg = pickle.load(f)
-        classes = logreg.classes_
-    prob = logreg.predict_proba(edges.reshape(1, -1))
-    return prob.argmax(), round(prob.max(), 3)
+    image = cv2.imread(str(filename), 0)
+    if image is None:
+        raise FileNotFoundError(f"Could not read rank image: {filename}")
+    edges = cv2.Canny(image, 50, 100)
+    logreg = load_rank_model()
+    probabilities = logreg.predict_proba(edges.reshape(1, -1))[0]
+    best_index = int(probabilities.argmax())
+    rank = int(logreg.classes_[best_index])
+    return rank, round(float(probabilities[best_index]), 3)
 
 
-# Fill find highest rank knight_statue adjacent to key_target
-def position_filter(grid_df, key_target='demon_hunter.png'):
-    demon_grid = grid_df[grid_df['unit'] == key_target]
-    # Get max value index  in rank column
-    demon_grid = demon_grid.sort_values(by='rank', ascending=False)
-    unit_pos = demon_grid.iloc[0]['grid_pos']
+def position_filter(grid_df, key_target="demon_hunter.png"):
+    demon_grid = grid_df[grid_df["unit"] == key_target]
+    demon_grid = demon_grid.sort_values(by="rank", ascending=False)
+    unit_pos = demon_grid.iloc[0]["grid_pos"]
     adjacent = unit_pos - np.array([[0, -1], [0, 1], [-1, 0], [1, 0]])
-    # Keep only column values between 0 and 4 (bad rows are filtered out by isin)
     adjacent = adjacent[np.logical_and(adjacent[:, 1] >= 0, adjacent[:, 1] <= 4)]
-    # Convert grid_pos to id 0-15 and extract rows
     adj_df = grid_df[grid_df.index.isin(adjacent[0:, 0] * 5 + adjacent[0:, 1])]
-    adj_knights = adj_df[adj_df['unit'] == 'knight_statue.png'].sort_values(by='rank', ascending=True)
-    key_pos = adj_knights.index[-1]
-    return key_pos
+    adj_knights = adj_df[adj_df["unit"] == "knight_statue.png"].sort_values(
+        by="rank", ascending=True
+    )
+    return adj_knights.index[-1]
 
 
-## Add to dataset
 def add_grid_to_dataset():
-    for slot in os.listdir("OCR_inputs"):
-        target = f'OCR_inputs/{slot}'
-        img = cv2.imread(target, 0)
-        edges = cv2.Canny(img, 50, 100)
+    input_dir = DATASET_DIR
+    raw_dir = REPO_ROOT / "machine_learning" / "raw_input"
+    input_dir.mkdir(parents=True, exist_ok=True)
+    raw_dir.mkdir(parents=True, exist_ok=True)
+
+    ref_units = sorted(path.name for path in UNITS_DIR.glob("*.png"))
+    ref_colors = [get_color(UNITS_DIR / unit)[0] for unit in ref_units]
+    for target in sorted(OCR_INPUT_DIR.glob("*.png")):
+        image = cv2.imread(str(target), 0)
+        if image is None:
+            continue
+        edges = cv2.Canny(image, 50, 100)
         rank_guess = 0
-        unit_guess = match_unit(target)
-        if unit_guess[1] != 'empty.png':
+        unit_guess = match_unit(target, ref_colors, ref_units)
+        if unit_guess[0] != "empty.png":
             rank_guess, _ = match_rank(target)
-        example_count = len(os.listdir("machine_learning/inputs"))
-        cv2.imwrite(f'machine_learning/inputs/{rank_guess}_input_{example_count}.png', edges)
-        cv2.imwrite(f'machine_learning/raw_input/{rank_guess}_raw_{example_count}.png', img)
+        example_count = len(list(input_dir.glob("*.png")))
+        cv2.imwrite(str(input_dir / f"{rank_guess}_input_{example_count}.png"), edges)
+        cv2.imwrite(str(raw_dir / f"{rank_guess}_raw_{example_count}.png"), image)
 
 
-def load_dataset(folder):
-    X_train = []
-    Y_train = []
-    for file in os.listdir(folder):
-        if file.endswith(".png"):
-            X_train.append(cv2.imread(folder + file, 0))
-            Y_train.append(file.split('_input')[0])
-    X_train = np.array(X_train)
-    data_shape = X_train.shape
-    X_train = X_train.reshape(data_shape[0], data_shape[1] * data_shape[2])
-    Y_train = np.array(Y_train, dtype=int)
-    return X_train, Y_train
+def load_dataset(folder: str | os.PathLike[str] = DATASET_DIR):
+    folder_path = Path(folder)
+    images: list[np.ndarray] = []
+    labels: list[int] = []
+    for file_path in sorted(folder_path.glob("*.png")):
+        image = cv2.imread(str(file_path), 0)
+        if image is None:
+            continue
+        images.append(image)
+        labels.append(int(file_path.name.split("_input", maxsplit=1)[0]))
+
+    if not images:
+        raise FileNotFoundError(f"No training PNG files found in: {folder_path}")
+    shapes = {image.shape for image in images}
+    if len(shapes) != 1:
+        raise ValueError(f"Training images have inconsistent dimensions: {sorted(shapes)}")
+
+    x_train = np.asarray(images)
+    x_train = x_train.reshape(x_train.shape[0], -1)
+    return x_train, np.asarray(labels, dtype=int)
 
 
-def quick_train_model():
-    X_train, Y_train = load_dataset("machine_learning\\inputs\\")
-    # train logistic regression model
-    logreg = LogisticRegression()
-    logreg.fit(X_train, Y_train)
+def quick_train_model(
+    folder: str | os.PathLike[str] = DATASET_DIR,
+    *,
+    model_path: Path = MODEL_PATH,
+    save: bool = False,
+) -> LogisticRegression:
+    x_train, y_train = load_dataset(folder)
+    logreg = LogisticRegression(max_iter=2000, random_state=42)
+    logreg.fit(x_train, y_train)
+    if save:
+        _save_model(logreg, model_path)
     return logreg
