@@ -1,141 +1,124 @@
-"""
-Rush Royale Bot Port Scanner - Python 3.13 Compatible
-Enhanced networking and device detection
-"""
+"""ADB device discovery for Windows and Linux."""
 from __future__ import annotations
 
-import socket
-import threading
-import time
 import os
-from subprocess import check_output, Popen, DEVNULL
-from pathlib import Path
-import shutil
-from typing import Optional, Dict, Any, List, Set
-from concurrent.futures import ThreadPoolExecutor
+import socket
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Iterable
+
+from adb_backend import AdbError, connect, find_adb, list_devices, run_adb
+
+COMMON_EMULATOR_PORTS = (5555, 5556, 5557, 5585, 62001, 7555, 16384)
 
 
-# Connects to a target IP and port, if port is open try to connect adb
-def find_adb() -> str:
-    """Locate adb.exe robustly across PATH, env vars, and local folders.
-    Returns absolute path to adb executable or raises FileNotFoundError.
-    """
-    # 1) Explicit env var
-    env_adb = os.getenv("ADB_PATH")
-    if env_adb:
-        p = Path(env_adb)
-        if p.exists():
-            return str(p)
-
-    # 2) PATH
-    which = shutil.which("adb.exe") or shutil.which("adb")
-    if which:
-        return which
-
-    # 3) Common local/install locations
-    repo_root = Path(__file__).resolve().parents[1]
-    candidates = [
-        repo_root / ".scrcpy" / "adb.exe",
-        repo_root / "scrcpy" / "adb.exe",
-        Path(os.getenv("ANDROID_HOME", "")) / "platform-tools" / "adb.exe",
-        Path(os.getenv("ANDROID_SDK_ROOT", "")) / "platform-tools" / "adb.exe",
-        Path(os.getenv("LOCALAPPDATA", "")) / "Android" / "Sdk" / "platform-tools" / "adb.exe",
-        Path("C:/Program Files/scrcpy/adb.exe"),
-    ]
-    for c in candidates:
-        if c and c.exists():
-            return str(c)
-
-    raise FileNotFoundError(
-        "ADB nicht gefunden. Installiere ADB (platform-tools) oder setze ADB_PATH/füge adb.exe in .scrcpy/."
-    )
-
-
-# Connects to a target IP and port, if port is open try to connect adb
-def connect_port(ip, port, batch, open_ports):
-    adb = None
+def _is_open(ip: str, port: int, timeout: float = 0.05) -> bool:
     try:
-        adb = find_adb()
-    except FileNotFoundError:
-        # If adb is not available, scanning still proceeds to discover open ports
-        pass
-    result = 1  # default: not connected
-    for tar_port in range(port, port + batch):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        result = s.connect_ex((ip, tar_port))
-        if result == 0:
-            open_ports[tar_port] = 'open'
-            # Make it Popen and kill shell after couple seconds
-            if adb:
-                p = Popen([adb, 'connect', f'{ip}:{tar_port}'], stdout=DEVNULL, stderr=DEVNULL)
-            else:
-                p = None
-            time.sleep(3)  # Give real client 3 seconds to connect
-            if p:
-                p.terminate()
-        s.close()
-    return result == 0
+        with socket.create_connection((ip, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
 
 
-# Attemtps to connect to ip over every port in range
-# Returns device if found
-def scan_ports(target_ip, port_start, port_end, batch=3):
-    threads = []
-    open_ports = {}
-    port_range = range(port_start, port_end, batch)
-    socket.setdefaulttimeout(0.01)
-    print(f"Scanning {target_ip} Ports {port_start} - {port_end}")
-    # Create one thread per port
-    for port in port_range:
-        thread = threading.Thread(target=connect_port, args=(target_ip, port, batch, open_ports))
-        threads.append(thread)
-    # Attempt to connect to every port
-    for thread in threads:
-        thread.start()
-    # Join threads
-    print(f'Started {len(port_range)} threads')
-    for thread in threads:
-        thread.join()
-    # Get open ports
-    port_list = list(open_ports.keys())
-    print(f"Ports Open: {port_list}")
-    device = get_adb_device()
+def connect_port(ip: str, port: int, batch: int, open_ports: dict[int, str]) -> bool:
+    """Compatibility helper: probe a small port batch and connect open ADB ports."""
+    connected = False
+    for target_port in range(port, port + batch):
+        if not _is_open(ip, target_port):
+            continue
+        open_ports[target_port] = "open"
+        connected = connect(f"{ip}:{target_port}") or connected
+    return connected
+
+
+def _probe_ports(ip: str, ports: Iterable[int], workers: int = 128) -> list[int]:
+    open_ports: list[int] = []
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = {executor.submit(_is_open, ip, port): port for port in ports}
+        for future in as_completed(futures):
+            port = futures[future]
+            try:
+                if future.result():
+                    open_ports.append(port)
+            except OSError:
+                continue
+    return sorted(open_ports)
+
+
+def scan_ports(
+    target_ip: str,
+    port_start: int,
+    port_end: int,
+    batch: int = 3,
+) -> str | None:
+    """Scan an emulator port range using a bounded worker pool.
+
+    The old implementation created thousands of threads. A bounded executor is
+    substantially more predictable on both Windows and Linux.
+    """
+    del batch
+    print(f"Scanning {target_ip} ports {port_start}-{port_end}")
+    open_ports = _probe_ports(target_ip, range(port_start, port_end))
+    print(f"Open ports: {open_ports}")
+    for port in open_ports:
+        connect(f"{target_ip}:{port}")
+    return get_adb_device()
+
+
+def get_adb_device() -> str | None:
+    devices = sorted(list_devices())
+    if not devices:
+        return None
+    device = devices[0]
+    print(f"Found ADB device: {device}")
+    if len(devices) > 1:
+        print(
+            "Multiple devices are online; using the first one. "
+            "Set RUSHBOT_DEVICE or ANDROID_SERIAL to select a specific device."
+        )
     return device
 
 
-# Check if adb device is already connected
-def get_adb_device():
-    adb = find_adb()
-    devList = check_output([adb, 'devices'])
-    lines = devList.decode('utf-8', errors='ignore').splitlines()
-    # Check for online status
-    deivce = None
-    for client in lines[1:]:
-        client = client.strip()
-        if not client:
-            continue
-        parts = client.split()
-        client_ip = parts[0] if parts else ''
-        if 'device' in client and 'offline' not in client:
-            deivce = client_ip
-            print(f"Found ADB device! {deivce}")
-        elif client_ip and client_ip not in ("List", "of", "devices", "attached"):
-            Popen([adb, 'disconnect', client_ip], stdout=DEVNULL, stderr=DEVNULL)
-    return deivce
+def _connect_requested_device(serial: str) -> str:
+    if serial in list_devices() or connect(serial):
+        if serial in list_devices():
+            return serial
+    raise RuntimeError(
+        f"Requested ADB device '{serial}' is not online. Check 'adb devices' and USB debugging."
+    )
 
 
-def get_device():
-    adb = find_adb()
-    p = Popen([adb, 'kill-server'], stdout=DEVNULL, stderr=DEVNULL)
-    p.wait()
-    p = Popen([adb, 'start-server'], stdout=DEVNULL, stderr=DEVNULL)
-    p.wait()
-    p = Popen([adb, 'devices'], stdout=DEVNULL, stderr=DEVNULL)
-    p.wait()
-    # Check if adb got connected
+def get_device() -> str | None:
+    """Return an online ADB serial, connecting local emulators when necessary."""
+    find_adb()
+    run_adb(["start-server"], timeout=15)
+
+    requested = os.getenv("RUSHBOT_DEVICE") or os.getenv("ANDROID_SERIAL")
+    if requested:
+        return _connect_requested_device(requested)
+
     device = get_adb_device()
-    if not device:
-        # Find valid ADB device by scanning ports
-        device = scan_ports('127.0.0.1', 48000, 65000)
     if device:
         return device
+
+    target_ip = os.getenv("RUSHBOT_ADB_HOST", "127.0.0.1")
+    for port in COMMON_EMULATOR_PORTS:
+        if _is_open(target_ip, port):
+            connect(f"{target_ip}:{port}")
+
+    device = get_adb_device()
+    if device:
+        return device
+
+    port_range = os.getenv("RUSHBOT_SCAN_PORT_RANGE", "48000-65000")
+    try:
+        start_text, end_text = port_range.split("-", maxsplit=1)
+        start, end = int(start_text), int(end_text)
+    except (TypeError, ValueError):
+        raise ValueError(
+            "RUSHBOT_SCAN_PORT_RANGE must use START-END syntax, for example 48000-65000."
+        ) from None
+
+    try:
+        return scan_ports(target_ip, start, end)
+    except AdbError as exc:
+        raise RuntimeError(f"ADB device discovery failed: {exc}") from exc
