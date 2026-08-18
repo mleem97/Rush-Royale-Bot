@@ -1,15 +1,66 @@
+# Python
 __pycache__/
+*.py[cod]
+*.pyd
+*.so
+.Python
+.venv/
+venv/
+env/
+.python-version.local
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Runtime files
+*.log
+bot_feed_*.png
 OCR_inputs/
 units/
-.bot_env
-.vscode
-.scrcpy
-machine_learning
-screens
-bot_feed_emulator-5554.png
-Src/old_functions.py
-bot_feed.png
-RR_bot.log
-build
-dist
-config.ini
+config.local.ini
+.env
+.env.*
+!.env.example
+
+# Private source material — never commit
+*.apk
+*.apks
+*.aab
+*.xapk
+*.obb
+*.ipa
+extracted-assets/
+data/raw/
+data/private/
+data/screenshots/
+data/labels/private/
+machine_learning/raw_input/
+
+# Locally downloaded tools
+.tools/
+.scrcpy/
+platform-tools/
+
+# Recordings and generated models
+recordings/
+*.mp4
+*.mkv
+*.avi
+models/local/
+*.onnx.tmp
+*.npz.tmp
+
+# Legacy notebooks
+.ipynb_checkpoints/
