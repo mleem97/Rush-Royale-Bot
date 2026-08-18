@@ -12,7 +12,7 @@ from rushbot.scrcpy import ScrcpyError, ScrcpyOptions, ScrcpyVersion
 
 
 class FakeAdb:
-    instances: list["FakeAdb"] = []
+    instances: list[FakeAdb] = []
     devices_result: list[AndroidDevice] = [
         AndroidDevice(serial="USB", state="device", model="Pixel")
     ]
@@ -79,7 +79,7 @@ class FakeSession:
 
 
 class FakeScrcpyClient:
-    instances: list["FakeScrcpyClient"] = []
+    instances: list[FakeScrcpyClient] = []
     fail_init: BaseException | None = None
     keyboard_interrupt = False
 

@@ -24,8 +24,7 @@ from rushbot.game_version import (
 class ScreenshotProvider(Protocol):
     """Minimum screenshot capability required by a versioned game capture."""
 
-    def capture(self, serial: str, output_path: str | Path | None = None) -> bytes:
-        ...
+    def capture(self, serial: str, output_path: str | Path | None = None) -> bytes: ...
 
 
 _ALIAS_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
@@ -139,12 +138,15 @@ def capture_game_frame(
         build=build,
         compatibility=decision,
     )
-    serialized = json.dumps(
-        manifest.as_dict(),
-        indent=2,
-        sort_keys=True,
-        ensure_ascii=False,
-    ).encode("utf-8") + b"\n"
+    serialized = (
+        json.dumps(
+            manifest.as_dict(),
+            indent=2,
+            sort_keys=True,
+            ensure_ascii=False,
+        ).encode("utf-8")
+        + b"\n"
+    )
     write_bytes_atomic(sidecar, serialized)
     return VersionedCapture(
         image_path=destination,

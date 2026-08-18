@@ -128,9 +128,7 @@ def test_scrcpy_client_version_success_and_failures(
     monkeypatch.setattr(
         scrcpy_module.subprocess,
         "run",
-        lambda *args, **kwargs: subprocess.CompletedProcess(
-            args[0], 1, stdout="", stderr="failed"
-        ),
+        lambda *args, **kwargs: subprocess.CompletedProcess(args[0], 1, stdout="", stderr="failed"),
     )
     with pytest.raises(ScrcpyError, match="failed"):
         client.version()

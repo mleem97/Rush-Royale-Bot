@@ -120,8 +120,7 @@ class GameBuildInfo:
 class PackageShellBackend(Protocol):
     """Minimal ADB capability required to inspect an installed package."""
 
-    def shell(self, serial: str, arguments: Sequence[str | int | float]) -> str:
-        ...
+    def shell(self, serial: str, arguments: Sequence[str | int | float]) -> str: ...
 
 
 _PACKAGE_NAME_RE = re.compile(r"^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$")
@@ -265,11 +264,15 @@ class SupportRule:
             and self.version_code_min > self.version_code_max
         ):
             raise SupportMatrixError("version_code_min must not exceed version_code_max.")
-        if self.status in {
-            GameCompatibilityStatus.REPLAY_VALIDATED,
-            GameCompatibilityStatus.SHADOW_VALIDATED,
-            GameCompatibilityStatus.LIVE_VALIDATED,
-        } and self.version_code is None:
+        if (
+            self.status
+            in {
+                GameCompatibilityStatus.REPLAY_VALIDATED,
+                GameCompatibilityStatus.SHADOW_VALIDATED,
+                GameCompatibilityStatus.LIVE_VALIDATED,
+            }
+            and self.version_code is None
+        ):
             raise SupportMatrixError(
                 f"Validated rule {self.rule_id!r} must match one exact version_code."
             )
@@ -316,9 +319,7 @@ class SupportRule:
         required = ("id", "package", "status", "reason")
         missing = [key for key in required if key not in value]
         if missing:
-            raise SupportMatrixError(
-                f"Support rule is missing required keys: {', '.join(missing)}"
-            )
+            raise SupportMatrixError(f"Support rule is missing required keys: {', '.join(missing)}")
         try:
             status = GameCompatibilityStatus(str(value["status"]))
         except ValueError as exc:
@@ -376,16 +377,13 @@ class SupportDecision:
         requested = RuntimeMode(requested_mode)
         maximum = self.maximum_runtime_mode
         effective = (
-            requested
-            if _RUNTIME_MODE_RISK[requested] <= _RUNTIME_MODE_RISK[maximum]
-            else maximum
+            requested if _RUNTIME_MODE_RISK[requested] <= _RUNTIME_MODE_RISK[maximum] else maximum
         )
         downgraded = effective is not requested
         reason = self.reason
         if downgraded:
             reason = (
-                f"Requested {requested.value} mode was reduced to {effective.value}: "
-                f"{self.reason}"
+                f"Requested {requested.value} mode was reduced to {effective.value}: {self.reason}"
             )
         return RuntimeAuthorization(
             requested_mode=requested,
@@ -499,9 +497,7 @@ class SupportMatrix:
         finalists = [rule for rule in matches if rule.specificity == highest_specificity]
         if len(finalists) != 1:
             ids = ", ".join(sorted(rule.rule_id for rule in finalists))
-            raise SupportMatrixError(
-                f"Ambiguous support rules for {build.build_id}: {ids}"
-            )
+            raise SupportMatrixError(f"Ambiguous support rules for {build.build_id}: {ids}")
         selected = finalists[0]
         return SupportDecision(
             build=build,

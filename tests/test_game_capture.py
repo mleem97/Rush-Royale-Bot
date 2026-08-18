@@ -13,7 +13,6 @@ from rushbot.game_capture import (
 )
 from rushbot.game_version import SupportMatrix
 
-
 DUMPSYS = dedent(
     """
       Package [com.my.defense] (abc):
@@ -91,8 +90,7 @@ def test_capture_writes_versioned_sidecar_without_raw_serial(tmp_path: Path) -> 
 
 def test_capture_validates_paths_and_aliases(tmp_path: Path) -> None:
     matrix = SupportMatrix.from_toml(
-        'schema_version = 1\ndefault_status = "capture_only"\n'
-        'default_reason = "default"\n'
+        'schema_version = 1\ndefault_status = "capture_only"\ndefault_reason = "default"\n'
     )
     with pytest.raises(ValueError, match="serial"):
         anonymize_serial(" ")
@@ -129,8 +127,7 @@ def test_capture_validates_paths_and_aliases(tmp_path: Path) -> None:
 
 def test_capture_accepts_custom_alias_and_sidecar_path(tmp_path: Path) -> None:
     matrix = SupportMatrix.from_toml(
-        'schema_version = 1\ndefault_status = "capture_only"\n'
-        'default_reason = "default"\n'
+        'schema_version = 1\ndefault_status = "capture_only"\ndefault_reason = "default"\n'
     )
     result = capture_game_frame(
         screenshot_provider=Provider(),

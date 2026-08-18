@@ -16,7 +16,6 @@ from rushbot.game_version import (
     parse_dumpsys_package,
 )
 
-
 DUMPSYS_37 = dedent(
     """
     Packages:
@@ -61,9 +60,7 @@ def test_inspector_routes_to_exact_adb_serial() -> None:
     build = inspect_game_build(Backend(), "192.168.1.20:5555")
 
     assert build.version_code == 3_700_123
-    assert calls == [
-        ("192.168.1.20:5555", ["dumpsys", "package", "com.my.defense"])
-    ]
+    assert calls == [("192.168.1.20:5555", ["dumpsys", "package", "com.my.defense"])]
 
 
 def test_default_policy_blocks_unknown_and_future_builds() -> None:
@@ -251,8 +248,7 @@ def test_parser_rejects_output_without_version_metadata() -> None:
             "reason",
         ),
         (
-            'id = "x"\npackage = "com.my.defense"\n'
-            'status = "capture_only"\nreason = "x"',
+            'id = "x"\npackage = "com.my.defense"\nstatus = "capture_only"\nreason = "x"',
             "constrain",
         ),
         (
@@ -298,18 +294,9 @@ def test_rule_invariants_are_fail_closed(rule: str, message: str) -> None:
     [
         "not = [valid",
         'schema_version = 1\ndefault_status = "capture_only"',
-        (
-            'schema_version = 1\ndefault_status = "made_up"\n'
-            'default_reason = "default"\n'
-        ),
-        (
-            'schema_version = 1\ndefault_status = "live_validated"\n'
-            'default_reason = "unsafe"\n'
-        ),
-        (
-            'schema_version = 2\ndefault_status = "capture_only"\n'
-            'default_reason = "default"\n'
-        ),
+        ('schema_version = 1\ndefault_status = "made_up"\ndefault_reason = "default"\n'),
+        ('schema_version = 1\ndefault_status = "live_validated"\ndefault_reason = "unsafe"\n'),
+        ('schema_version = 2\ndefault_status = "capture_only"\ndefault_reason = "default"\n'),
         (
             'schema_version = 1\ndefault_status = "capture_only"\n'
             'default_reason = "default"\nbuilds = 1\n'
@@ -380,8 +367,7 @@ def test_range_rule_and_mode_authorization() -> None:
 def test_matrix_loads_custom_path_and_packaged_default(tmp_path) -> None:
     custom = tmp_path / "matrix.toml"
     custom.write_text(
-        'schema_version = 1\ndefault_status = "capture_only"\n'
-        'default_reason = "custom"\n',
+        'schema_version = 1\ndefault_status = "capture_only"\ndefault_reason = "custom"\n',
         encoding="utf-8",
     )
     assert SupportMatrix.load(custom).default_reason == "custom"

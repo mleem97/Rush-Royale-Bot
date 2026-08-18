@@ -113,23 +113,14 @@ def find_adb(explicit: str | os.PathLike[str] | None = None) -> str:
     candidates.extend(
         [
             Path.home() / "Android" / "Sdk" / "platform-tools" / executable_name,
-            Path.home()
-            / ".local"
-            / "share"
-            / "android-sdk"
-            / "platform-tools"
-            / executable_name,
+            Path.home() / ".local" / "share" / "android-sdk" / "platform-tools" / executable_name,
         ]
     )
     if os.name == "nt":
         local_app_data = os.getenv("LOCALAPPDATA")
         if local_app_data:
             candidates.append(
-                Path(local_app_data)
-                / "Android"
-                / "Sdk"
-                / "platform-tools"
-                / executable_name
+                Path(local_app_data) / "Android" / "Sdk" / "platform-tools" / executable_name
             )
     else:
         candidates.extend([Path("/usr/bin/adb"), Path("/usr/local/bin/adb")])
@@ -226,9 +217,7 @@ class AdbBackend:
         runner: Runner = subprocess.run,
     ) -> None:
         self.executable = (
-            str(Path(adb_executable).expanduser())
-            if adb_executable is not None
-            else find_adb()
+            str(Path(adb_executable).expanduser()) if adb_executable is not None else find_adb()
         )
         self.environment = os.environ.copy()
         if environment:
@@ -271,9 +260,7 @@ class AdbBackend:
             if isinstance(stdout, bytes):
                 stdout = stdout.decode(errors="replace")
             detail = str(stderr or stdout or "unknown ADB error").strip()
-            raise AdbError(
-                f"ADB command failed with exit code {completed.returncode}: {detail}"
-            )
+            raise AdbError(f"ADB command failed with exit code {completed.returncode}: {detail}")
         return completed
 
     def version(self) -> str:

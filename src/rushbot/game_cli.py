@@ -99,10 +99,7 @@ def _print_status(payload: dict[str, object]) -> None:
     print(f"Version: {build['version_name'] or 'unknown'} (code {build['version_code']})")
     print(f"Compatibility: {payload['status']}")
     print(f"Maximum mode: {payload['maximum_runtime_mode']}")
-    print(
-        "Requested mode: "
-        f"{authorization['requested_mode']} -> {authorization['effective_mode']}"
-    )
+    print(f"Requested mode: {authorization['requested_mode']} -> {authorization['effective_mode']}")
     print(f"Live actions: {'ALLOWED' if payload['live_actions_allowed'] else 'BLOCKED'}")
     print(f"Reason: {payload['reason']}")
 

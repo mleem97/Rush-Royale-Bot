@@ -31,7 +31,7 @@ class ScrcpyVersion:
     patch: int = 0
 
     @classmethod
-    def parse(cls, output: str) -> "ScrcpyVersion":
+    def parse(cls, output: str) -> ScrcpyVersion:
         match = _VERSION_RE.search(output)
         if not match:
             raise ValueError(f"Could not parse scrcpy version from: {output!r}")
@@ -185,7 +185,7 @@ class ScrcpyClient:
         options: ScrcpyOptions,
         *,
         log_path: str | os.PathLike[str] | None = None,
-    ) -> "ScrcpySession":
+    ) -> ScrcpySession:
         self.ensure_supported()
         return ScrcpySession(self.executable, options, log_path=log_path)
 
@@ -265,7 +265,7 @@ class ScrcpySession:
             self._log_file.close()
             self._log_file = None
 
-    def __enter__(self) -> "ScrcpySession":
+    def __enter__(self) -> ScrcpySession:
         self.start()
         return self
 

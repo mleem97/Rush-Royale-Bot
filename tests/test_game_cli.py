@@ -50,8 +50,7 @@ class FakeAdb:
 
 def capture_matrix() -> SupportMatrix:
     return SupportMatrix.from_toml(
-        'schema_version = 1\ndefault_status = "capture_only"\n'
-        'default_reason = "unreviewed"\n'
+        'schema_version = 1\ndefault_status = "capture_only"\ndefault_reason = "unreviewed"\n'
     )
 
 
