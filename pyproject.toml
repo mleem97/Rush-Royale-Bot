@@ -42,6 +42,7 @@ dev = [
 
 [project.scripts]
 rushbot-device = "rushbot.cli:main"
+rushbot-game = "rushbot.game_cli:main"
 
 [project.urls]
 Repository = "https://github.com/mleem97/RushBot"

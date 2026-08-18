@@ -7,7 +7,6 @@ import pytest
 
 from rushbot.adb import AdbBackend, DeviceTransport, parse_devices, validate_endpoint
 
-
 SAMPLE_DEVICES = (
     "List of devices attached\n"
     "emulator-5554 device product:sdk_gphone64_x86_64 "

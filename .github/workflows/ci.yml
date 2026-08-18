@@ -39,11 +39,14 @@ jobs:
       - name: Install project and development tools
         run: python -m pip install -e ".[dev]"
 
-      - name: Lint
-        run: python -m ruff check src tests
+      # The upstream snapshot still uses `Src/`. Windows case-folds that path into
+      # `src/`, so modernization gates target the isolated package until legacy
+      # modules are migrated out of the conflicting directory.
+      - name: Lint modernization package
+        run: python -m ruff check src/rushbot tests
 
-      - name: Check formatting
-        run: python -m ruff format --check src tests
+      - name: Check modernization formatting
+        run: python -m ruff format --check src/rushbot tests
 
       - name: Run unit tests
         run: python -m pytest --cov=rushbot --cov-report=term-missing --cov-report=xml

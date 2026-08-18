@@ -41,8 +41,7 @@ def write_bytes_atomic(path: str | os.PathLike[str], payload: bytes) -> Path:
 class ScreenshotBackend(Protocol):
     """Minimum capture capability required from an Android target backend."""
 
-    def screencap_png(self, serial: str) -> bytes:
-        ...
+    def screencap_png(self, serial: str) -> bytes: ...
 
 
 class AdbScreenshotProvider:
@@ -98,7 +97,7 @@ class V4L2FrameSource:
             self._capture.release()
             self._capture = None
 
-    def __enter__(self) -> "V4L2FrameSource":
+    def __enter__(self) -> V4L2FrameSource:
         self.open()
         return self
 

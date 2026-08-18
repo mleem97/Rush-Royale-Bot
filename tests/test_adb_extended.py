@@ -67,7 +67,8 @@ def test_find_adb_explicit_file_and_path_lookup(
 
 def test_find_adb_sdk_fallback(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     sdk = tmp_path / "sdk"
-    executable = sdk / "platform-tools" / "adb"
+    executable_name = "adb.exe" if adb_module.os.name == "nt" else "adb"
+    executable = sdk / "platform-tools" / executable_name
     executable.parent.mkdir(parents=True)
     executable.write_text("", encoding="utf-8")
     for name in ("ADB_PATH", "ADB", "ANDROID_HOME"):

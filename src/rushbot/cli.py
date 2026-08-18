@@ -91,9 +91,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _doctor(
-    adb_path: str | None, scrcpy_path: str | None
-) -> tuple[dict[str, object], bool]:
+def _doctor(adb_path: str | None, scrcpy_path: str | None) -> tuple[dict[str, object], bool]:
     report: dict[str, object] = {"rushbot": __version__}
     healthy = True
     try:

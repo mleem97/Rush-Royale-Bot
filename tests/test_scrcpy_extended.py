@@ -77,7 +77,8 @@ def test_option_validation_errors(options: ScrcpyOptions) -> None:
         options.validate()
 
 
-def test_build_full_scrcpy_command(tmp_path: Path) -> None:
+def test_build_full_scrcpy_command(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(scrcpy_module.sys, "platform", "linux")
     record = tmp_path / "recording.mkv"
     command = build_scrcpy_command(
         "scrcpy",
@@ -128,9 +129,7 @@ def test_scrcpy_client_version_success_and_failures(
     monkeypatch.setattr(
         scrcpy_module.subprocess,
         "run",
-        lambda *args, **kwargs: subprocess.CompletedProcess(
-            args[0], 1, stdout="", stderr="failed"
-        ),
+        lambda *args, **kwargs: subprocess.CompletedProcess(args[0], 1, stdout="", stderr="failed"),
     )
     with pytest.raises(ScrcpyError, match="failed"):
         client.version()
