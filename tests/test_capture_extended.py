@@ -66,6 +66,7 @@ def install_fake_cv2(monkeypatch: pytest.MonkeyPatch, capture: FakeVideoCapture)
 
 
 def test_v4l2_open_read_close_and_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(capture_module.sys, "platform", "linux")
     fake_capture = FakeVideoCapture(reads=[(True, "frame")])
     install_fake_cv2(monkeypatch, fake_capture)
     source = V4L2FrameSource("/dev/video10")
@@ -77,6 +78,7 @@ def test_v4l2_open_read_close_and_context(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 def test_v4l2_open_and_read_failures(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(capture_module.sys, "platform", "linux")
     not_opened = FakeVideoCapture(opened=False)
     install_fake_cv2(monkeypatch, not_opened)
     source = V4L2FrameSource("/dev/video10")

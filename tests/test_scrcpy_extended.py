@@ -77,7 +77,10 @@ def test_option_validation_errors(options: ScrcpyOptions) -> None:
         options.validate()
 
 
-def test_build_full_scrcpy_command(tmp_path: Path) -> None:
+def test_build_full_scrcpy_command(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(scrcpy_module.sys, "platform", "linux")
     record = tmp_path / "recording.mkv"
     command = build_scrcpy_command(
         "scrcpy",
