@@ -1,0 +1,10 @@
+schema_version = 1
+default_status = "capture_only"
+default_reason = "This Rush Royale build has not been reviewed; only diagnostic capture is permitted."
+
+[[builds]]
+id = "rush-royale-37x-capture-baseline"
+package = "com.my.defense"
+version_name_prefix = "37."
+status = "capture_only"
+reason = "Rush Royale 37.x is recognized for dataset capture only; replay, shadow, and live validation are pending."
